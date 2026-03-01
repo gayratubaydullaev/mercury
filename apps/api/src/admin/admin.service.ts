@@ -1,5 +1,6 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { UserRole } from '@prisma/client';
 import { Request } from 'express';
 
@@ -9,7 +10,10 @@ const VALID_ROLES: UserRole[] = ['ADMIN', 'BUYER', 'SELLER'];
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   /** Get users in a transaction with RLS context set on the same connection to avoid 500 when using connection pool. */
   async getUsers(req: Request, page = 1, limit = 20, role?: UserRole) {
@@ -244,6 +248,48 @@ export class AdminService {
         ...(data.pickupEnabled != null && { pickupEnabled: data.pickupEnabled }),
       },
     });
+  }
+
+  async linkTelegram(code: string): Promise<{ ok: boolean }> {
+    const chatId = await this.telegram.resolveLinkCode(code);
+    if (!chatId) throw new BadRequestException('Kod notoʻgʻri yoki muddati tugagan. Botda /start yoki /link yuboring.');
+    let settings = await this.prisma.platformSettings.findFirst();
+    if (!settings) {
+      settings = await this.prisma.platformSettings.create({
+        data: {
+          commissionRate: 5,
+          minPayoutAmount: 100000,
+          paymentClickEnabled: true,
+          paymentPaymeEnabled: true,
+          paymentCashEnabled: true,
+          paymentCardOnDeliveryEnabled: true,
+          deliveryEnabled: true,
+          pickupEnabled: true,
+        },
+      });
+    }
+    await this.prisma.platformSettings.update({
+      where: { id: settings.id },
+      data: { adminTelegramChatId: chatId },
+    });
+    return { ok: true };
+  }
+
+  async getTelegramStatus(): Promise<{ connected: boolean }> {
+    const settings = await this.prisma.platformSettings.findFirst({
+      select: { adminTelegramChatId: true },
+    });
+    return { connected: !!settings?.adminTelegramChatId };
+  }
+
+  async disconnectTelegram(): Promise<{ ok: boolean }> {
+    const settings = await this.prisma.platformSettings.findFirst();
+    if (!settings) return { ok: true };
+    await this.prisma.platformSettings.update({
+      where: { id: settings.id },
+      data: { adminTelegramChatId: null },
+    });
+    return { ok: true };
   }
 
   /** Sellers list with stats (products count, orders count, revenue). Run in transaction with RLS. */

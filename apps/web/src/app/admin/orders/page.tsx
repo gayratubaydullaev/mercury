@@ -49,28 +49,30 @@ export default function AdminOrdersPage() {
   const errorMessage = 'message' in data ? data.message : null;
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Barcha buyurtmalar</h1>
-      <p className="text-muted-foreground mb-4">Platformadagi barcha buyurtmalar. Jami: {total}</p>
+      <p className="text-muted-foreground mb-4 text-sm sm:text-base">Platformadagi barcha buyurtmalar. Jami: {total}</p>
       {errorMessage && orders.length === 0 && (
         <p className="text-destructive text-sm mb-4">{errorMessage}</p>
       )}
       {totalPages > 1 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
           <span className="text-sm text-muted-foreground">Sahifa {currentPage} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Keyingi</Button>
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Keyingi</Button>
         </div>
       )}
       <div className="space-y-3">
         {orders.map((o) => (
           <Card key={o.id}>
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-center gap-3 mb-2">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3 mb-2">
                 <span className="font-mono text-sm font-medium">{o.orderNumber}</span>
-                <Badge variant="secondary">{o.status}</Badge>
-                {o.paymentStatus && <Badge variant="outline">{o.paymentStatus}</Badge>}
-                <span className="font-semibold ml-auto">{formatPrice(Number(o.totalAmount))} soʻm</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="secondary">{o.status}</Badge>
+                  {o.paymentStatus && <Badge variant="outline">{o.paymentStatus}</Badge>}
+                </div>
+                <span className="font-semibold sm:ml-auto text-base">{formatPrice(Number(o.totalAmount))} soʻm</span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 {o.buyer && (

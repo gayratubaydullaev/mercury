@@ -117,8 +117,11 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
   return (
     <>
       {isMobile ? (
-        <div className="fixed bottom-[calc(3rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 p-2 bg-card/95 backdrop-blur-sm rounded-t-xl border-t border-border shadow-lg">
-          <div className="max-w-lg mx-auto px-2">{buttons}</div>
+        <div
+          className="fixed left-0 right-0 z-40 p-3 sm:p-3 bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+          style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="max-w-lg mx-auto w-full px-1">{buttons}</div>
         </div>
       ) : (
         buttons
@@ -148,7 +151,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                     src={ctx.currentVariant?.imageUrl ?? ctx.product.images?.[0]?.url ?? ''}
                     alt={ctx.product.title ?? ''}
                     fill
-                    className="object-contain"
+                    className="object-cover"
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 ) : (

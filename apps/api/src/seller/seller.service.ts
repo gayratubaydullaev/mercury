@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class SellerService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   async getShop(userId: string) {
     return this.prisma.shop.findFirst({ where: { userId } });
@@ -68,6 +72,42 @@ export class SellerService {
       productsCount,
       shopSlug: shop.slug,
     };
+  }
+
+  async linkTelegram(userId: string, code: string): Promise<{ ok: boolean }> {
+    const chatId = await this.telegram.resolveLinkCode(code);
+    if (!chatId) throw new BadRequestException('Kod notoʻgʻri yoki muddati tugagan. Botda /start yoki /link bosing va yangi kod oling.');
+    const shop = await this.prisma.shop.findFirst({ where: { userId } });
+    if (!shop) throw new BadRequestException('Doʻkon topilmadi.');
+    const chatType = 'PERSONAL';
+    // Bir chat faqat bitta doʻkonga ulanishi kerak: boshqa doʻkonlardan bu chatId ni olib tashlaymiz
+    await this.prisma.shop.updateMany({
+      where: { telegramChatId: chatId, id: { not: shop.id } },
+      data: { telegramChatId: null, telegramType: null },
+    });
+    await this.prisma.shop.update({
+      where: { id: shop.id },
+      data: { telegramChatId: chatId, telegramType: chatType },
+    });
+    return { ok: true };
+  }
+
+  async getTelegramStatus(userId: string): Promise<{ connected: boolean; telegramType?: string }> {
+    const shop = await this.prisma.shop.findFirst({ where: { userId }, select: { telegramChatId: true, telegramType: true } });
+    return {
+      connected: !!shop?.telegramChatId,
+      telegramType: shop?.telegramType ?? undefined,
+    };
+  }
+
+  async disconnectTelegram(userId: string): Promise<{ ok: boolean }> {
+    const shop = await this.prisma.shop.findFirst({ where: { userId } });
+    if (!shop) return { ok: true };
+    await this.prisma.shop.update({
+      where: { id: shop.id },
+      data: { telegramChatId: null, telegramType: null },
+    });
+    return { ok: true };
   }
 
   /** Reviews for all products of the seller's shop (for reply UI) */

@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   /** Количество купленных единиц товара пользователем (оплаченные, не отменённые заказы). */
   async getPurchasedQuantity(productId: string, userId: string): Promise<number> {
@@ -52,9 +56,33 @@ export class ReviewsService {
       );
     }
 
-    return this.prisma.review.create({
+    const created = await this.prisma.review.create({
       data: { productId, userId, rating: r, comment: comment?.trim() || null },
     });
+    const full = await this.prisma.review.findUnique({
+      where: { id: created.id },
+      include: { product: { include: { shop: true } }, user: { select: { firstName: true, lastName: true } } },
+    });
+    if (full) {
+      this.telegram
+        .sendSellerReviewNotification(full.product.shop.userId, {
+          rating: full.rating,
+          comment: full.comment,
+          productTitle: full.product.title,
+          userName: `${full.user.firstName} ${full.user.lastName}`,
+        })
+        .catch(() => {});
+      this.telegram
+        .sendAdminPendingReviewNotification({
+          id: full.id,
+          rating: full.rating,
+          comment: full.comment,
+          productTitle: full.product.title,
+          userName: `${full.user.firstName} ${full.user.lastName}`,
+        })
+        .catch(() => {});
+    }
+    return created;
   }
 
   async getForProduct(productId: string) {

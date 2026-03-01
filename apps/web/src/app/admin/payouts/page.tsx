@@ -115,15 +115,15 @@ export default function AdminPayoutsPage() {
   const rows = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-        <Banknote className="h-7 w-7" />
+        <Banknote className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
         Toʻlovlar
       </h1>
-      <p className="text-muted-foreground mb-6">Sotuvchilar boʻyicha toʻlangan buyurtmalar, komissiya va qoldiq</p>
+      <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Sotuvchilar boʻyicha toʻlangan buyurtmalar, komissiya va qoldiq</p>
       {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto -mx-0 rounded-xl border border-border overflow-hidden">
+        <table className="w-full text-sm border-collapse min-w-[560px]">
           <thead>
             <tr className="border-b">
               <th className="text-left py-2 px-2 font-medium">Sotuvchi</th>
@@ -148,7 +148,7 @@ export default function AdminPayoutsPage() {
                 <td className="py-3 px-2 text-right">{formatPrice(row.totalPaid)} soʻm</td>
                 <td className="py-3 px-2 text-right font-medium">{formatPrice(row.balance)} soʻm</td>
                 <td className="py-3 px-2 text-right">
-                  <Button variant="outline" size="sm" onClick={() => openRecordModal(row)} className="gap-1">
+                  <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" onClick={() => openRecordModal(row)}>
                     <PlusCircle className="h-4 w-4" />
                     Toʻlov
                   </Button>
@@ -186,7 +186,7 @@ export default function AdminPayoutsPage() {
               <Label htmlFor="record-method">Toʻlov usuli</Label>
               <select
                 id="record-method"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                className="flex h-10 min-h-[40px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 value={recordMethod}
                 onChange={(e) => setRecordMethod(e.target.value as 'CASH' | 'CARD')}
               >
@@ -214,9 +214,9 @@ export default function AdminPayoutsPage() {
             </div>
             {recordError && <p className="text-sm text-destructive">{recordError}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeRecordModal} disabled={recordSubmitting}>Bekor qilish</Button>
-            <Button onClick={submitRecordPayout} disabled={recordSubmitting}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="min-h-[40px] touch-manipulation" onClick={closeRecordModal} disabled={recordSubmitting}>Bekor qilish</Button>
+            <Button className="min-h-[40px] touch-manipulation" onClick={submitRecordPayout} disabled={recordSubmitting}>
               {recordSubmitting ? 'Saqlanmoqda…' : 'Saqlash'}
             </Button>
           </DialogFooter>

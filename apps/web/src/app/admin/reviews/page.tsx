@@ -88,38 +88,38 @@ export default function AdminReviewsPage() {
   const reviews = data.data ?? [];
 
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-6 min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <MessageSquare className="h-7 w-7" />
+        <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
         Sharhlar (moderatsiya)
       </h1>
 
       <div className="flex gap-2 flex-wrap items-center">
-        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter(''); setPage(1); }}>Barchasi</Button>
-        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter('false'); setPage(1); }}>Moderatsiya qilinmagan</Button>
-        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter('true'); setPage(1); }}>Tasdiqlangan</Button>
+        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter(''); setPage(1); }}>Barchasi</Button>
+        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('false'); setPage(1); }}>Kutilmoqda</Button>
+        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('true'); setPage(1); }}>Tasdiqlangan</Button>
         {data && data.totalPages > 1 && (
-          <div className="flex items-center gap-2 ml-4">
-            <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+          <div className="flex items-center gap-2 sm:ml-4 flex-wrap">
+            <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
             <span className="text-sm text-muted-foreground">Sahifa {data.page} / {data.totalPages}</span>
-            <Button variant="outline" size="sm" disabled={data.page >= data.totalPages} onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}>Keyingi</Button>
+            <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page >= data.totalPages} onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}>Keyingi</Button>
           </div>
         )}
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Sharhlar ({data.total})</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Sharhlar ({data.total})</CardTitle></CardHeader>
         <CardContent>
           {reviews.length === 0 ? (
-            <p className="text-muted-foreground">Sharhlar yoʻq.</p>
+            <p className="text-muted-foreground py-4">Sharhlar yoʻq.</p>
           ) : (
             <ul className="space-y-4">
               {reviews.map((r) => (
-                <li key={r.id} className="p-4 rounded-lg border bg-card space-y-2">
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
+                <li key={r.id} className="p-4 sm:p-5 rounded-xl border bg-card space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <span className="font-medium">{r.user.firstName} {r.user.lastName}</span>
-                      <span className="flex items-center gap-0.5 text-yellow-500">
+                      <span className="flex items-center gap-0.5 text-yellow-500 shrink-0">
                         {[1,2,3,4,5].map((i) => (
                           <Star key={i} className={`w-4 h-4 ${i <= r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40'}`} />
                         ))}
@@ -130,16 +130,16 @@ export default function AdminReviewsPage() {
                       {r.isModerated ? (
                         <span className="text-xs text-green-600 font-medium">Tasdiqlangan</span>
                       ) : (
-                        <span className="text-xs text-amber-600 font-medium">Moderatsiya kutilmoqda</span>
+                        <span className="text-xs text-amber-600 font-medium">Kutilmoqda</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {!r.isModerated && (
                         <>
-                          <Button size="sm" onClick={() => handleModerate(r.id, true)} disabled={loading} className="text-green-600">
+                          <Button size="sm" className="min-h-[40px] touch-manipulation text-green-600" onClick={() => handleModerate(r.id, true)} disabled={loading}>
                             <Check className="h-4 w-4 mr-1" /> Tasdiqlash
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleModerate(r.id, false)} disabled={loading}>
+                          <Button size="sm" variant="outline" className="min-h-[40px] touch-manipulation" onClick={() => handleModerate(r.id, false)} disabled={loading}>
                             <X className="h-4 w-4 mr-1" /> Rad etish
                           </Button>
                         </>
@@ -147,6 +147,7 @@ export default function AdminReviewsPage() {
                       <Button
                         variant="destructive"
                         size="sm"
+                        className="min-h-[40px] touch-manipulation"
                         onClick={() => handleDelete(r.id)}
                         disabled={loading || deletingId === r.id}
                       >

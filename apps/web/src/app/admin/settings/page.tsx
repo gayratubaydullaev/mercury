@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { Banknote, Truck, CreditCard } from 'lucide-react';
+import { Banknote, Truck, CreditCard, Send, Unplug } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Settings = {
@@ -39,7 +39,19 @@ export default function AdminSettingsPage() {
   const [paymentDelivery, setPaymentDelivery] = useState(defaultPaymentDelivery);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean } | null>(null);
+  const [telegramCode, setTelegramCode] = useState('');
+  const [telegramLinking, setTelegramLinking] = useState(false);
+  const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const loadTelegramStatus = () => {
+    if (!token) return;
+    apiFetch(`${API_URL}/admin/telegram`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(setTelegramStatus)
+      .catch(() => setTelegramStatus({ connected: false }));
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -63,7 +75,47 @@ export default function AdminSettingsPage() {
         setError('API ga ulanishda xatolik. Serverni ishga tushiring (pnpm run dev).');
         setSettings({ commissionRate: '5', minPayoutAmount: '100000' });
       });
+    loadTelegramStatus();
   }, [token]);
+
+  const linkTelegram = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !telegramCode.trim()) return;
+    setTelegramLinking(true);
+    apiFetch(`${API_URL}/admin/telegram/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: telegramCode.trim().toUpperCase() }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          toast.success('Admin Telegram ulandi');
+          setTelegramCode('');
+          loadTelegramStatus();
+        } else throw new Error(data.message);
+      })
+      .catch((err) => toast.error(err?.message ?? 'Kod notoʻgʻri yoki muddati tugagan'))
+      .finally(() => setTelegramLinking(false));
+  };
+
+  const disconnectTelegram = () => {
+    if (!token) return;
+    setTelegramDisconnecting(true);
+    apiFetch(`${API_URL}/admin/telegram/disconnect`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          toast.success('Admin Telegram uzildi');
+          loadTelegramStatus();
+        }
+      })
+      .catch(() => toast.error('Uzishda xatolik'))
+      .finally(() => setTelegramDisconnecting(false));
+  };
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +166,59 @@ export default function AdminSettingsPage() {
         <p className="text-muted-foreground mb-6">Komissiya, toʻlov usullari va yetkazib berish</p>
         {error && <p className="text-destructive text-sm mb-4">{error}</p>}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Admin Telegram — toʻliq buyurtma bildirishnomalari
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Botga /start yoki /link yuboring, kodni quyida kiriting. Barcha yangi buyurtmalar va holat oʻzgarishlari toʻliq maʼlumot bilan (xaridor, sotuvchi, manzil, toʻlov, mahsulotlar) shu chatga yuboriladi.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {telegramStatus?.connected ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-green-600">Admin Telegram ulangan</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[40px] touch-manipulation"
+                disabled={telegramDisconnecting}
+                onClick={disconnectTelegram}
+              >
+                <Unplug className="h-4 w-4 mr-1" />
+                Uzish
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                1) Telegramda MyShopUZ botini oching va <b>/start</b> yoki <b>/link</b> yuboring.<br />
+                2) Bot bergan 6 belgili kodni quyida kiriting.
+              </p>
+              <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[140px]">
+                  <Label htmlFor="admin-telegram-code" className="text-sm">Kod</Label>
+                  <Input
+                    id="admin-telegram-code"
+                    placeholder="AB12CD"
+                    value={telegramCode}
+                    onChange={(e) => setTelegramCode(e.target.value.toUpperCase().slice(0, 6))}
+                    className="mt-1 font-mono min-h-[40px]"
+                    maxLength={6}
+                  />
+                </div>
+                <Button type="submit" disabled={telegramLinking || !telegramCode.trim()} className="min-h-[40px] touch-manipulation">
+                  {telegramLinking ? 'Ulanmoqda...' : 'Ulash'}
+                </Button>
+              </form>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <form onSubmit={save} className="space-y-6 max-w-lg">
         <Card>

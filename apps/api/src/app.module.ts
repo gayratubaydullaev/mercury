@@ -21,6 +21,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PaymentsModule } from './payments/payments.module';
 import { SellerModule } from './seller/seller.module';
+import { TelegramModule } from './telegram/telegram.module';
 import { MailerModule } from './mailer/mailer.module';
 import { BannersModule } from './banners/banners.module';
 import { SettingsModule } from './settings/settings.module';
@@ -60,6 +61,7 @@ import { SettingsModule } from './settings/settings.module';
     FavoritesModule,
     PaymentsModule,
     SellerModule,
+    TelegramModule,
     BannersModule,
     SettingsModule,
   ],

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { createHmac, createHash } from 'crypto';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private telegram: TelegramService,
   ) {}
 
   async createClickPayment(orderId: string, returnUrl: string): Promise<{ redirectUrl: string }> {
@@ -75,6 +77,18 @@ export class PaymentsService {
         this.prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID', status: 'CONFIRMED' } }),
         this.prisma.payment.updateMany({ where: { orderId: order.id, provider: 'CLICK' }, data: { status: 'PAID', externalId: click_trans_id } }),
       ]);
+      const orderWithDetails = await this.prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+          seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+        },
+      });
+      if (orderWithDetails) {
+        this.telegram.sendOrderNotification(order.sellerId, orderWithDetails, 'status_updated', 'CONFIRMED').catch(() => {});
+        this.telegram.sendAdminOrderNotification(orderWithDetails, 'status_updated', 'CONFIRMED').catch(() => {});
+      }
       this.logger.log(`Click payment completed orderId=${order.id} click_trans_id=${click_trans_id}`);
       return {
         click_trans_id,
@@ -132,6 +146,18 @@ export class PaymentsService {
           this.prisma.order.update({ where: { id: orderId }, data: { paymentStatus: 'PAID', status: 'CONFIRMED' } }),
           this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'PAID', externalId: String(params?.id ?? '') } }),
         ]);
+        const orderWithDetails = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+            buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+            seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+          },
+        });
+        if (orderWithDetails) {
+          this.telegram.sendOrderNotification(order.sellerId, orderWithDetails, 'status_updated', 'CONFIRMED').catch(() => {});
+          this.telegram.sendAdminOrderNotification(orderWithDetails, 'status_updated', 'CONFIRMED').catch(() => {});
+        }
         this.logger.log(`Payme payment completed orderId=${orderId}`);
       }
       return { result: { transaction: params?.transaction ?? params?.id ?? 0, state: 2 } };

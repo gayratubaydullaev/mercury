@@ -70,29 +70,29 @@ export default function AdminProductsPage() {
   const products = data.data ?? [];
 
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-6 min-w-0 max-w-full">
       {loadError && <p className="text-destructive text-sm">{loadError}</p>}
       <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <Package className="h-7 w-7" />
+        <Package className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
         Moderatsiya (tovarlar)
       </h1>
 
       <div className="flex gap-2 flex-wrap">
-        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('')}>Barchasi</Button>
-        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('false')}>Moderatsiya qilinmagan</Button>
-        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
+        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('')}>Barchasi</Button>
+        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('false')}>Kutilmoqda</Button>
+        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Tovarlar ({data.total})</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Tovarlar ({data.total})</CardTitle></CardHeader>
         <CardContent>
           {products.length === 0 ? (
-            <p className="text-muted-foreground">Tovarlar yoʻq.</p>
+            <p className="text-muted-foreground py-4">Tovarlar yoʻq.</p>
           ) : (
             <ul className="space-y-3">
               {products.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center gap-3 sm:gap-4 p-3 rounded-lg border bg-card">
-                  <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted shrink-0">
+                <li key={p.id} className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card">
+                  <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted shrink-0">
                     {p.images?.[0] ? (
                       <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="56px" />
                     ) : (
@@ -101,23 +101,23 @@ export default function AdminProductsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{p.title}</p>
-                    <p className="text-sm text-muted-foreground">{p.shop?.name} · {p.category?.name}</p>
-                    <p className="text-sm">{formatPrice(Number(p.price))} soʻm</p>
+                    <p className="text-sm text-muted-foreground truncate">{p.shop?.name} · {p.category?.name}</p>
+                    <p className="text-sm font-medium">{formatPrice(Number(p.price))} soʻm</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {p.isModerated ? (
                       <span className="text-sm text-green-600 font-medium">Tasdiqlangan</span>
                     ) : (
                       <>
-                        <Button size="sm" onClick={() => moderate(p.id, true)} disabled={loading} className="text-green-600">
+                        <Button size="sm" className="min-h-[40px] touch-manipulation text-green-600" onClick={() => moderate(p.id, true)} disabled={loading}>
                           <Check className="h-4 w-4 mr-1" /> Tasdiqlash
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => moderate(p.id, false)} disabled={loading}>
+                        <Button size="sm" variant="outline" className="min-h-[40px] touch-manipulation" onClick={() => moderate(p.id, false)} disabled={loading}>
                           <X className="h-4 w-4 mr-1" /> Rad etish
                         </Button>
                       </>
                     )}
-                    <Button size="sm" variant="ghost" asChild>
+                    <Button size="sm" variant="ghost" className="min-h-[40px] touch-manipulation" asChild>
                       <Link href={`/product/${p.id}`} target="_blank">Koʻrish</Link>
                     </Button>
                   </div>

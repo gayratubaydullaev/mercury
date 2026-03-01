@@ -77,7 +77,7 @@ export function HomeProductGrid() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-3">
             <Skeleton className="aspect-[4/5] w-full rounded-xl" />
@@ -104,7 +104,7 @@ export function HomeProductGrid() {
 
   return (
     <>
-      <div className="home-product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4">
+      <div className="home-product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
         {products.map((p, index) => (
           <div key={p.id} className="home-product-grid-item">
             <ProductCard product={p} priority={index < 6} />
@@ -113,7 +113,7 @@ export function HomeProductGrid() {
       </div>
       <div ref={sentinelRef} className="h-4 min-h-4 w-full" aria-hidden />
       {loadingMore && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4 mt-3 md:mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4 mt-3 md:mt-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-3">
               <Skeleton className="aspect-[4/5] w-full rounded-xl" />

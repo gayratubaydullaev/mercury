@@ -103,15 +103,15 @@ export default function AdminSellersPage() {
   const sellers = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-        <Store className="h-7 w-7" />
+        <Store className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
         Sotuvchilar
       </h1>
-      <p className="text-muted-foreground mb-6">Tovarlar, buyurtmalar va daromad boʻyicha</p>
+      <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Tovarlar, buyurtmalar va daromad boʻyicha</p>
       {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto -mx-0 rounded-xl border border-border overflow-hidden">
+        <table className="w-full text-sm border-collapse min-w-[640px]">
           <thead>
             <tr className="border-b">
               <th className="text-left py-2 px-2 font-medium">F.I.O / Email</th>
@@ -174,9 +174,9 @@ export default function AdminSellersPage() {
             </div>
             {commissionError && <p className="text-sm text-destructive">{commissionError}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeCommissionModal} disabled={commissionSubmitting}>Bekor qilish</Button>
-            <Button onClick={submitCommission} disabled={commissionSubmitting}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="min-h-[40px] touch-manipulation" onClick={closeCommissionModal} disabled={commissionSubmitting}>Bekor qilish</Button>
+            <Button className="min-h-[40px] touch-manipulation" onClick={submitCommission} disabled={commissionSubmitting}>
               {commissionSubmitting ? 'Saqlanmoqda…' : 'Saqlash'}
             </Button>
           </DialogFooter>

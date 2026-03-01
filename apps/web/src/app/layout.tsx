@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }] },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover' as const,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz" suppressHydrationWarning>
@@ -35,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex flex-col min-h-screen w-full max-w-full min-w-0">
             <Header />
             <BannerCarouselWrapper />
-            <div className="flex-1 pb-20 md:pb-0 flex flex-col">
+            <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-0 flex flex-col min-w-0">
               <MainContent>{children}</MainContent>
               <Footer />
             </div>

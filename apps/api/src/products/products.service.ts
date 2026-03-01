@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductFilterDto } from './dto/product-filter.dto';
@@ -8,7 +9,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   async create(sellerId: string, dto: CreateProductDto) {
     const shop = await this.prisma.shop.findFirst({ where: { userId: sellerId } });
@@ -41,8 +45,9 @@ export class ProductsService {
           ? { create: dto.imageUrls.map((url, i) => ({ url, sortOrder: i })) }
           : undefined,
       },
-      include: { images: true, category: true, variants: true },
+      include: { images: true, category: true, variants: true, shop: { select: { name: true } } },
     });
+    this.telegram.sendAdminPendingProductNotification(product).catch(() => {});
     if (hasVariants) {
       await this.prisma.productVariant.createMany({
         data: dto.variants!.map((v) => ({
@@ -54,10 +59,11 @@ export class ProductsService {
           priceOverride: v.priceOverride != null ? new Decimal(v.priceOverride) : null,
         })),
       });
-      return this.prisma.product.findUniqueOrThrow({
+      const updated = await this.prisma.product.findUniqueOrThrow({
         where: { id: product.id },
-        include: { images: true, category: true, variants: true },
+        include: { images: true, category: true, variants: true, shop: { select: { name: true } } },
       });
+      return updated;
     }
     return product;
   }

@@ -79,38 +79,38 @@ export default function AdminUserProfilePage() {
   const isSeller = user.role === 'SELLER';
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl min-w-0">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" className="min-h-[40px] touch-manipulation" asChild>
           <Link href="/admin/users"><ArrowLeft className="h-4 w-4 mr-1" /> Foydalanuvchilar</Link>
         </Button>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <User className="h-5 w-5 shrink-0" />
             Profil
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Badge variant="secondary">{ROLE_LABELS[user.role] ?? user.role}</Badge>
             {user.isBlocked && <Badge variant="destructive">Bloklangan</Badge>}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2">
-            <p className="flex items-center gap-2 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Email:</span> {user.email}
+            <p className="flex items-center gap-2 text-sm break-words min-w-0">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground shrink-0">Email:</span> <span className="truncate">{user.email}</span>
             </p>
             {user.phone && (
               <p className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-muted-foreground">Tel:</span> {user.phone}
               </p>
             )}
             <p className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">Roʻyxatdan:</span> {new Date(user.createdAt).toLocaleDateString('uz-UZ')}
             </p>
             {user.emailVerified !== undefined && (
@@ -119,7 +119,7 @@ export default function AdminUserProfilePage() {
           </div>
           <div className="flex flex-wrap gap-2 pt-2 border-t">
             <select
-              className="rounded-md border px-2 py-1.5 text-sm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[40px] touch-manipulation"
               value={user.role}
               onChange={(e) => setRole(e.target.value)}
               disabled={user.isBlocked}
@@ -128,7 +128,7 @@ export default function AdminUserProfilePage() {
               <option value="SELLER">{ROLE_LABELS.SELLER}</option>
               <option value="ADMIN">{ROLE_LABELS.ADMIN}</option>
             </select>
-            <Button size="sm" variant={user.isBlocked ? 'default' : 'outline'} className={user.isBlocked ? '' : 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground'} onClick={() => block(!user.isBlocked)}>
+            <Button size="sm" className={`min-h-[40px] touch-manipulation ${!user.isBlocked ? 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground' : ''}`} variant={user.isBlocked ? 'default' : 'outline'} onClick={() => block(!user.isBlocked)}>
               {user.isBlocked ? 'Blokdan chiqarish' : 'Bloklash'}
             </Button>
           </div>
@@ -158,25 +158,25 @@ export default function AdminUserProfilePage() {
             <CardTitle className="flex items-center gap-2">Statistika</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-2xl font-bold">{user.productsCount ?? 0}</p>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/40">
+                <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xl sm:text-2xl font-bold">{user.productsCount ?? 0}</p>
                   <p className="text-xs text-muted-foreground">Tovarlar</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-2xl font-bold">{user.ordersCount ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Buyurtmalar (toʻlangan)</p>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/40">
+                <ShoppingBag className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xl sm:text-2xl font-bold">{user.ordersCount ?? 0}</p>
+                  <p className="text-xs text-muted-foreground">Buyurtmalar</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Banknote className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-2xl font-bold">{formatPrice(Number(user.totalRevenue ?? 0))}</p>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/40">
+                <Banknote className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-2xl font-bold break-words">{formatPrice(Number(user.totalRevenue ?? 0))}</p>
                   <p className="text-xs text-muted-foreground">Daromad (soʻm)</p>
                 </div>
               </div>

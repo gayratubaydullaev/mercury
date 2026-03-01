@@ -20,7 +20,7 @@ function CatalogHeaderFallback() {
 
 export default function CatalogPage() {
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full overflow-x-hidden">
       <Suspense fallback={<CatalogHeaderFallback />}>
         <CatalogTitle />
         <CatalogFilters />
@@ -34,9 +34,9 @@ export default function CatalogPage() {
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 md:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 min-w-0">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="rounded-lg border bg-card h-64 animate-pulse" />
+        <div key={i} className="rounded-xl border bg-card aspect-[4/5] animate-pulse min-w-0" />
       ))}
     </div>
   );

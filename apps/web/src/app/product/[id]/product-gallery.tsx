@@ -80,15 +80,15 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
         </div>
       )}
 
-      {/* Основное изображение — клик открывает полноэкранный лайтбокс с зумом */}
+      {/* Основное изображение — на десктопе заполняет всю высоту колонки, без белой рамки */}
       <div
         className={cn(
-          'relative group w-full',
+          'relative group w-full min-h-0 md:h-full',
           images.length === 1 && 'max-w-lg mx-auto'
         )}
       >
         <div
-          className="aspect-square md:aspect-[3/4] relative rounded-2xl overflow-hidden bg-card border border-border shadow-sm w-full cursor-zoom-in"
+          className="aspect-[3/4] md:aspect-auto md:h-full md:min-h-0 relative rounded-2xl overflow-hidden bg-muted border border-border shadow-sm w-full cursor-zoom-in"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={() => setLightboxOpen(true)}
@@ -101,7 +101,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
             src={mainUrl}
             alt={title}
             fill
-            className="object-contain select-none touch-none"
+            className="object-cover select-none touch-none"
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
             draggable={false}

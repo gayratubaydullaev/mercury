@@ -1,0 +1,552 @@
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from './telegram.service';
+// CommonJS module: use require-style import so constructor is available at runtime
+import TelegramBot = require('node-telegram-bot-api');
+import { OrderStatus, Prisma } from '@prisma/client';
+
+function esc(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  CONFIRMED: 'Tasdiqlandi',
+  PROCESSING: 'Qayta ishlanmoqda',
+  SHIPPED: 'Yuborildi',
+  DELIVERED: 'Yetkazildi',
+  CANCELLED: 'Bekor qilindi',
+};
+
+const MAIN_MENU_ROWS: TelegramBot.InlineKeyboardButton[][] = [
+  [
+    { text: '📋 Buyurtmalar', callback_data: 'cmd:orders', style: 'primary' },
+    { text: '📊 Statistika', callback_data: 'cmd:stats', style: 'primary' },
+  ],
+  [
+    { text: '📅 Bugun', callback_data: 'cmd:today', style: 'primary' },
+    { text: '⏳ Kutilmoqda', callback_data: 'cmd:pending', style: 'success' },
+  ],
+  [{ text: '❓ Yordam', callback_data: 'cmd:help' }],
+  [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
+];
+const MAIN_MENU: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: MAIN_MENU_ROWS };
+
+const MAX_MESSAGE_LENGTH = 4096;
+function truncateForTelegram(text: string, suffix = '…'): string {
+  if (text.length <= MAX_MESSAGE_LENGTH) return text;
+  return text.slice(0, MAX_MESSAGE_LENGTH - suffix.length) + suffix;
+}
+
+@Injectable()
+export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(TelegramBotService.name);
+  private bot: TelegramBot | null = null;
+
+  constructor(
+    private config: ConfigService,
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
+
+  onModuleInit() {
+    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!token) {
+      this.logger.log('TELEGRAM_BOT_TOKEN not set, Telegram bot disabled');
+      return;
+    }
+    this.bot = new TelegramBot(token, { polling: true });
+    this.bot.on('message', (msg: TelegramBot.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
+    this.bot.on('callback_query', (query: TelegramBot.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
+    this.bot.setMyCommands([
+      { command: 'start', description: 'Botni ishga tushirish / kod olish' },
+      { command: 'orders', description: 'Aktiv buyurtmalar' },
+      { command: 'stats', description: 'Statistika' },
+      { command: 'pending', description: 'Kutilmoqda' },
+      { command: 'today', description: 'Bugungi buyurtmalar' },
+      { command: 'help', description: 'Yordam' },
+    ]).catch(() => {});
+    this.logger.log('Telegram bot polling started');
+  }
+
+  onModuleDestroy() {
+    if (this.bot) {
+      this.bot.stopPolling();
+      this.bot = null;
+    }
+  }
+
+  /** Returns admin Telegram chat ID (uses type assertion if Prisma client was generated before schema had this field). */
+  private async getAdminTelegramChatId(): Promise<string | null> {
+    const row = await this.prisma.platformSettings.findFirst();
+    return (row as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId ?? null;
+  }
+
+  /** Send new message or edit existing (when messageId provided) to avoid spamming. */
+  private async sendOrEdit(
+    chatId: string,
+    text: string,
+    options: { parse_mode?: 'HTML'; reply_markup?: TelegramBot.InlineKeyboardMarkup },
+    messageId?: number,
+  ): Promise<void> {
+    const safeText = truncateForTelegram(text);
+    if (messageId != null && this.bot) {
+      await this.bot.editMessageText(safeText, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: options.parse_mode ?? 'HTML',
+        reply_markup: options.reply_markup,
+      }).catch(() => {
+        this.bot!.sendMessage(chatId, safeText, { ...options }).catch((e) => this.logger.warn(e));
+      });
+    } else if (this.bot) {
+      await this.bot.sendMessage(chatId, safeText, options);
+    }
+  }
+
+  /** Menu with optional "Veb panel" URL for admin/seller. */
+  private async getMenuWithPanel(chatId: string): Promise<TelegramBot.InlineKeyboardMarkup> {
+    const baseUrl = this.telegram.getBaseUrl();
+    if (!baseUrl) return MAIN_MENU;
+    const adminChatId = await this.getAdminTelegramChatId();
+    const isAdmin = adminChatId === chatId;
+    const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+    const rows = [...MAIN_MENU_ROWS];
+    if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
+    else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
+    return { inline_keyboard: rows };
+  }
+
+  private async sendMenuResponse(chatId: string, messageId?: number) {
+    const menuMarkup = await this.getMenuWithPanel(chatId);
+    const text =
+      '<b>MyShopUZ bot</b>\n\nQuyidagi tugmalardan foydalaning. Buyurtma xabarida "Batafsil" — toʻliq maʼlumot.';
+    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: menuMarkup }, messageId);
+  }
+
+  private async handleMessage(msg: TelegramBot.Message) {
+    const text = (msg.text?.trim() ?? '').toLowerCase();
+    const chatId = String(msg.chat.id);
+
+    if (text === '/start' || text === '/link') {
+      const code = await this.telegram.createLinkCode(chatId);
+      await this.bot!.sendMessage(
+        chatId,
+        `Assalomu alaykum! <b>MyShopUZ</b> boti.\n\n` +
+          `Doʻkoningizni yoki admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> boʻlimida kiriting:\n\n` +
+          `<code>${code}</code>\n\n` +
+          `Kod 15 daqiqa amal qiladi. Quyidagi tugmalardan foydalaning:`,
+        { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+      );
+      return;
+    }
+
+    if (text === '/orders') return this.sendOrdersResponse(chatId);
+    if (text === '/stats') return this.sendStatsResponse(chatId);
+    if (text === '/pending') return this.sendPendingResponse(chatId);
+    if (text === '/today') return this.sendTodayResponse(chatId);
+    if (text === '/help') return this.sendHelpResponse(chatId);
+
+    if (text.length > 0) {
+      await this.bot!.sendMessage(
+        chatId,
+        'Quyidagi tugmalardan yoki buyruqlardan foydalaning:',
+        { reply_markup: MAIN_MENU },
+      );
+    }
+  }
+
+  private async sendOrdersResponse(chatId: string, messageId?: number) {
+    const adminChatId = await this.getAdminTelegramChatId();
+    if (adminChatId === chatId) {
+      const orders = await this.prisma.order.findMany({
+        take: 15,
+        orderBy: { createdAt: 'desc' },
+        include: { buyer: { select: { firstName: true, lastName: true } }, seller: { select: { shop: { select: { name: true } } } } },
+      });
+      if (orders.length === 0) {
+        await this.sendOrEdit(chatId, '📋 <b>Admin: Buyurtmalar</b>\n\nHali buyurtmalar yoʻq.', { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+        return;
+      }
+      const lines = orders.map(
+        (o) =>
+          `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+      );
+      const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+      const forButtons = orders.slice(0, 10);
+      for (let i = 0; i < forButtons.length; i += 2) {
+        const row: TelegramBot.InlineKeyboardButton[] = [];
+        row.push({ text: `📄 ${forButtons[i].orderNumber}`, callback_data: `admin_order_detail:${forButtons[i].id}`, style: 'primary' });
+        if (forButtons[i + 1]) row.push({ text: `📄 ${forButtons[i + 1].orderNumber}`, callback_data: `admin_order_detail:${forButtons[i + 1].id}`, style: 'primary' });
+        orderButtons.push(row);
+      }
+      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+      await this.sendOrEdit(chatId, '📋 <b>Admin: Soʻnggi buyurtmalar</b>\n\nQuyidagi tugmalardan batafsil oling:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
+      return;
+    }
+    const shop = await this.prisma.shop.findFirst({
+      where: { telegramChatId: chatId },
+      select: { userId: true },
+    });
+    if (!shop) {
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const orders = await this.prisma.order.findMany({
+      where: { sellerId: shop.userId, status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'] } },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      include: { items: { include: { product: { select: { title: true } } } }, buyer: { select: { firstName: true, lastName: true } } },
+    });
+    if (orders.length === 0) {
+      await this.sendOrEdit(chatId, 'Aktiv buyurtmalar yoʻq.', { reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const lines = orders.map(
+      (o) =>
+        `📋 ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+    );
+    const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+    for (let i = 0; i < orders.length; i += 2) {
+      const row: TelegramBot.InlineKeyboardButton[] = [];
+      row.push({ text: `📄 ${orders[i].orderNumber}`, callback_data: `order_detail:${orders[i].id}`, style: 'primary' });
+      if (orders[i + 1]) row.push({ text: `📄 ${orders[i + 1].orderNumber}`, callback_data: `order_detail:${orders[i + 1].id}`, style: 'primary' });
+      orderButtons.push(row);
+    }
+    const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+    await this.sendOrEdit(chatId, '<b>Aktiv buyurtmalar</b>\n\nBatafsil uchun tugmani bosing:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
+  }
+
+  private async sendStatsResponse(chatId: string, messageId?: number) {
+    const adminChatId = await this.getAdminTelegramChatId();
+    if (adminChatId === chatId) {
+      const [usersCount, productsCount, ordersCount, totalRevenue, pendingProducts, pendingReviews] = await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.product.count({ where: { isActive: true } }),
+        this.prisma.order.count(),
+        this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'PAID' } }),
+        this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
+        this.prisma.review.count({ where: { isModerated: false } }),
+      ]);
+      const revenue = totalRevenue._sum.totalAmount?.toString() ?? '0';
+      const text =
+        '📊 <b>Platforma statistikasi</b>\n\n' +
+        `👥 Foydalanuvchilar: ${usersCount}\n` +
+        `📦 Tovarlar: ${productsCount}\n` +
+        `📋 Buyurtmalar: ${ordersCount}\n` +
+        `💰 Daromad (toʻlangan): ${Number(revenue).toLocaleString('uz-UZ')} soʻm\n\n` +
+        `⏳ Moderatsiya kutilmoqda:\n  • Tovarlar: ${pendingProducts}\n  • Sharhlar: ${pendingReviews}`;
+      await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const shop = await this.prisma.shop.findFirst({
+      where: { telegramChatId: chatId },
+      select: { userId: true },
+    });
+    if (!shop) {
+      await this.sendOrEdit(chatId, 'Avval hisobingizni ulang: Sozlamalar da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const [ordersCount, pendingCount, paidSum, productsCount] = await Promise.all([
+      this.prisma.order.count({ where: { sellerId: shop.userId } }),
+      this.prisma.order.count({ where: { sellerId: shop.userId, status: 'PENDING' } }),
+      this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { sellerId: shop.userId, paymentStatus: 'PAID' } }),
+      this.prisma.product.count({ where: { shop: { userId: shop.userId } } }),
+    ]);
+    const revenue = paidSum._sum.totalAmount?.toString() ?? '0';
+    const text =
+      '📊 <b>Doʻkoningiz statistikasi</b>\n\n' +
+      `📋 Barcha buyurtmalar: ${ordersCount}\n` +
+      `⏳ Kutilmoqda: ${pendingCount}\n` +
+      `📦 Tovarlar: ${productsCount}\n` +
+      `💰 Daromad (toʻlangan): ${Number(revenue).toLocaleString('uz-UZ')} soʻm`;
+    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+  }
+
+  private async sendPendingResponse(chatId: string, messageId?: number) {
+    const adminChatId = await this.getAdminTelegramChatId();
+    if (adminChatId === chatId) {
+      const [pendingProducts, pendingReviews] = await Promise.all([
+        this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
+        this.prisma.review.count({ where: { isModerated: false } }),
+      ]);
+      const baseUrl = this.telegram.getBaseUrl();
+      const rows = [...MAIN_MENU_ROWS];
+      if (baseUrl) {
+        rows.unshift([
+          { text: '📦 Tovarlar (moderatsiya)', url: `${baseUrl}/admin/products`, style: 'primary' },
+          { text: '💬 Sharhlar', url: `${baseUrl}/admin/reviews`, style: 'primary' },
+        ]);
+      }
+      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: rows };
+      await this.sendOrEdit(
+        chatId,
+        '⏳ <b>Moderatsiya kutilmoqda</b>\n\n📦 Tovarlar: ' + pendingProducts + '\n💬 Sharhlar: ' + pendingReviews + (baseUrl ? '\n\nTugmalar orqali veb panelda oching.' : ''),
+        { parse_mode: 'HTML', reply_markup },
+        messageId,
+      );
+      return;
+    }
+    const shop = await this.prisma.shop.findFirst({
+      where: { telegramChatId: chatId },
+      select: { userId: true },
+    });
+    if (!shop) {
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const pendingCount = await this.prisma.order.count({
+      where: { sellerId: shop.userId, status: 'PENDING' },
+    });
+    await this.sendOrEdit(
+      chatId,
+      pendingCount > 0 ? `⏳ Kutilmoqda buyurtmalar: <b>${pendingCount}</b> ta` : '⏳ Kutilmoqda buyurtmalar yoʻq.',
+      { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+      messageId,
+    );
+  }
+
+  private async sendTodayResponse(chatId: string, messageId?: number) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const adminChatId = await this.getAdminTelegramChatId();
+    if (adminChatId === chatId) {
+      const [count, sum] = await Promise.all([
+        this.prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
+        this.prisma.order.aggregate({
+          _sum: { totalAmount: true },
+          where: { createdAt: { gte: todayStart }, paymentStatus: 'PAID' },
+        }),
+      ]);
+      const total = sum._sum.totalAmount?.toString() ?? '0';
+      await this.sendOrEdit(
+        chatId,
+        '📅 <b>Bugun (platforma)</b>\n\n📋 Buyurtmalar: ' +
+          count +
+          '\n💰 Toʻlangan summa: ' +
+          Number(total).toLocaleString('uz-UZ') +
+          ' soʻm',
+        { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+        messageId,
+      );
+      return;
+    }
+    const shop = await this.prisma.shop.findFirst({
+      where: { telegramChatId: chatId },
+      select: { userId: true },
+    });
+    if (!shop) {
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+    const [count, sum] = await Promise.all([
+      this.prisma.order.count({ where: { sellerId: shop.userId, createdAt: { gte: todayStart } } }),
+      this.prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { sellerId: shop.userId, createdAt: { gte: todayStart }, paymentStatus: 'PAID' },
+      }),
+    ]);
+    const total = sum._sum.totalAmount?.toString() ?? '0';
+    await this.sendOrEdit(
+      chatId,
+      '📅 <b>Bugun (doʻkoningiz)</b>\n\n📋 Buyurtmalar: ' +
+        count +
+        '\n💰 Toʻlangan summa: ' +
+        Number(total).toLocaleString('uz-UZ') +
+        ' soʻm',
+      { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+      messageId,
+    );
+  }
+
+  private async sendHelpResponse(chatId: string, messageId?: number) {
+    const text =
+      '<b>MyShopUZ bot</b>\n\n' +
+      'Sotuvchilar va admin uchun. Avval Sozlamalarda kodni kiriting.\n\n' +
+      '<b>Buyruqlar:</b>\n' +
+      '• /start, /link — Ulash kodi\n' +
+      '• /orders — Aktiv buyurtmalar\n' +
+      '• /stats — Statistika\n' +
+      '• /pending — Kutilmoqda\n' +
+      '• /today — Bugungi buyurtmalar\n' +
+      '• /help — Yordam\n\n' +
+      'Buyurtma xabarida tugmalar orqali holatni oʻzgartiring. Tugmalar — xabarni yangilaydi (yangi xabar yaratmaydi).';
+    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+  }
+
+  /**
+   * Chat → shop (by telegramChatId) → only that seller's orders.
+   */
+  private async handleCallback(query: TelegramBot.CallbackQuery) {
+    const data = query.data;
+    const chatId = query.message?.chat?.id;
+    const messageId = query.message?.message_id;
+    if (!data || !chatId || !this.bot) return;
+
+    if (data.startsWith('cmd:')) {
+      const cmd = data.slice(4);
+      await this.bot.answerCallbackQuery(query.id);
+      const msgId = query.message?.message_id;
+      if (cmd === 'menu') return this.sendMenuResponse(String(chatId), msgId);
+      if (cmd === 'orders') return this.sendOrdersResponse(String(chatId), msgId);
+      if (cmd === 'stats') return this.sendStatsResponse(String(chatId), msgId);
+      if (cmd === 'pending') return this.sendPendingResponse(String(chatId), msgId);
+      if (cmd === 'today') return this.sendTodayResponse(String(chatId), msgId);
+      if (cmd === 'help') return this.sendHelpResponse(String(chatId), msgId);
+      return;
+    }
+
+    if (data.startsWith('admin_order_detail:')) {
+      const orderId = data.slice(19);
+      const adminChatId = await this.getAdminTelegramChatId();
+      if (adminChatId !== String(chatId)) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Ruxsat yoʻq.' });
+        return;
+      }
+      await this.bot.answerCallbackQuery(query.id, { text: 'Yuklanmoqda…' });
+      const orderInclude = {
+        items: { include: { product: { select: { title: true } }, variant: true } },
+        buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+      } as const;
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: orderInclude,
+      });
+      if (!order) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Buyurtma topilmadi.' });
+        return;
+      }
+      type OrderWithRelations = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
+      const o = order as OrderWithRelations;
+      const buyerName = o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}` : o.guestPhone || o.guestEmail || 'Mehmon';
+      const buyerContact = o.buyer
+        ? [o.buyer.email, o.buyer.phone].filter(Boolean).join(', ') || '—'
+        : [o.guestEmail, o.guestPhone].filter(Boolean).join(', ') || '—';
+      const sellerName = o.seller
+        ? `${o.seller.firstName} ${o.seller.lastName}${o.seller.shop ? ` (${o.seller.shop.name})` : ''}`
+        : '—';
+      const addr =
+        o.shippingAddress && typeof o.shippingAddress === 'object'
+          ? Object.entries(o.shippingAddress as Record<string, unknown>)
+              .filter(([, v]) => v != null && String(v).trim() !== '')
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ') || '—'
+          : '—';
+      const itemsLines = o.items
+        .map(
+          (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
+            `  • ${i.product.title}${i.variant?.options ? ` (${JSON.stringify(i.variant.options)})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+        )
+        .join('\n');
+      const text =
+        '📄 <b>ADMIN: Buyurtma batafsil</b>\n\n' +
+        `📋 Raqam: <code>${esc(o.orderNumber)}</code>\n` +
+        `📌 Holat: ${STATUS_LABELS[o.status] ?? o.status}\n` +
+        `💳 To'lov: ${o.paymentStatus ?? '—'} (${o.paymentMethod ?? '—'})\n` +
+        `🚚 Yetkazish: ${o.deliveryType ?? '—'}\n` +
+        `💰 Jami: ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
+        `📅 Sana: ${new Date(o.createdAt).toLocaleString('uz-UZ')}\n\n` +
+        `👤 Xaridor: ${esc(buyerName)}\n📞 Aloqa: ${esc(buyerContact)}\n🏪 Sotuvchi: ${esc(sellerName)}\n📍 Manzil: ${esc(addr)}\n` +
+        (o.notes ? `📝 Izoh: ${esc(o.notes)}\n` : '') +
+        '\n<b>Mahsulotlar:</b>\n' +
+        itemsLines.split('\n').map((l: string) => esc(l)).join('\n');
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+
+    if (data.startsWith('order_detail:')) {
+      const orderId = data.slice(13);
+      const shop = await this.prisma.shop.findFirst({
+        where: { telegramChatId: String(chatId) },
+        select: { userId: true },
+      });
+      if (!shop) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Doʻkon ulanmagan.' });
+        return;
+      }
+      await this.bot.answerCallbackQuery(query.id, { text: 'Yuklanmoqda…' });
+      const sellerOrderInclude = {
+        items: { include: { product: { select: { title: true } }, variant: true } },
+        buyer: { select: { firstName: true, lastName: true } },
+      } as const;
+      const order = await this.prisma.order.findFirst({
+        where: { id: orderId, sellerId: shop.userId },
+        include: sellerOrderInclude,
+      });
+      if (!order) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Buyurtma topilmadi.' });
+        return;
+      }
+      type SellerOrderWithRelations = Prisma.OrderGetPayload<{ include: typeof sellerOrderInclude }>;
+      const so = order as SellerOrderWithRelations;
+      const buyerName = so.buyer ? `${so.buyer.firstName} ${so.buyer.lastName}` : so.guestPhone || so.guestEmail || 'Mehmon';
+      const itemsText = so.items
+        .map(
+          (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
+            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(JSON.stringify(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+        )
+        .join('\n');
+      const text =
+        '📄 <b>Buyurtma batafsil</b>\n\n' +
+        `📋 Raqam: <code>${esc(so.orderNumber)}</code>\n` +
+        `📌 Holat: ${STATUS_LABELS[so.status] ?? so.status}\n` +
+        `👤 Xaridor: ${esc(buyerName)}\n` +
+        `💰 Jami: ${Number(so.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
+        `📅 Sana: ${new Date(so.createdAt).toLocaleString('uz-UZ')}\n\n` +
+        '<b>Mahsulotlar:</b>\n' +
+        itemsText;
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      return;
+    }
+
+    if (!data.startsWith('order:') || !messageId) return;
+    const parts = data.split(':');
+    if (parts.length !== 3) return;
+    const [, orderId, newStatus] = parts as [string, string, string];
+    const status = newStatus as OrderStatus;
+
+    const shop = await this.prisma.shop.findFirst({
+      where: { telegramChatId: String(chatId) },
+      select: { userId: true },
+    });
+    if (!shop) {
+      await this.bot.answerCallbackQuery(query.id, { text: 'Doʻkon ulanmagan.' });
+      return;
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, sellerId: shop.userId },
+    });
+    if (!order) {
+      await this.bot.answerCallbackQuery(query.id, { text: 'Buyurtma topilmadi.' });
+      return;
+    }
+
+    const allowed: OrderStatus[] = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+    if (!allowed.includes(status)) {
+      await this.bot.answerCallbackQuery(query.id, { text: 'Bunday holat mavjud emas.' });
+      return;
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status },
+    });
+
+    const label = STATUS_LABELS[status] ?? status;
+    await this.bot.answerCallbackQuery(query.id, { text: `Holat: ${label}` });
+    const msg = query.message as TelegramBot.Message | undefined;
+    const currentText = msg?.text ?? 'Buyurtma';
+    await this.bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      { chat_id: chatId, message_id: messageId },
+    ).catch(() => {});
+    await this.bot.editMessageText(
+      `${currentText}\n\n✅ Yangilandi: ${label}`,
+      { chat_id: chatId, message_id: messageId, parse_mode: 'HTML' },
+    ).catch(() => {});
+  }
+}

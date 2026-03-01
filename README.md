@@ -78,23 +78,39 @@ Swagger: http://localhost:4000/api/docs
 
 ### 3. Frontend (Web)
 
+**Eng oson usul (tavsiya etiladi):** Loyiha **ildizidan** ikkala serverni bir vaqtda ishga tushiring:
+
+```bash
+# MyShopUZ ildizida (apps/api va apps/web yonida)
+pnpm run dev
+```
+
+Bu buyruq API (4000) va Web (3000) ni bir vaqtda ishga tushiradi. Web avtomatik ravishda API porti ochilishini kutadi, keyin ishga tushadi. Veb: http://localhost:3000
+
+Alohida ishga tushirish (kerak boʻlsa):
+
 ```bash
 cd apps/web
 cp .env.example .env.local
 pnpm run dev
 ```
 
-Veb: http://localhost:3000
+**Eslatma:** Web API ga soʻrov yuboradi (localhost:4000). Agar faqat Web ni ishga tushirsangiz, API ishlamasa brauzerda va terminalda `ECONNREFUSED 127.0.0.1:4000` xatoligi chiqadi. Buning oldini olish uchun ildizdan `pnpm run dev` ishlating yoki avval `cd apps/api && pnpm run dev` ni ishga tushiring.
 
-**Ikkala serverni ishga tushirish:** Admin va boshqa API soʻrovlar ishlashi uchun API (4000) va Web (3000) ikkalasi ham ishlashi kerak. Loyiha ildizidan `pnpm run dev` — API va Web ni bir vaqtda ishga tushiradi.
+### 4. Muammolarni bartaraf etish
 
-### 4. Docker (lokal)
+| Xatolik | Sabab | Yechim |
+|--------|--------|--------|
+| `ECONNREFUSED 127.0.0.1:4000`, "Failed to proxy" | API (port 4000) ishlamayapti | Ildizdan `pnpm run dev` ishlating yoki boshqa terminalda `cd apps/api && pnpm run dev` ni ishga tushiring. |
+| API ishga tushmayapti | PostgreSQL/Redis ulanishi yoki `.env` | `apps/api/.env` da `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` toʻgʻri ekanligini tekshiring. `pnpm db:migrate` bajarilgan boʻlishi kerak. |
+
+### 5. Docker (lokal)
 
 ```bash
 docker-compose up -d
 ```
 
-### 5. Production rejimida ishga tushirish (ildizdan)
+### 6. Production rejimida ishga tushirish (ildizdan)
 
 Avval ikkala ilovani build qiling, keyin ishga tushiring:
 

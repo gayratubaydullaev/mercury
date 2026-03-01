@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { API_URL } from '@/lib/utils';
+import { API_URL, cn } from '@/lib/utils';
 import { apiFetch, apiGetJson } from '@/lib/api';
 import { isApiError } from '@/types/api';
 import { User } from 'lucide-react';
@@ -95,13 +95,13 @@ export default function AdminUsersPage() {
   const currentPage = data?.page ?? 1;
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Foydalanuvchilar</h1>
-      <p className="text-muted-foreground mb-4">Koʻrish, bloklash va rol berish. Jami: {total}</p>
+      <p className="text-muted-foreground mb-4 text-sm sm:text-base">Koʻrish, bloklash va rol berish. Jami: {total}</p>
       <div className="flex flex-wrap gap-2 mb-4">
-        <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
+        <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
         {ROLES.map((r) => (
-          <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" onClick={() => { setRoleFilter(r); setPage(1); }}>{ROLE_LABELS[r]}</Button>
+          <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(r); setPage(1); }}>{ROLE_LABELS[r]}</Button>
         ))}
       </div>
       {users.length === 0 && isApiError(data) && data.message && (
@@ -117,21 +117,21 @@ export default function AdminUsersPage() {
       <div className="space-y-3 max-w-3xl">
         {users.map((u) => (
           <Card key={u.id}>
-            <CardContent className="p-4 flex flex-wrap justify-between items-center gap-3">
-              <Link href={`/admin/users/${u.id}`} className="hover:opacity-80 transition-opacity min-w-0">
+            <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row flex-wrap justify-between items-stretch sm:items-center gap-3">
+              <Link href={`/admin/users/${u.id}`} className="hover:opacity-80 transition-opacity min-w-0 flex-1">
                 <p className="font-medium">{u.firstName} {u.lastName}</p>
-                <p className="text-sm text-muted-foreground">{u.email}</p>
+                <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   <Badge variant="secondary">{ROLE_LABELS[u.role] ?? u.role}</Badge>
                   {u.isBlocked && <Badge variant="destructive">Bloklangan</Badge>}
                 </div>
               </Link>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" asChild>
+              <div className="flex flex-wrap items-center gap-2 min-h-[44px]">
+                <Button size="sm" variant="outline" className="min-h-[40px] touch-manipulation" asChild>
                   <Link href={`/admin/users/${u.id}`}><User className="h-4 w-4 mr-1" /> Profil</Link>
                 </Button>
                 <select
-                  className="rounded-md border px-2 py-1 text-sm"
+                  className="rounded-lg border border-input bg-background h-10 min-h-[40px] px-3 text-sm touch-manipulation"
                   value={u.role}
                   onChange={(e) => setRole(u.id, e.target.value)}
                   disabled={u.isBlocked}
@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
                     <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                   ))}
                 </select>
-                <Button size="sm" variant={u.isBlocked ? 'default' : 'outline'} className={u.isBlocked ? '' : 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground'} onClick={() => block(u.id, !u.isBlocked)}>
+                <Button size="sm" variant={u.isBlocked ? 'default' : 'outline'} className={cn('min-h-[40px] touch-manipulation', u.isBlocked ? '' : 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground')} onClick={() => block(u.id, !u.isBlocked)}>
                   {u.isBlocked ? 'Ochish' : 'Bloklash'}
                 </Button>
               </div>

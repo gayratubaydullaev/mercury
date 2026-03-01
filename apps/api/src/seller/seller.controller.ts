@@ -54,4 +54,22 @@ export class SellerController {
   getReviews(@CurrentUser('id') userId: string) {
     return this.seller.getReviewsForShop(userId);
   }
+
+  @Post('telegram/link')
+  @ApiOperation({ summary: 'Link Telegram by code from bot /start or /link' })
+  linkTelegram(@CurrentUser('id') userId: string, @Body() body: { code: string }) {
+    return this.seller.linkTelegram(userId, body.code ?? '');
+  }
+
+  @Get('telegram')
+  @ApiOperation({ summary: 'Get Telegram connection status' })
+  getTelegramStatus(@CurrentUser('id') userId: string) {
+    return this.seller.getTelegramStatus(userId);
+  }
+
+  @Post('telegram/disconnect')
+  @ApiOperation({ summary: 'Disconnect Telegram notifications' })
+  disconnectTelegram(@CurrentUser('id') userId: string) {
+    return this.seller.disconnectTelegram(userId);
+  }
 }

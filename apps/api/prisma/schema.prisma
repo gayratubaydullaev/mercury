@@ -120,23 +120,34 @@ model Category {
 }
 
 model Shop {
-  id             String   @id @default(uuid())
-  name           String
-  slug           String   @unique
-  description    String?
-  logoUrl        String?  @map("logo_url")
-  userId         String   @unique @map("user_id")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pickupAddress  Json?    @map("pickup_address") // { city, district?, street, house?, phone? } for self-pickup
-  isActive       Boolean  @default(true) @map("is_active")
-  chatEnabled    Boolean  @default(true) @map("chat_enabled") // sotuvchi chatni yoqishi/o'chirishi mumkin
-  commissionRate Decimal? @map("commission_rate") @db.Decimal(5, 2) // seller-specific %; null = use platform default
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  description     String?
+  logoUrl         String?  @map("logo_url")
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pickupAddress   Json?    @map("pickup_address") // { city, district?, street, house?, phone? } for self-pickup
+  isActive        Boolean  @default(true) @map("is_active")
+  chatEnabled     Boolean  @default(true) @map("chat_enabled") // sotuvchi chatni yoqishi/o'chirishi mumkin
+  commissionRate  Decimal? @map("commission_rate") @db.Decimal(5, 2) // seller-specific %; null = use platform default
+  telegramChatId  String?  @map("telegram_chat_id") // ID чата/группы/канала для уведомлений
+  telegramType    String?  @map("telegram_type")   // PERSONAL | GROUP | CHANNEL
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   products    Product[]
 
   @@map("shops")
+}
+
+model TelegramLinkCode {
+  id        String   @id @default(uuid())
+  code      String   @unique // 6-символьный код для привязки
+  chatId    String   @map("chat_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("telegram_link_codes")
 }
 
 model Product {
@@ -346,6 +357,7 @@ model PlatformSettings {
   // Yetkazib berish / samoviyoz
   deliveryEnabled Boolean @default(true) @map("delivery_enabled")
   pickupEnabled   Boolean @default(true) @map("pickup_enabled")
+  adminTelegramChatId String? @map("admin_telegram_chat_id") // Admin uchun to'liq buyurtma bildirishnomalari
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("platform_settings")

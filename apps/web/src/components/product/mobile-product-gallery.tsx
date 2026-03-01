@@ -48,12 +48,12 @@ export function MobileProductGallery({ images, productName }: MobileProductGalle
         aria-label="Rasmini toʻliq ekranda ochish"
       >
         {urls.map((url, idx) => (
-          <div key={idx} className="w-full flex-shrink-0 snap-center relative bg-card">
+          <div key={idx} className="w-full flex-shrink-0 snap-center relative min-h-0 bg-muted">
             <Image
               src={url}
               alt={alt(idx)}
               fill
-              className="object-contain"
+              className="object-cover"
               sizes="100vw"
               priority={idx === 0}
             />

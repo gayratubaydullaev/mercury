@@ -68,7 +68,7 @@ export function ProductVariants({
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
                 const isSelected = selected[group.id] === option.id;
                 return (
@@ -78,7 +78,7 @@ export function ProductVariants({
                     onClick={() => handleSelect(group.id, option.id)}
                     disabled={option.disabled}
                     className={cn(
-                      'px-2.5 py-1 text-xs rounded-md border transition-all min-w-[2.5rem]',
+                      'px-3 py-2 sm:py-1.5 text-xs sm:text-xs rounded-lg border transition-all min-w-[2.75rem] min-h-[2.5rem] sm:min-h-0 touch-manipulation',
                       isSelected
                         ? 'border-primary bg-primary/5 text-primary font-medium shadow-sm'
                         : isMissing

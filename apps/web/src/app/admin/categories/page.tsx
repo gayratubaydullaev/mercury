@@ -101,39 +101,39 @@ export default function AdminCategoriesPage() {
   if (list === null) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <FolderTree className="h-7 w-7" />
+        <FolderTree className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
         Toifalar
       </h1>
       {loadError && <p className="text-destructive text-sm">{loadError}</p>}
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="h-5 w-5" />Yangi toifa</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base sm:text-lg"><Plus className="h-5 w-5 shrink-0" /> Yangi toifa</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={create} className="space-y-3 max-w-md">
             <div>
               <label className="text-sm font-medium">Nomi</label>
-              <Input value={newCat.name} onChange={(e) => setNewCat((c) => ({ ...c, name: e.target.value, slug: c.slug || slugify(e.target.value) }))} placeholder="Nomi" required />
+              <Input className="min-h-[40px] mt-1" value={newCat.name} onChange={(e) => setNewCat((c) => ({ ...c, name: e.target.value, slug: c.slug || slugify(e.target.value) }))} placeholder="Nomi" required />
             </div>
             <div>
               <label className="text-sm font-medium">Slug</label>
-              <Input value={newCat.slug} onChange={(e) => setNewCat((c) => ({ ...c, slug: e.target.value }))} placeholder="slug" />
+              <Input className="min-h-[40px] mt-1" value={newCat.slug} onChange={(e) => setNewCat((c) => ({ ...c, slug: e.target.value }))} placeholder="slug" />
             </div>
             <div>
               <label className="text-sm font-medium">Tavsif</label>
-              <Input value={newCat.description} onChange={(e) => setNewCat((c) => ({ ...c, description: e.target.value }))} placeholder="Ixtiyoriy" />
+              <Input className="min-h-[40px] mt-1" value={newCat.description} onChange={(e) => setNewCat((c) => ({ ...c, description: e.target.value }))} placeholder="Ixtiyoriy" />
             </div>
             <div>
               <label className="text-sm font-medium">Ostkategoriya (asosiy uchun boʻsh)</label>
-              <select value={newCat.parentId} onChange={(e) => setNewCat((c) => ({ ...c, parentId: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm">
+              <select value={newCat.parentId} onChange={(e) => setNewCat((c) => ({ ...c, parentId: e.target.value }))} className="w-full rounded-lg border border-input min-h-[40px] mt-1 px-3 py-2 text-sm touch-manipulation">
                 <option value="">— Asosiy toifa —</option>
                 {list.filter((c) => !c.parentId).map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
-            <Button type="submit" disabled={loading}>Qoʻshish</Button>
+            <Button type="submit" disabled={loading} className="min-h-[40px] touch-manipulation">Qoʻshish</Button>
           </form>
         </CardContent>
       </Card>
@@ -169,15 +169,15 @@ export default function AdminCategoriesPage() {
                         <span className="text-xs text-muted-foreground">{ch.slug}</span>
                         {editing?.id === ch.id ? (
                           <form onSubmit={update} className="flex gap-2 flex-wrap items-center">
-                            <Input value={editing.name} onChange={(e) => setEditing((x) => x && { ...x, name: e.target.value })} className="w-40" />
-                            <Input value={editing.slug} onChange={(e) => setEditing((x) => x && { ...x, slug: e.target.value })} className="w-32" />
-                            <Button type="submit" size="sm" disabled={loading}>Saqlash</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(null)}>Bekor</Button>
+                            <Input value={editing.name} onChange={(e) => setEditing((x) => x && { ...x, name: e.target.value })} className="min-w-0 flex-1 sm:w-40 min-h-[40px]" />
+                            <Input value={editing.slug} onChange={(e) => setEditing((x) => x && { ...x, slug: e.target.value })} className="min-w-0 sm:w-32 min-h-[40px]" />
+                            <Button type="submit" size="sm" className="min-h-[40px] touch-manipulation" disabled={loading}>Saqlash</Button>
+                            <Button type="button" size="sm" variant="outline" className="min-h-[40px] touch-manipulation" onClick={() => setEditing(null)}>Bekor</Button>
                           </form>
                         ) : (
                           <>
-                            <Button size="sm" variant="ghost" onClick={() => setEditing({ id: ch.id, name: ch.name, slug: ch.slug, description: ch.description ?? '' })}><Pencil className="h-3 w-3" /></Button>
-                            <Button size="sm" variant="ghost" onClick={() => remove(ch.id)} className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="ghost" className="min-h-[40px] min-w-[40px] touch-manipulation" onClick={() => setEditing({ id: ch.id, name: ch.name, slug: ch.slug, description: ch.description ?? '' })}><Pencil className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="ghost" className="min-h-[40px] min-w-[40px] touch-manipulation text-destructive" onClick={() => remove(ch.id)}><Trash2 className="h-3 w-3" /></Button>
                           </>
                         )}
                       </li>

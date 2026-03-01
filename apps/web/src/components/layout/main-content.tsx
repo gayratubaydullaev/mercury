@@ -9,11 +9,11 @@ export function MainContent({ children }: { children: React.ReactNode }) {
     <main
       className={
         isProductPage
-          ? 'w-full max-w-full min-w-0 flex-1'
-          : 'w-full max-w-full min-w-0 px-3 sm:px-4 md:px-6 pt-1 md:pt-4 pb-6 flex-1'
+          ? 'w-full max-w-full min-w-0 flex-1 overflow-x-hidden'
+          : 'w-full max-w-full min-w-0 overflow-x-hidden px-4 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-5 pb-8 flex-1'
       }
     >
-      {children}
+      {isProductPage ? children : <div className="max-w-[1600px] mx-auto min-w-0">{children}</div>}
     </main>
   );
 }

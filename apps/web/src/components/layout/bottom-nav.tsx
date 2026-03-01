@@ -124,10 +124,11 @@ export function BottomNav() {
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border shadow-lg"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)]"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)' }}
+        aria-label="Asosiy navigatsiya"
       >
-        <div className="flex items-center justify-around min-h-[48px] pt-2 pb-1 px-1">
+        <div className="flex items-stretch justify-around min-h-[56px] pt-1.5 pb-1 px-2">
           {navItems.map((item) => {
             const isCatalog = item.href === '/catalog' && item.label === 'Katalog';
             const href =
@@ -138,21 +139,27 @@ export function BottomNav() {
             const badgeCount =
               item.badge === 'cart' ? cartCount : item.badge === 'favorites' ? favoritesCount : 0;
 
+            const baseClasses = cn(
+              'relative flex flex-col items-center justify-center flex-1 min-h-[44px] rounded-xl transition-all duration-200 active:scale-[0.97] gap-0.5 py-1',
+              isActive
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground'
+            );
+
             if (isCatalog) {
               return (
                 <button
                   key={item.href}
                   type="button"
                   onClick={() => setCatalogOpen(true)}
-                  className={cn(
-                    'relative flex flex-col items-center justify-center flex-1 min-h-[40px] rounded-xl transition-all duration-200 active:scale-95 gap-1',
-                    isActive ? 'text-primary' : 'text-muted-foreground active:text-foreground'
-                  )}
+                  className={baseClasses}
                   aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                 >
-                  <span className="relative flex items-center justify-center w-7 h-7">
+                  <span className="relative flex items-center justify-center w-6 h-6">
                     <Icon className="h-6 w-6 shrink-0" />
                   </span>
+                  <span className="text-[10px] font-medium leading-tight">{item.label}</span>
                 </button>
               );
             }
@@ -161,20 +168,19 @@ export function BottomNav() {
               <Link
                 key={item.href}
                 href={href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center flex-1 min-h-[40px] rounded-xl transition-all duration-200 active:scale-95 gap-1',
-                  isActive ? 'text-primary' : 'text-muted-foreground active:text-foreground'
-                )}
+                className={baseClasses}
                 aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
               >
-                <span className="relative flex items-center justify-center w-7 h-7">
+                <span className="relative flex items-center justify-center w-6 h-6">
                   <Icon className="h-6 w-6 shrink-0" />
                   {badgeCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold ring-2 ring-background">
+                    <span className="absolute -top-0.5 -right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold ring-2 ring-card">
                       {badgeCount > 99 ? '99+' : badgeCount}
                     </span>
                   )}
                 </span>
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
               </Link>
             );
           })}

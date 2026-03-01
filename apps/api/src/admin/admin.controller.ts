@@ -140,6 +140,24 @@ export class AdminController {
     return this.admin.updatePlatformSettings(dto);
   }
 
+  @Post('telegram/link')
+  @ApiOperation({ summary: 'Link admin Telegram by code from bot /start or /link' })
+  linkTelegram(@Body() body: { code: string }) {
+    return this.admin.linkTelegram(body.code ?? '');
+  }
+
+  @Get('telegram')
+  @ApiOperation({ summary: 'Get admin Telegram connection status' })
+  getTelegramStatus() {
+    return this.admin.getTelegramStatus();
+  }
+
+  @Post('telegram/disconnect')
+  @ApiOperation({ summary: 'Disconnect admin Telegram notifications' })
+  disconnectTelegram() {
+    return this.admin.disconnectTelegram();
+  }
+
   @Get('payouts')
   @ApiOperation({ summary: 'List payouts by seller (commission, totalPaid, balance)' })
   getPayouts(@Req() req: Request, @Query('page') page?: number, @Query('limit') limit?: number) {

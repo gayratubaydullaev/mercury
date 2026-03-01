@@ -45,7 +45,7 @@ export function ProductGrid() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 min-w-0">
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-3">
             <Skeleton className="aspect-[4/5] w-full rounded-xl" />
@@ -84,7 +84,7 @@ export function ProductGrid() {
           transition: { staggerChildren: 0.1 },
         },
       }}
-      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4"
+      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 min-w-0"
     >
       {products.map((p: ProductCardProduct, index: number) => (
         <motion.div

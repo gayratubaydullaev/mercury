@@ -115,12 +115,12 @@ export function ProductPageClient({
 
   if (isMobile) {
     return (
-      <div className="flex gap-2 w-full">
+      <div className="flex gap-2 sm:gap-3 w-full min-w-0">
         <Button
           onClick={handleAddToCart}
           disabled={disabled || adding || done}
           className={cn(
-            'h-11 flex-1 text-sm font-semibold gap-1.5 shadow-sm px-2',
+            'min-h-[48px] h-12 flex-1 text-sm sm:text-base font-semibold gap-1.5 shadow-sm px-3 touch-manipulation',
             done ? 'bg-green-600 hover:bg-green-700' : 'bg-primary'
           )}
         >
@@ -141,7 +141,7 @@ export function ProductPageClient({
         <Button
           onClick={handleBuyNow}
           disabled={disabled || buying}
-          className="h-11 flex-1 text-sm font-semibold gap-1.5 shadow-sm bg-blue-600 hover:bg-blue-700 text-white px-2"
+          className="min-h-[48px] h-12 flex-1 text-sm sm:text-base font-semibold gap-1.5 shadow-sm bg-blue-600 hover:bg-blue-700 text-white px-3 touch-manipulation"
         >
           {buying ? (
             <Loader2 className="h-4 w-4 animate-spin" />

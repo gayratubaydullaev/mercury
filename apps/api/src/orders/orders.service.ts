@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateOrderDto, DeliveryType } from './dto/create-order.dto';
 import { OrderStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -8,7 +9,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   private async generateOrderNumber() {
     const count = await this.prisma.order.count();
@@ -99,11 +103,14 @@ export class OrdersService {
           },
         },
         include: {
-          items: { include: { product: { include: { images: true, shop: true } } } },
+          items: { include: { product: { include: { images: true, shop: true } }, variant: true } as const },
           seller: { include: { shop: true } },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
         },
       });
       orders.push(order);
+      this.telegram.sendOrderNotification(order.sellerId, order, 'new_order').catch(() => {});
+      this.telegram.sendAdminOrderNotification(order, 'new_order').catch(() => {});
     }
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     this.logger.log(`Orders created: ${orders.map((o) => o.id).join(', ')} for ${buyerId ?? 'guest'}`);
@@ -154,6 +161,17 @@ export class OrdersService {
   async updateStatus(id: string, sellerId: string, status: OrderStatus) {
     const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
     if (!order) throw new NotFoundException('Order not found');
-    return this.prisma.order.update({ where: { id }, data: { status } });
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: { status },
+      include: {
+        items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+        buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+      },
+    });
+    this.telegram.sendOrderNotification(sellerId, updated, 'status_updated', status).catch(() => {});
+    this.telegram.sendAdminOrderNotification(updated, 'status_updated', status).catch(() => {});
+    return updated;
   }
 }

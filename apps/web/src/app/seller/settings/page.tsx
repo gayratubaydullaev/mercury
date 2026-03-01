@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Send, Unplug } from 'lucide-react';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
@@ -27,7 +27,19 @@ export default function SellerSettingsPage() {
   const [description, setDescription] = useState('');
   const [pickup, setPickup] = useState<PickupAddress>({ city: '', district: '', street: '', house: '', phone: '' });
   const [loading, setLoading] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean; telegramType?: string } | null>(null);
+  const [telegramCode, setTelegramCode] = useState('');
+  const [telegramLinking, setTelegramLinking] = useState(false);
+  const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const loadTelegramStatus = () => {
+    if (!token) return;
+    apiFetch(`${API_URL}/seller/telegram`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(setTelegramStatus)
+      .catch(() => setTelegramStatus({ connected: false }));
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -50,7 +62,47 @@ export default function SellerSettingsPage() {
         }
       })
       .catch(() => setShop(null));
+    loadTelegramStatus();
   }, [token]);
+
+  const linkTelegram = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !telegramCode.trim()) return;
+    setTelegramLinking(true);
+    apiFetch(`${API_URL}/seller/telegram/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: telegramCode.trim().toUpperCase() }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          toast.success('Telegram ulandi');
+          setTelegramCode('');
+          loadTelegramStatus();
+        } else throw new Error(data.message);
+      })
+      .catch((err) => toast.error(err?.message ?? 'Kod notoʻgʻri yoki muddati tugagan'))
+      .finally(() => setTelegramLinking(false));
+  };
+
+  const disconnectTelegram = () => {
+    if (!token) return;
+    setTelegramDisconnecting(true);
+    apiFetch(`${API_URL}/seller/telegram/disconnect`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          toast.success('Telegram uzildi');
+          loadTelegramStatus();
+        }
+      })
+      .catch(() => toast.error('Uzishda xatolik'))
+      .finally(() => setTelegramDisconnecting(false));
+  };
 
   const toggleChat = (enabled: boolean) => {
     if (!token) return;
@@ -115,6 +167,61 @@ export default function SellerSettingsPage() {
             <textarea placeholder="Tavsif" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]" />
             <Button type="submit" disabled={loading}>{loading ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
           </form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Telegram bildirishnomalar
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Botni shaxsiy chat, guruh yoki kanalingizga qoʻshing — yangi buyurtmalar va holat oʻzgarishlari haqida xabar olasiz. Bot orqali buyurtma holatini boshqarishingiz mumkin.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {telegramStatus?.connected ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-green-600">Telegram ulangan</span>
+              {telegramStatus.telegramType && (
+                <span className="text-xs text-muted-foreground">({telegramStatus.telegramType})</span>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[40px] touch-manipulation"
+                disabled={telegramDisconnecting}
+                onClick={disconnectTelegram}
+              >
+                <Unplug className="h-4 w-4 mr-1" />
+                Uzish
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                1) Telegramda MyShopUZ sotuvchi botini qidiring va <b>/start</b> yoki <b>/link</b> yuboring.<br />
+                2) Bot sizga 6 ta belgili kod beradi. Uni quyida kiriting.
+              </p>
+              <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[140px]">
+                  <Label htmlFor="telegram-code" className="text-sm">Kod</Label>
+                  <Input
+                    id="telegram-code"
+                    placeholder="AB12CD"
+                    value={telegramCode}
+                    onChange={(e) => setTelegramCode(e.target.value.toUpperCase().slice(0, 6))}
+                    className="mt-1 font-mono min-h-[40px]"
+                    maxLength={6}
+                  />
+                </div>
+                <Button type="submit" disabled={telegramLinking || !telegramCode.trim()} className="min-h-[40px] touch-manipulation">
+                  {telegramLinking ? 'Ulanmoqda...' : 'Ulash'}
+                </Button>
+              </form>
+            </>
+          )}
         </CardContent>
       </Card>
       <Card>

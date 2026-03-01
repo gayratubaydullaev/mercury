@@ -35,47 +35,47 @@ export default function AdminStatsPage() {
   const sellerRows = Array.isArray(payouts?.data) ? payouts.data : [];
 
   return (
-    <div className="space-y-8 min-w-0">
+    <div className="space-y-6 sm:space-y-8 min-w-0 max-w-full">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-          <BarChart3 className="h-7 w-7" />
+          <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
           Analitika
         </h1>
-        <p className="text-muted-foreground mb-6">Platforma statistikasi</p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Platforma statistikasi</p>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Foydalanuvchilar</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{stats.usersCount}</p></CardContent>
+            <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6"><CardTitle className="text-sm sm:text-base">Foydalanuvchilar</CardTitle></CardHeader>
+            <CardContent className="px-4 sm:px-6 pt-0"><p className="text-xl sm:text-2xl font-bold">{stats.usersCount}</p></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Tovarlar</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{stats.productsCount}</p></CardContent>
+            <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6"><CardTitle className="text-sm sm:text-base">Tovarlar</CardTitle></CardHeader>
+            <CardContent className="px-4 sm:px-6 pt-0"><p className="text-xl sm:text-2xl font-bold">{stats.productsCount}</p></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Buyurtmalar</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{stats.ordersCount}</p></CardContent>
+            <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6"><CardTitle className="text-sm sm:text-base">Buyurtmalar</CardTitle></CardHeader>
+            <CardContent className="px-4 sm:px-6 pt-0"><p className="text-xl sm:text-2xl font-bold">{stats.ordersCount}</p></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Daromad</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{formatPrice(Number(stats.totalRevenue))} soʻm</p></CardContent>
+            <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6"><CardTitle className="text-sm sm:text-base">Daromad</CardTitle></CardHeader>
+            <CardContent className="px-4 sm:px-6 pt-0"><p className="text-lg sm:text-2xl font-bold break-words">{formatPrice(Number(stats.totalRevenue))} soʻm</p></CardContent>
           </Card>
         </div>
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Store className="h-5 w-5" />
-            Sotuvchilar boʻyicha (toʻlangan buyurtmalar)
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+            <Store className="h-5 w-5 shrink-0" />
+            Sotuvchilar boʻyicha
           </h2>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation w-fit" asChild>
             <Link href="/admin/payouts">Barchasi</Link>
           </Button>
         </div>
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-0 rounded-b-xl">
+              <table className="w-full text-sm min-w-[520px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left py-2 px-3 font-medium">Sotuvchi</th>
