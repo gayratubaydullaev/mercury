@@ -156,9 +156,10 @@ export class AuthController {
     const token = req.query.token as string;
     if (!token?.trim()) throw new BadRequestException('token required');
     const result = await this.auth.verifyTelegramLogin(token.trim());
-    if (result.status === 'pending' || result.status === 'linked') return result;
-    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
-    return { accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user };
+    if ('status' in result && (result.status === 'pending' || result.status === 'linked')) return result;
+    const loginResult = result as { accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: import('@prisma/client').UserRole } };
+    res.cookie(REFRESH_COOKIE, loginResult.refreshToken, COOKIE_OPTIONS);
+    return { accessToken: loginResult.accessToken, expiresAt: loginResult.expiresAt, user: loginResult.user };
   }
 
   /** Only in development: reset admin & seller passwords to Admin123! / Seller123! so login works. */

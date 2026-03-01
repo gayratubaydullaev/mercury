@@ -113,8 +113,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   /** Покупатель по Telegram chat ID (в личке chat.id = user id). */
   private async getBuyerByTelegramChatId(chatId: string): Promise<{ id: string; firstName: string; lastName: string } | null> {
     const user = await this.prisma.user.findFirst({
-      // telegramId в schema.prisma; типы обновляются после npx prisma generate
-      // @ts-expect-error - Prisma client может быть сгенерирован до добавления telegramId
       where: { telegramId: chatId },
       select: { id: true, firstName: true, lastName: true },
     });

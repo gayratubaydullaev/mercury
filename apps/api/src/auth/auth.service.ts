@@ -280,7 +280,7 @@ export class AuthService {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date } }) => Promise<unknown> } }).telegramLoginToken.create({
+    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date } }) => Promise<unknown> } }).telegramLoginToken.create({
       data: { token, expiresAt },
     });
     const loginUrl = `https://t.me/${botUsername.trim()}?start=login_${token}`;
@@ -299,7 +299,7 @@ export class AuthService {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date; linkUserId: string } }) => Promise<unknown> } }).telegramLoginToken.create({
+    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date; linkUserId: string } }) => Promise<unknown> } }).telegramLoginToken.create({
       data: { token, expiresAt, linkUserId: userId },
     });
     const linkUrl = `https://t.me/${botUsername.trim()}?start=link_${token}`;
