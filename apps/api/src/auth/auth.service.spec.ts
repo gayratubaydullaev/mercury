@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -14,6 +15,7 @@ describe('AuthService', () => {
     refreshToken: { create: jest.fn(), findUnique: jest.fn(), delete: jest.fn(), deleteMany: jest.fn() },
     otpCode: { deleteMany: jest.fn(), create: jest.fn(), findFirst: jest.fn() },
   };
+  const mockMailer = { sendMail: jest.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,6 +24,7 @@ describe('AuthService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: { sign: jest.fn().mockReturnValue('token') } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
+        { provide: MailerService, useValue: mockMailer },
       ],
     }).compile();
 
