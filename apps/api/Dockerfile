@@ -12,7 +12,7 @@ FROM base AS builder
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules
 WORKDIR /app
-RUN pnpm --filter @myshopuz/api exec prisma generate && pnpm --filter @myshopuz/api run build
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma && pnpm --filter @myshopuz/api run build
 
 FROM base AS runner
 ENV NODE_ENV=production
