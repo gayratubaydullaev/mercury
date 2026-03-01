@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-// CommonJS module: use require-style import so "default" is not used at runtime
-import TelegramBot = require('node-telegram-bot-api');
+import TelegramBot from 'node-telegram-bot-api';
 
 const LINK_CODE_EXPIRE_MS = 15 * 60 * 1000;
 const LINK_CODE_LENGTH = 6;
@@ -183,6 +182,7 @@ export class TelegramService {
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: buyerId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- User.telegramId in schema
       select: { telegramId: true } as any,
     });
     const telegramChatId = (user as { telegramId?: string | null } | null)?.telegramId;

@@ -10,6 +10,7 @@ export class SellerService {
   ) {}
 
   async getShop(userId: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shop include pendingUpdates
     const shop = await (this.prisma as any).shop.findFirst({
       where: { userId },
       include: {
@@ -53,6 +54,7 @@ export class SellerService {
     const slug = (data.slug ?? (baseSlug || 'shop')).slice(0, 100);
 
     if (data.name !== undefined || data.description !== undefined || data.slug !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PendingShopUpdate on Prisma client
       await (this.prisma as any).pendingShopUpdate.upsert({
         where: { shopId: shop.id },
         create: {

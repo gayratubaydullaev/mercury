@@ -59,7 +59,7 @@ export class PaymentsService {
   }
 
   async handleClickCallback(body: Record<string, string>): Promise<Record<string, number | string>> {
-    const { click_trans_id, service_id, merchant_trans_id, amount, action, sign_string, sign_time } = body;
+    const { click_trans_id, merchant_trans_id, amount, action } = body;
     const secretKey = this.config.get('CLICK_SECRET_KEY');
     if (!secretKey) return { error: -8, error_note: 'Invalid config' };
     if (!this.verifyClickSign(body, secretKey)) {

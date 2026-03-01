@@ -159,7 +159,42 @@ GitHub Actions orqali avtomatik ishlaydi:
 - **CD** (`.github/workflows/cd.yml`): `main` ga push qilinganda:
   - API uchun Docker image yig‘iladi va **GitHub Container Registry** (ghcr.io) ga push qilinadi.
   - Image: `ghcr.io/<owner>/myshopuz-api:latest` va `ghcr.io/<owner>/myshopuz-api:<short-sha>`.
-  - Serverni yangilash: yangi image ni pull qilib, container ni qayta ishga tushiring.
+  - **Avtomatik deploy:** Agar server SSH orqali tayyor bo‘lsa, `main` ga push qilganda image serverni yangilaydi (quyida).
+
+### Avtomatik deploy (CD) — serverni sozlash
+
+Deploy ishlashi uchun GitHub repo **Variables** va **Secrets** ni to‘ldiring, so‘ng **Variables** da `DEPLOY_ENABLED` = `true` qiling.
+
+**Repository variables (Settings → Secrets and variables → Actions → Variables):**
+
+| O‘zgaruvchi       | Tavsif                          | Masalan        |
+|-------------------|----------------------------------|----------------|
+| `DEPLOY_ENABLED`  | Deploy yoqish (true qilganda)    | `true`         |
+| `DEPLOY_PATH`     | Serverni repo yo‘li (ixtiyoriy)  | `/opt/myshopuz`|
+
+**Repository secrets (Settings → Secrets and variables → Actions → Secrets):**
+
+| Secret             | Tavsif                                              |
+|--------------------|-----------------------------------------------------|
+| `SERVER_HOST`      | Server IP yoki domen (masalan 85.239.39.46)         |
+| `SERVER_USERNAME`  | SSH foydalanuvchi (masalan root)                    |
+| `SSH_PRIVATE_KEY`  | SSH kalit (private key to‘liq matni)               |
+| `DEPLOY_PORT`      | SSH port (ixtiyoriy, sukutda 22)                   |
+| `GHCR_TOKEN`       | GitHub PAT (read:packages) — image pull uchun      |
+| `DATABASE_URL`     | PostgreSQL URL (serverni .env uchun)               |
+| `JWT_SECRET`       | JWT kalit (serverni .env uchun)                   |
+| `CORS_ORIGIN`, `REDIS_URL`, `TELEGRAM_BOT_TOKEN` va boshqalar | API sozlamalari (serverni .env uchun) |
+
+**Serverda bir martalik:**
+
+1. Docker va Docker Compose o‘rnatilgan bo‘lsin.
+2. Repo klon qiling (yoki `DEPLOY_PATH` da bo‘lsin):  
+   `git clone https://github.com/<owner>/<repo>.git /opt/myshopuz && cd /opt/myshopuz`
+3. `DEPLOY_PATH` da `.env` yarating (masalan `docker-compose.deploy.yml` uchun):  
+   `DATABASE_URL`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `REDIS_URL`, `DEPLOY_IMAGE=ghcr.io/<owner>/myshopuz-api:latest` va boshqa kerakli o‘zgaruvchilar.
+4. Birinchi marta: `docker compose -f docker-compose.deploy.yml up -d` (DB/Redis/API ishga tushadi).
+
+Keyingi `main` ga push lardan so‘ng workflow avtomatik: reponi yangilaydi, image ni pull qiladi va `docker compose up -d` bajaradi.
 
 **Eslatma:** Web (Next.js) ni Vercel yoki boshqa platformaga ulaganingizda ular o‘zlari repodan build qiladi; API ni GHCR image dan yoki Railway/Render orqali deploy qilishingiz mumkin.
 

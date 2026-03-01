@@ -1,6 +1,5 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { createHmac, randomBytes } from 'crypto';
 
 /**
  * CSRF защита работает вместе с JWT:

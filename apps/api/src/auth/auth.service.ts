@@ -43,7 +43,7 @@ export class AuthService {
   async devResetSeedUsers() {
     const adminHash = await bcrypt.hash('Admin123!', 10);
     const sellerHash = await bcrypt.hash('Seller123!', 10);
-    const admin = await this.prisma.user.upsert({
+    await this.prisma.user.upsert({
       where: { email: 'admin@myshop.uz' },
       update: { passwordHash: adminHash, role: 'ADMIN', firstName: 'Admin', lastName: 'MyShop' },
       create: {
@@ -55,7 +55,7 @@ export class AuthService {
         emailVerified: true,
       },
     });
-    const seller = await this.prisma.user.upsert({
+    await this.prisma.user.upsert({
       where: { email: 'seller@myshop.uz' },
       update: { passwordHash: sellerHash, role: 'SELLER', firstName: 'Sotuvchi', lastName: "Do'kon" },
       create: {
@@ -190,6 +190,7 @@ export class AuthService {
     const lastName = (tgUser.last_name ?? '').trim() || '';
     const email = `telegram_${tgUser.id}@t.me`;
 
+    /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma schema has telegramId; generated types may lag */
     let user = await this.prisma.user.findFirst({ where: { telegramId } as any });
     if (user) {
       if (user.isBlocked) throw new ForbiddenException('Account blocked');
@@ -217,6 +218,7 @@ export class AuthService {
         });
       }
     }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     return this.login(user);
   }
 
@@ -231,18 +233,18 @@ export class AuthService {
     const first = (firstName ?? '').trim() || 'User';
     const last = (lastName ?? '').trim() || '';
     const email = `telegram_${telegramId}@t.me`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramId in schema
-    let user = await this.prisma.user.findFirst({
+    /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma schema has telegramId; generated types may lag */
+    const existingUser = await this.prisma.user.findFirst({
       where: { telegramId } as any,
       select: { id: true, email: true, role: true, isBlocked: true },
     });
-    if (user) {
-      if (user.isBlocked) throw new ForbiddenException('Account blocked');
+    if (existingUser) {
+      if (existingUser.isBlocked) throw new ForbiddenException('Account blocked');
       await this.prisma.user.update({
-        where: { id: user.id },
+        where: { id: existingUser.id },
         data: { firstName: first, lastName: last },
       });
-      return user;
+      return existingUser;
     }
     const existingByEmail = await this.prisma.user.findUnique({ where: { email } });
     if (existingByEmail) {
@@ -262,6 +264,7 @@ export class AuthService {
         emailVerified: false,
       } as any,
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     return { id: created.id, email: created.email, role: created.role };
   }
 
@@ -277,7 +280,7 @@ export class AuthService {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as any).telegramLoginToken.create({
+    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date } }) => Promise<unknown> } }).telegramLoginToken.create({
       data: { token, expiresAt },
     });
     const loginUrl = `https://t.me/${botUsername.trim()}?start=login_${token}`;
@@ -296,7 +299,7 @@ export class AuthService {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as any).telegramLoginToken.create({
+    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date; linkUserId: string } }) => Promise<unknown> } }).telegramLoginToken.create({
       data: { token, expiresAt, linkUserId: userId },
     });
     const linkUrl = `https://t.me/${botUsername.trim()}?start=link_${token}`;
@@ -313,6 +316,7 @@ export class AuthService {
     | { status: 'linked' }
     | { accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }
   > {
+    /* eslint-disable @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma client */
     const loginTokens = (this.prisma as any).telegramLoginToken;
     const row = await loginTokens.findUnique({ where: { token } });
     if (!row || row.expiresAt < new Date()) {
@@ -325,7 +329,7 @@ export class AuthService {
     const linkUserId = (row as { linkUserId?: string | null }).linkUserId;
     if (linkUserId) {
       const other = await this.prisma.user.findFirst({
-        where: { telegramId: row.telegramChatId } as any,
+        where: { telegramId: row.telegramChatId } as { telegramId: string },
       });
       if (other && other.id !== linkUserId) {
         await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
@@ -333,13 +337,13 @@ export class AuthService {
       }
       await this.prisma.user.update({
         where: { id: linkUserId },
-        data: { telegramId: row.telegramChatId } as any,
+        data: { telegramId: row.telegramChatId } as { telegramId: string },
       });
       await loginTokens.delete({ where: { id: row.id } });
       return { status: 'linked' };
     }
     const user = await this.prisma.user.findFirst({
-      where: { telegramId: row.telegramChatId } as any,
+      where: { telegramId: row.telegramChatId } as { telegramId: string },
     });
     if (!user) {
       await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
