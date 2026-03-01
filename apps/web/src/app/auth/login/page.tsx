@@ -153,6 +153,31 @@ function LoginForm() {
           <CardDescription>
             {reasonMessage ?? 'Email va parolingizni kiriting'}
           </CardDescription>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2 mt-3 border-[#0088cc] text-[#0088cc] hover:bg-[#0088cc]/10 hover:text-[#0088cc]"
+            size="lg"
+            disabled={loading || tgLoading}
+            onClick={startTelegramLogin}
+          >
+            {tgWaiting ? (
+              <>Telegramda Start bosing, keyin shu oynaga qayting…</>
+            ) : (
+              <>
+                <TelegramIcon className="h-5 w-5" />
+                Telegram orqali kirish
+              </>
+            )}
+          </Button>
+          {tgError && (
+            <p className="text-sm text-destructive mt-2 text-center" role="alert">{tgError}</p>
+          )}
+          <div className="relative flex items-center gap-2 w-full pt-1">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">yoki email bilan</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
         </CardHeader>
         <form onSubmit={submit}>
           <CardContent className="space-y-4">
@@ -210,31 +235,6 @@ function LoginForm() {
               {loading ? 'Kiritilmoqda...' : 'Kirish'}
               <LogIn className="h-4 w-4" />
             </Button>
-            <div className="relative flex items-center gap-2 w-full">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">yoki</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              size="lg"
-              disabled={loading || tgLoading}
-              onClick={startTelegramLogin}
-            >
-              {tgWaiting ? (
-                <>Telegramda Start bosing, keyin shu oynaga qayting…</>
-              ) : (
-                <>
-                  <TelegramIcon className="h-5 w-5" />
-                  Telegram orqali kirish
-                </>
-              )}
-            </Button>
-            {tgError && (
-              <p className="text-sm text-destructive text-center" role="alert">{tgError}</p>
-            )}
             <p className="text-sm text-muted-foreground text-center">
               Hisobingiz yoʻqmi?{' '}
               <Link href="/auth/register" className="text-primary font-medium hover:underline underline-offset-2">
