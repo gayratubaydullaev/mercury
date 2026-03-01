@@ -29,7 +29,17 @@ const nextConfig = {
         value: 'max-age=31536000; includeSubDomains; preload',
       });
     }
-    return [{ source: '/(.*)', headers: securityHeaders }];
+    return [
+      { source: '/(.*)', headers: securityHeaders },
+      // Telegram Web App: allow opening in Telegram client (no X-Frame-Options for this path)
+      {
+        source: '/telegram-app/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://web.telegram.org https://telegram.org;" },
+        ],
+      },
+    ];
   },
 };
 

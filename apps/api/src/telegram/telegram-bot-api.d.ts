@@ -3,6 +3,7 @@ declare module 'node-telegram-bot-api' {
     text: string;
     url?: string;
     callback_data?: string;
+    web_app?: { url: string };
     style?: 'primary' | 'success' | 'danger';
   }
   interface InlineKeyboardMarkup {
@@ -27,6 +28,9 @@ declare module 'node-telegram-bot-api' {
       options?: { chat_id?: number | string; message_id?: number; parse_mode?: string; reply_markup?: InlineKeyboardMarkup }
     ): Promise<Message | boolean>;
     setMyCommands(commands: { command: string; description: string }[]): Promise<boolean>;
+    setChatMenuButton(params?: {
+      menu_button?: { type: 'web_app'; text: string; web_app: { url: string } };
+    }): Promise<boolean>;
     stopPolling(): void;
   }
   namespace TelegramBot {

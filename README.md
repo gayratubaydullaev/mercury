@@ -124,6 +124,10 @@ pnpm start
 
 `pnpm start` API va Web ni bir vaqtda ishga tushiradi. To‘xtatish: `Ctrl+C`.
 
+### Telegram bot va Web App
+
+API da Telegram bot (buyurtmalar, statistika, sotuvchi/admin bildirishnomalari) va **Web App** (mini-ilova) qo‘llab-quvvatlanadi. Sozlash: `apps/api/.env` da `TELEGRAM_BOT_TOKEN` va `APP_URL` (frontend manzili, masalan `https://myshop.uz`). Batafsil: `apps/api/TELEGRAM_BOT.md`. Web App ochiladi: `{APP_URL}/telegram-app` — bot menyusida «🛒 Do'kon (veb-ilova)» tugmasi orqali.
+
 ## Rollar
 
 - **BUYER**: katalog, savatcha, buyurtma, toʻlov (Click, Payme, naqd, kartadan), sharhlar, chat

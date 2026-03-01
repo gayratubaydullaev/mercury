@@ -86,6 +86,7 @@ export class AppModule implements NestModule {
         // OTP
         { path: 'auth/send-otp', method: RequestMethod.POST },
         { path: 'auth/verify-otp', method: RequestMethod.POST },
+        { path: 'auth/telegram', method: RequestMethod.POST },
         // Разработка
         { path: 'auth/dev-reset-seed-users', method: RequestMethod.POST },
         // Пользователи

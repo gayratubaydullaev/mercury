@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -7,6 +7,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { UserRole } from '@prisma/client';
 import type { JwtPayload } from '@myshopuz/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { verifyTelegramWebAppInitData, parseTelegramUserFromInitData } from './telegram-init-data';
 
 const REFRESH_EXPIRES_DAYS = 7;
 
@@ -158,6 +159,58 @@ export class AuthService {
         data: { email, firstName, lastName, role: 'BUYER', emailVerified: true },
       });
     } else if (user.isBlocked) return null;
+    return this.login(user);
+  }
+
+  /**
+   * Login or register via Telegram Web App initData.
+   * Verifies initData with TELEGRAM_BOT_TOKEN, then finds or creates user by telegramId.
+   */
+  async loginOrRegisterByTelegram(initData: string): Promise<{ accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }> {
+    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!botToken) {
+      this.logger.warn('TELEGRAM_BOT_TOKEN not set, Telegram Web App auth disabled');
+      throw new BadRequestException('Telegram login is not configured');
+    }
+    if (!verifyTelegramWebAppInitData(initData, botToken)) {
+      throw new UnauthorizedException('Invalid Telegram init data');
+    }
+    const tgUser = parseTelegramUserFromInitData(initData);
+    if (!tgUser) {
+      throw new BadRequestException('Invalid Telegram user data');
+    }
+    const telegramId = String(tgUser.id);
+    const firstName = (tgUser.first_name ?? '').trim() || 'User';
+    const lastName = (tgUser.last_name ?? '').trim() || '';
+    const email = `telegram_${tgUser.id}@t.me`;
+
+    let user = await this.prisma.user.findUnique({ where: { telegramId } });
+    if (user) {
+      if (user.isBlocked) throw new ForbiddenException('Account blocked');
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { firstName, lastName },
+      });
+    } else {
+      const existingByEmail = await this.prisma.user.findUnique({ where: { email } });
+      if (existingByEmail) {
+        user = await this.prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { telegramId, firstName, lastName },
+        });
+      } else {
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            telegramId,
+            firstName,
+            lastName,
+            role: 'BUYER',
+            emailVerified: false,
+          },
+        });
+      }
+    }
     return this.login(user);
   }
 }

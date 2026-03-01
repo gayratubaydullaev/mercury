@@ -49,6 +49,7 @@ model User {
   email         String    @unique
   passwordHash  String?   @map("password_hash")
   phone         String?   @unique
+  telegramId    String?   @unique @map("telegram_id") // для входа через Telegram Web App
   firstName     String    @map("first_name")
   lastName      String    @map("last_name")
   role          UserRole  @default(BUYER)

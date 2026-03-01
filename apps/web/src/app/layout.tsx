@@ -3,11 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
-import { Header } from '@/components/layout/header';
-import { BannerCarouselWrapper } from '@/components/layout/banner-carousel-wrapper';
-import { MainContent } from '@/components/layout/main-content';
-import { Footer } from '@/components/layout/footer';
-import { BottomNav } from '@/components/layout/bottom-nav';
+import { ShellWrapper } from '@/components/layout/shell-wrapper';
 import { CookieNotice } from '@/components/layout/cookie-notice';
 import { PwaRegister } from '@/components/pwa-register';
 import { CsrfPrefetch } from '@/components/csrf-prefetch';
@@ -39,16 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <CsrfPrefetch />
             <PwaRegister />
-            <div className="flex flex-col min-h-screen w-full max-w-full min-w-0">
-            <Header />
-            <BannerCarouselWrapper />
-            <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-0 flex flex-col min-w-0">
-              <MainContent>{children}</MainContent>
-              <Footer />
-            </div>
-          </div>
-          <BottomNav />
-          <CookieNotice />
+            <ShellWrapper>{children}</ShellWrapper>
+            <CookieNotice />
           <Toaster />
           </AuthProvider>
         </ThemeProvider>

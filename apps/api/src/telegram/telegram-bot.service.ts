@@ -67,6 +67,18 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       { command: 'today', description: 'Bugungi buyurtmalar' },
       { command: 'help', description: 'Yordam' },
     ]).catch(() => {});
+
+    const baseUrl = this.telegram.getBaseUrl();
+    if (baseUrl) {
+      const webAppUrl = `${baseUrl.replace(/\/$/, '')}/telegram-app`;
+      const setMenu = (this.bot as { setChatMenuButton?: (p: unknown) => Promise<boolean> }).setChatMenuButton;
+      if (typeof setMenu === 'function') {
+        setMenu.call(this.bot, {
+          menu_button: { type: 'web_app', text: "Do'kon (veb)", web_app: { url: webAppUrl } },
+        }).then(() => this.logger.log('Telegram Web App menu button set')).catch((e: unknown) => this.logger.warn('setChatMenuButton failed', e));
+      }
+    }
+
     this.logger.log('Telegram bot polling started');
   }
 
@@ -105,16 +117,19 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Menu with optional "Veb panel" URL for admin/seller. */
+  /** Menu with optional "Veb panel" and Web App button. */
   private async getMenuWithPanel(chatId: string): Promise<TelegramBot.InlineKeyboardMarkup> {
     const baseUrl = this.telegram.getBaseUrl();
-    if (!baseUrl) return MAIN_MENU;
-    const adminChatId = await this.getAdminTelegramChatId();
-    const isAdmin = adminChatId === chatId;
-    const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
     const rows = [...MAIN_MENU_ROWS];
-    if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
-    else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
+    if (baseUrl) {
+      const webAppUrl = `${baseUrl.replace(/\/$/, '')}/telegram-app`;
+      rows.unshift([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
+      const adminChatId = await this.getAdminTelegramChatId();
+      const isAdmin = adminChatId === chatId;
+      const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+      if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
+      else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
+    }
     return { inline_keyboard: rows };
   }
 

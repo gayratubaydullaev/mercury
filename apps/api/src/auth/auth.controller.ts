@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { TelegramAuthDto } from './dto/telegram-auth.dto';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
@@ -116,6 +117,16 @@ export class AuthController {
   async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.verifyOtp(dto.email, dto.code, dto.firstName, dto.lastName);
     if (!result) throw new BadRequestException('Invalid or expired code');
+    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+    return { accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user };
+  }
+
+  @Post('telegram')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Login or register via Telegram Web App initData' })
+  async telegramAuth(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.loginOrRegisterByTelegram(dto.initData);
     res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
     return { accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user };
   }
