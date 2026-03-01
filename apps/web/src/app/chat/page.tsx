@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/utils';
@@ -19,7 +19,7 @@ type Session = {
   messages: { content: string }[];
 };
 
-export default function ChatListPage() {
+function ChatListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const asParam = searchParams.get('as');
@@ -80,10 +80,18 @@ export default function ChatListPage() {
     <div className="w-full max-w-lg mx-auto px-4 sm:px-6 py-4 pb-24">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">Xabarlar</h1>
       <div className="flex flex-wrap gap-2 mb-4">
-        <Button variant={asBuyer ? 'default' : 'outline'} size="sm" onClick={() => setAsBuyer(true)}>
+        <Button
+          variant={asBuyer ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setAsBuyer(true)}
+        >
           Mening suhbatlarim
         </Button>
-        <Button variant={!asBuyer ? 'default' : 'outline'} size="sm" onClick={() => setAsBuyer(false)}>
+        <Button
+          variant={!asBuyer ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setAsBuyer(false)}
+        >
           Doʻkon suhbatlari
         </Button>
       </div>
@@ -91,7 +99,10 @@ export default function ChatListPage() {
         <div className="text-center py-8 text-muted-foreground space-y-2">
           <p>Hali suhbatlar yoʻq.</p>
           {!asBuyer && (
-            <p className="text-sm max-w-xs mx-auto">Xaridorlar tovar sahifasidagi «Sotuvchiga yozish» tugmasi orqali siz bilan bogʻlanishi mumkin.</p>
+            <p className="text-sm max-w-xs mx-auto">
+              Xaridorlar tovar sahifasidagi «Sotuvchiga yozish» tugmasi orqali siz bilan bogʻlanishi
+              mumkin.
+            </p>
           )}
         </div>
       ) : (
@@ -108,9 +119,13 @@ export default function ChatListPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <p className="font-medium truncate">{otherName(s)}</p>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{otherRoleLabel}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                            {otherRoleLabel}
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0">{formatSessionTime(s.updatedAt)}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatSessionTime(s.updatedAt)}
+                        </span>
                       </div>
                       {s.product && (
                         <p className="text-xs text-muted-foreground truncate">
@@ -128,5 +143,20 @@ export default function ChatListPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function ChatListPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-lg mx-auto p-4">
+          <Skeleton className="h-24 w-full rounded-lg mb-3" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+      }
+    >
+      <ChatListContent />
+    </Suspense>
   );
 }
