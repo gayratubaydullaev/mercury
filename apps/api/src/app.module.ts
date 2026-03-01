@@ -21,6 +21,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PaymentsModule } from './payments/payments.module';
 import { SellerModule } from './seller/seller.module';
+import { SellerApplicationModule } from './seller-application/seller-application.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { MailerModule } from './mailer/mailer.module';
 import { BannersModule } from './banners/banners.module';
@@ -61,6 +62,7 @@ import { SettingsModule } from './settings/settings.module';
     FavoritesModule,
     PaymentsModule,
     SellerModule,
+    SellerApplicationModule,
     TelegramModule,
     BannersModule,
     SettingsModule,
@@ -87,6 +89,7 @@ export class AppModule implements NestModule {
         { path: 'auth/send-otp', method: RequestMethod.POST },
         { path: 'auth/verify-otp', method: RequestMethod.POST },
         { path: 'auth/telegram', method: RequestMethod.POST },
+        { path: 'auth/telegram/request-login', method: RequestMethod.POST },
         // Разработка
         { path: 'auth/dev-reset-seed-users', method: RequestMethod.POST },
         // Пользователи

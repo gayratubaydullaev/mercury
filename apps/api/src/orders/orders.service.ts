@@ -111,6 +111,9 @@ export class OrdersService {
       orders.push(order);
       this.telegram.sendOrderNotification(order.sellerId, order, 'new_order').catch(() => {});
       this.telegram.sendAdminOrderNotification(order, 'new_order').catch(() => {});
+      if (order.buyerId) {
+        this.telegram.sendBuyerOrderNotification(order.buyerId, order, 'new_order').catch(() => {});
+      }
     }
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     this.logger.log(`Orders created: ${orders.map((o) => o.id).join(', ')} for ${buyerId ?? 'guest'}`);
@@ -172,6 +175,9 @@ export class OrdersService {
     });
     this.telegram.sendOrderNotification(sellerId, updated, 'status_updated', status).catch(() => {});
     this.telegram.sendAdminOrderNotification(updated, 'status_updated', status).catch(() => {});
+    if (updated.buyerId) {
+      this.telegram.sendBuyerOrderNotification(updated.buyerId, updated, 'status_updated', status).catch(() => {});
+    }
     return updated;
   }
 }

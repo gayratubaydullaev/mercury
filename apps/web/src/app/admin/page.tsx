@@ -16,6 +16,8 @@ import {
   MessageSquare,
   ImageIcon,
   Banknote,
+  FileCheck,
+  FileEdit,
 } from 'lucide-react';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
@@ -32,9 +34,11 @@ type Stats = {
 const mainTiles = [
   { href: '/admin/users', label: 'Foydalanuvchilar', desc: 'Bloklash, rollar', icon: Users },
   { href: '/admin/sellers', label: 'Sotuvchilar', desc: 'Doʻkonlar va komissiya', icon: Store },
+  { href: '/admin/seller-applications', label: 'Sotuvchi arizalari', desc: 'Sotuvchi bo‘lish so‘rovlari', icon: FileCheck },
   { href: '/admin/orders', label: 'Barcha buyurtmalar', desc: 'Buyurtmalar roʻyxati', icon: ShoppingBag },
   { href: '/admin/products', label: 'Moderatsiya (tovarlar)', desc: 'Tovarlarni tasdiqlash', icon: Package, badgeKey: 'pendingProductsCount' as keyof Stats },
   { href: '/admin/reviews', label: 'Sharhlar', desc: 'Sharhlar moderatsiyasi', icon: MessageSquare, badgeKey: 'pendingReviewsCount' as keyof Stats },
+  { href: '/admin/pending-shop-updates', label: 'Do‘kon o‘zgarishlari', desc: 'Nomi/tavsif — tasdiqlash', icon: FileEdit },
   { href: '/admin/stats', label: 'Analitika', desc: 'Statistika va hisobotlar', icon: BarChart3 },
   { href: '/admin/payouts', label: "To'lovlar", desc: "Sotuvchilarga to'lovlar", icon: Banknote },
 ];

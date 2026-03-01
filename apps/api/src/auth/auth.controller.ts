@@ -10,6 +10,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -127,6 +128,35 @@ export class AuthController {
   @ApiOperation({ summary: 'Login or register via Telegram Web App initData' })
   async telegramAuth(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.loginOrRegisterByTelegram(dto.initData);
+    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+    return { accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user };
+  }
+
+  @Post('telegram/request-login')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Get one-time link for login via Telegram bot' })
+  async telegramRequestLogin() {
+    return this.auth.requestTelegramLogin();
+  }
+
+  @Post('telegram/request-link')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Get one-time link to link Telegram to current account' })
+  async telegramRequestLink(@CurrentUser('id') userId: string) {
+    return this.auth.requestTelegramLink(userId);
+  }
+
+  @Get('telegram/verify')
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({ summary: 'Poll: check if user completed Telegram login or link (start link)' })
+  async telegramVerify(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = req.query.token as string;
+    if (!token?.trim()) throw new BadRequestException('token required');
+    const result = await this.auth.verifyTelegramLogin(token.trim());
+    if (result.status === 'pending' || result.status === 'linked') return result;
     res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
     return { accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user };
   }

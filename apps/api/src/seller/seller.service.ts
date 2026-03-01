@@ -10,9 +10,32 @@ export class SellerService {
   ) {}
 
   async getShop(userId: string) {
-    return this.prisma.shop.findFirst({ where: { userId } });
+    const shop = await (this.prisma as any).shop.findFirst({
+      where: { userId },
+      include: {
+        pendingUpdates: { where: { status: 'PENDING' }, take: 1, orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!shop) return null;
+    const { pendingUpdates, ...rest } = shop;
+    const pending = pendingUpdates?.[0];
+    return {
+      ...rest,
+      pendingUpdate: pending
+        ? {
+            requestedName: pending.requestedName,
+            requestedSlug: pending.requestedSlug,
+            requestedDescription: pending.requestedDescription,
+            createdAt: pending.createdAt,
+          }
+        : null,
+    };
   }
 
+  /**
+   * Изменения имени, slug и описания магазина попадают в PendingShopUpdate и вступают в силу после одобрения админа.
+   * pickupAddress и chatEnabled обновляются сразу.
+   */
   async createOrUpdateShop(
     userId: string,
     data: {
@@ -23,26 +46,42 @@ export class SellerService {
       chatEnabled?: boolean;
     },
   ) {
-    const slug = data.slug ?? data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const update: Record<string, unknown> = {
-      name: data.name,
-      slug,
-      description: data.description,
-      pickupAddress: data.pickupAddress ?? undefined,
-    };
-    if (typeof data.chatEnabled === 'boolean') update.chatEnabled = data.chatEnabled;
-    return this.prisma.shop.upsert({
-      where: { userId },
-      create: {
-        userId,
-        name: data.name,
-        slug,
-        description: data.description,
-        pickupAddress: data.pickupAddress ?? undefined,
-        chatEnabled: data.chatEnabled ?? true,
-      },
-      update,
-    });
+    const shop = await this.prisma.shop.findFirst({ where: { userId } });
+    if (!shop) throw new BadRequestException('Doʻkon topilmadi. Avval ariza topshiring va admin tasdiqlashini kuting.');
+
+    const baseSlug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const slug = (data.slug ?? (baseSlug || 'shop')).slice(0, 100);
+
+    if (data.name !== undefined || data.description !== undefined || data.slug !== undefined) {
+      await (this.prisma as any).pendingShopUpdate.upsert({
+        where: { shopId: shop.id },
+        create: {
+          shopId: shop.id,
+          requestedName: data.name.trim(),
+          requestedSlug: slug,
+          requestedDescription: data.description ?? null,
+          status: 'PENDING',
+        },
+        update: {
+          requestedName: data.name.trim(),
+          requestedSlug: slug,
+          requestedDescription: data.description ?? null,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    const shopUpdate: Record<string, unknown> = {};
+    if (data.pickupAddress !== undefined) shopUpdate.pickupAddress = data.pickupAddress;
+    if (typeof data.chatEnabled === 'boolean') shopUpdate.chatEnabled = data.chatEnabled;
+    if (Object.keys(shopUpdate).length > 0) {
+      await this.prisma.shop.update({
+        where: { id: shop.id },
+        data: shopUpdate,
+      });
+    }
+
+    return this.getShop(userId);
   }
 
   async setChatEnabled(userId: string, chatEnabled: boolean) {

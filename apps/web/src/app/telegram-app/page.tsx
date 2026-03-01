@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { API_URL } from '@/lib/utils';
@@ -12,6 +12,8 @@ declare global {
         ready: () => void;
         expand: () => void;
         close: () => void;
+        enableClosingConfirmation?: () => void;
+        disableVerticalSwipes?: () => void;
         MainButton: {
           show: () => void;
           hide: () => void;
@@ -26,6 +28,7 @@ declare global {
         };
         themeParams: { bg_color?: string; text_color?: string };
         setHeaderColor: (color: string) => void;
+        showConfirm?: (message: string, callback?: (ok: boolean) => void) => void;
         initData: string;
         initDataUnsafe: { user?: { first_name?: string; username?: string } };
       };
@@ -35,28 +38,50 @@ declare global {
 
 export default function TelegramAppPage() {
   const [mounted, setMounted] = useState(false);
+  const [tgReady, setTgReady] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const { setToken } = useAuth();
+  const authRequested = useRef(false);
+  const { setToken, isLoggedIn } = useAuth();
   const twa = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
 
+  // Ждём загрузки скрипта Telegram (он может появиться после первого рендера)
   useEffect(() => {
     setMounted(true);
+    if (window.Telegram?.WebApp) {
+      setTgReady(true);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (window.Telegram?.WebApp) {
+        setTgReady(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !tgReady) return;
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
       tg.setHeaderColor?.('#000000');
+      if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+      if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
     }
-  }, []);
+  }, [mounted, tgReady]);
 
-  // Автоматическая регистрация/авторизация по initData при открытии из Telegram
+  // Авторизация по initData — запрос один раз после появления Telegram
   useEffect(() => {
-    if (!mounted || !twa?.initData || authChecked) return;
-    const initData = twa.initData.trim();
+    if (!mounted || !tgReady || authChecked || authRequested.current) return;
+    const tg = window.Telegram?.WebApp;
+    const initData = tg?.initData?.trim();
     if (!initData) {
       setAuthChecked(true);
       return;
     }
+    authRequested.current = true;
     fetch(`${API_URL}/auth/telegram`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,7 +89,7 @@ export default function TelegramAppPage() {
       body: JSON.stringify({ initData }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((e) => Promise.reject(e));
+        if (!res.ok) return res.json().then((e: { message?: string }) => Promise.reject(new Error(e?.message || res.statusText)));
         return res.json();
       })
       .then((data: { accessToken?: string }) => {
@@ -72,10 +97,10 @@ export default function TelegramAppPage() {
       })
       .catch(() => {})
       .finally(() => setAuthChecked(true));
-  }, [mounted, twa?.initData, authChecked, setToken]);
+  }, [mounted, tgReady, authChecked, setToken]);
 
   useEffect(() => {
-    if (!mounted || !twa) return;
+    if (!mounted || !tgReady || !twa) return;
     twa.MainButton.setText("To'liq saytni ochish");
     twa.MainButton.show();
     const handler = () => {
@@ -86,7 +111,24 @@ export default function TelegramAppPage() {
       twa.MainButton.offClick(handler);
       twa.MainButton.hide();
     };
-  }, [mounted, twa]);
+  }, [mounted, tgReady, twa]);
+
+  // Кнопка "назад" в шапке — показываем подтверждение, чтобы случайный свайп не закрыл приложение
+  useEffect(() => {
+    if (!mounted || !tgReady || !twa?.BackButton) return;
+    twa.BackButton.show();
+    const onBack = () => {
+      if (twa.showConfirm) {
+        twa.showConfirm('Chiqish?', (ok: boolean) => {
+          if (ok) twa.close();
+        });
+      } else {
+        twa.close();
+      }
+    };
+    twa.BackButton.onClick(onBack);
+    return () => twa.BackButton.hide();
+  }, [mounted, tgReady, twa]);
 
   const userName =
     mounted && twa?.initDataUnsafe?.user?.first_name
@@ -110,6 +152,14 @@ export default function TelegramAppPage() {
           Telegram ichida doʻkon. Katalog, savatcha va buyurtmalar — quyidagi tugma orqali toʻliq saytda.
         </p>
         <div className="flex flex-col gap-3">
+          {isLoggedIn && (
+            <Link
+              href="/account"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--tg-theme-button-color,#2481cc)] px-6 py-3 text-[var(--tg-theme-button-text-color,#fff)] font-medium no-underline"
+            >
+              Profil
+            </Link>
+          )}
           <a
             href="/"
             target="_blank"

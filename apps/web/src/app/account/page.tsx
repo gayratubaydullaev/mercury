@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { ShoppingBag, Heart, Store, Shield, LogOut, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Heart, Store, Shield, LogOut, MessageCircle, Link2, Check } from 'lucide-react';
 
 type UserProfile = {
   id: string;
@@ -24,6 +24,7 @@ type UserProfile = {
   avatarUrl: string | null;
   createdAt: string;
   emailVerified?: boolean;
+  telegramId?: string | null;
   shop?: { id: string; name: string; slug: string } | null;
 };
 
@@ -35,6 +36,10 @@ export default function AccountPage() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tgLinkLoading, setTgLinkLoading] = useState(false);
+  const [tgLinkWaiting, setTgLinkWaiting] = useState(false);
+  const [tgLinkError, setTgLinkError] = useState<string | null>(null);
+  const tgLinkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { token, logout: authLogout } = useAuth();
 
   useEffect(() => {
@@ -75,6 +80,58 @@ export default function AccountPage() {
     router.push('/');
     router.refresh();
   };
+
+  const refreshUser = () => {
+    if (!token) return;
+    apiFetch(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setUser(data))
+      .catch(() => {});
+  };
+
+  const startTelegramLink = () => {
+    if (!token || tgLinkLoading || tgLinkWaiting) return;
+    setTgLinkError(null);
+    setTgLinkLoading(true);
+    apiFetch(`${API_URL}/auth/telegram/request-link`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        if (!r.ok) return r.json().then((e: { message?: string }) => Promise.reject(new Error(e?.message || r.statusText)));
+        return r.json();
+      })
+      .then((data: { token: string; linkUrl: string }) => {
+        setTgLinkLoading(false);
+        setTgLinkWaiting(true);
+        window.open(data.linkUrl, '_blank', 'noopener');
+        const poll = () => {
+          fetch(`${API_URL}/auth/telegram/verify?token=${encodeURIComponent(data.token)}`, { credentials: 'include' })
+            .then((res) => res.json())
+            .then((result: { status?: string }) => {
+              if (result.status === 'linked') {
+                if (tgLinkPollRef.current) clearInterval(tgLinkPollRef.current);
+                tgLinkPollRef.current = null;
+                setTgLinkWaiting(false);
+                refreshUser();
+              }
+            })
+            .catch(() => {});
+        };
+        poll();
+        tgLinkPollRef.current = setInterval(poll, 2500);
+      })
+      .catch((err) => {
+        setTgLinkLoading(false);
+        setTgLinkError(err?.message || 'Xatolik');
+      });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (tgLinkPollRef.current) clearInterval(tgLinkPollRef.current);
+    };
+  }, []);
 
   if (!user) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
 
@@ -137,6 +194,42 @@ export default function AccountPage() {
                 </form>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-2.5"><MessageCircle className="h-5 w-5 text-primary" /></div>
+              <div>
+                <p className="font-medium">Telegram</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.telegramId ? 'Hisobingiz Telegramga ulangan — buyurtmalar haqida xabar olasiz' : 'Telegramni ulang va buyurtmalar haqida xabar oling'}
+                </p>
+              </div>
+            </div>
+            {user.telegramId ? (
+              <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                <Check className="h-4 w-4" />
+                <span className="text-sm font-medium">Ulangan</span>
+              </div>
+            ) : (
+              <div>
+                {tgLinkError && <p className="text-sm text-destructive mb-1">{tgLinkError}</p>}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={tgLinkLoading || tgLinkWaiting}
+                  onClick={startTelegramLink}
+                >
+                  {tgLinkLoading ? 'Yuklanmoqda...' : tgLinkWaiting ? 'Telegramda tugmani bosing...' : (
+                    <><Link2 className="h-4 w-4 mr-1.5" />Telegram ulash</>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

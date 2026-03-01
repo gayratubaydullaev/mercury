@@ -20,6 +20,12 @@ export default function SellerSettingsPage() {
     description: string | null;
     pickupAddress: PickupAddress;
     chatEnabled?: boolean;
+    pendingUpdate?: {
+      requestedName: string;
+      requestedSlug: string;
+      requestedDescription: string | null;
+      createdAt: string;
+    } | null;
   } | null>(null);
   const [chatEnabled, setChatEnabled] = useState(true);
   const [chatSaving, setChatSaving] = useState(false);
@@ -160,7 +166,17 @@ export default function SellerSettingsPage() {
         <p className="text-muted-foreground text-sm mt-0.5">Nomi, tavsif va oʻzim olib ketish manzili</p>
       </div>
       <Card>
-        <CardHeader><CardTitle>Maʼlumot</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Maʼlumot</CardTitle>
+          <p className="text-sm text-muted-foreground font-normal mt-1">
+            Nomi, slug va tavsif o‘zgarishlari admin tasdiqidan keyin qo‘llanadi. Manzil va chat sozlamalari darhol yangilanadi.
+          </p>
+          {shop?.pendingUpdate && (
+            <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
+              O‘zgarishlar admin tasdiqini kutyapti: «{shop.pendingUpdate.requestedName}» (slug: {shop.pendingUpdate.requestedSlug})
+            </p>
+          )}
+        </CardHeader>
         <CardContent>
           <form onSubmit={save} className="space-y-4">
             <Input placeholder="Doʻkon nomi" value={name} onChange={(e) => setName(e.target.value)} required />

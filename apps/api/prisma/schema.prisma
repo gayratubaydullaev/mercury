@@ -78,6 +78,10 @@ model User {
 
   chatMessagesSent   ChatMessage[]   @relation("ChatMessageSender")
 
+  sellerApplication       SellerApplication?
+  reviewedSellerApplications SellerApplication[] @relation("ApplicationReviewer")
+  reviewedPendingShopUpdates PendingShopUpdate[]  @relation("PendingUpdateReviewer")
+
   @@map("users")
 }
 
@@ -137,9 +141,50 @@ model Shop {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  products    Product[]
+  products         Product[]
+  pendingUpdates   PendingShopUpdate[]
 
   @@map("shops")
+}
+
+// Заявка на становление продавцом — после одобрения админа создаётся Shop и role = SELLER
+model SellerApplication {
+  id            String    @id @default(uuid())
+  userId        String    @unique @map("user_id") // один активный запрос на пользователя
+  shopName      String    @map("shop_name")
+  description   String?   @map("description")
+  message       String?   @map("message")   // комментарий от заявителя
+  status        String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
+  rejectReason  String?   @map("reject_reason")
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewedById  String?   @map("reviewed_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+
+  @@map("seller_applications")
+}
+
+// Изменения данных магазина (имя, slug, описание) — вступают в силу после одобрения админа
+model PendingShopUpdate {
+  id                String    @id @default(uuid())
+  shopId            String    @map("shop_id")
+  requestedName     String    @map("requested_name")
+  requestedSlug     String    @map("requested_slug")
+  requestedDescription String? @map("requested_description")
+  status            String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
+  rejectReason      String?   @map("reject_reason")
+  reviewedAt        DateTime? @map("reviewed_at")
+  reviewedById      String?   @map("reviewed_by_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  shop        Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reviewedBy  User?  @relation("PendingUpdateReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([shopId])
+  @@map("pending_shop_updates")
 }
 
 model TelegramLinkCode {
@@ -149,6 +194,17 @@ model TelegramLinkCode {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("telegram_link_codes")
+}
+
+model TelegramLoginToken {
+  id              String    @id @default(uuid())
+  token           String    @unique // одноразовый токен для входа или привязки
+  telegramChatId  String?   @map("telegram_chat_id") // заполняется ботом при /start login_TOKEN или link_TOKEN
+  linkUserId      String?   @map("link_user_id")     // при привязке: id пользователя, которому привязать Telegram
+  expiresAt       DateTime  @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("telegram_login_tokens")
 }
 
 model Product {

@@ -1,3 +1,4 @@
+# Mercury (MyShopUZ) — CI: lint, build, test
 name: CI
 
 on:
@@ -6,50 +7,48 @@ on:
   pull_request:
     branches: [main, develop]
 
-jobs:
-  api:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm run lint
-      - name: Build
-        run: pnpm run build
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test
-          JWT_SECRET: test-secret
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
 
-  web:
+jobs:
+  ci:
+    name: Lint, Build & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - uses: actions/setup-node@v4
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-      - name: Install
+
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
       - name: Lint
         run: pnpm run lint
+
       - name: Build
         run: pnpm run build
         env:
+          # API (NestJS)
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          JWT_SECRET: ci-test-secret-min-32-chars
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: production
+          # Web (Next.js)
           NEXT_PUBLIC_API_URL: http://localhost:4000
+
+      - name: Test
+        run: pnpm run test

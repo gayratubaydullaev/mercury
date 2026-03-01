@@ -163,6 +163,73 @@ export class TelegramService {
     await this.sendMessage(shop.telegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
+  /**
+   * Xaridor (buyer) ga: buyurtma yaratilganda yoki holat o'zgarganda.
+   * Faqat agar foydalanuvchi Telegram orqali kirgan bo'lsa (user.telegramId to'ldirilgan).
+   */
+  async sendBuyerOrderNotification(
+    buyerId: string,
+    order: {
+      id: string;
+      orderNumber: string;
+      status: string;
+      totalAmount: { toString(): string };
+      createdAt: Date;
+      items?: Array<{ product: { title: string }; quantity: number; price: { toString(): string } }>;
+      seller?: { firstName: string; lastName: string; shop?: { name: string } | null } | null;
+    },
+    event: 'new_order' | 'status_updated',
+    newStatus?: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: buyerId },
+      select: { telegramId: true } as any,
+    });
+    const telegramChatId = (user as { telegramId?: string | null } | null)?.telegramId;
+    if (!telegramChatId) return;
+
+    const baseUrl = this.getBaseUrl();
+    const amount = Number(order.totalAmount).toLocaleString('uz-UZ');
+    const sellerName =
+      order.seller?.shop?.name
+        ? order.seller.shop.name
+        : order.seller
+          ? `${order.seller.firstName} ${order.seller.lastName}`
+          : '—';
+    const itemsText =
+      order.items
+        ?.slice(0, 5)
+        .map((i) => `  • ${escapeHtml(i.product.title)} × ${i.quantity} — ${Number(i.price).toLocaleString('uz-UZ')} soʻm`)
+        .join('\n') ?? '';
+
+    let text: string;
+    if (event === 'new_order') {
+      text =
+        '✅ <b>Buyurtmangiz qabul qilindi</b>\n\n' +
+        `📋 Raqam: <code>${escapeHtml(order.orderNumber)}</code>\n` +
+        `🏪 Sotuvchi: ${escapeHtml(sellerName)}\n` +
+        `💰 Jami: ${amount} soʻm\n` +
+        `📅 Sana: ${new Date(order.createdAt).toLocaleString('uz-UZ')}\n\n` +
+        `<b>Mahsulotlar:</b>\n${itemsText}` +
+        (order.items && order.items.length > 5 ? `\n  ... va yana ${order.items.length - 5} ta` : '');
+    } else {
+      const statusLabel = statusToLabel(newStatus ?? order.status);
+      text =
+        '📢 <b>Buyurtmangiz yangilandi</b>\n\n' +
+        `📋 Raqam: <code>${escapeHtml(order.orderNumber)}</code>\n` +
+        `📌 Yangi holat: ${escapeHtml(statusLabel)}\n` +
+        `💰 Jami: ${amount} soʻm\n` +
+        `🏪 Sotuvchi: ${escapeHtml(sellerName)}`;
+    }
+
+    const rows: TelegramBot.InlineKeyboardButton[][] = [];
+    if (baseUrl) {
+      rows.push([{ text: '📋 Mening buyurtmalarim', url: `${baseUrl}/orders`, style: 'primary' as const }]);
+    }
+    const replyMarkup = rows.length > 0 ? { inline_keyboard: rows } : undefined;
+    await this.sendMessage(telegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
+  }
+
   async createLinkCode(chatId: string): Promise<string> {
     await this.prisma.telegramLinkCode.deleteMany({ where: { chatId } });
     const code = generateCode();

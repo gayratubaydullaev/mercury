@@ -19,6 +19,7 @@ export class UsersService {
         avatarUrl: true,
         createdAt: true,
         emailVerified: true,
+        telegramId: true,
         shop: { select: { id: true, name: true, slug: true } },
       },
     });

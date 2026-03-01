@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { verifyTelegramWebAppInitData, parseTelegramUserFromInitData } from './telegram-init-data';
 
 const REFRESH_EXPIRES_DAYS = 7;
+const TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN = 5;
 
 @Injectable()
 export class AuthService {
@@ -163,6 +164,11 @@ export class AuthService {
   }
 
   /**
+   * Вход через Telegram: Web App (initData) и кнопка на сайте (ссылка в бота) ведут к одному аккаунту.
+   * Везде один идентификатор — user.telegramId (id пользователя в Telegram). Один Telegram = один User.
+   */
+
+  /**
    * Login or register via Telegram Web App initData.
    * Verifies initData with TELEGRAM_BOT_TOKEN, then finds or creates user by telegramId.
    */
@@ -184,7 +190,7 @@ export class AuthService {
     const lastName = (tgUser.last_name ?? '').trim() || '';
     const email = `telegram_${tgUser.id}@t.me`;
 
-    let user = await this.prisma.user.findUnique({ where: { telegramId } });
+    let user = await this.prisma.user.findFirst({ where: { telegramId } as any });
     if (user) {
       if (user.isBlocked) throw new ForbiddenException('Account blocked');
       user = await this.prisma.user.update({
@@ -196,7 +202,7 @@ export class AuthService {
       if (existingByEmail) {
         user = await this.prisma.user.update({
           where: { id: existingByEmail.id },
-          data: { telegramId, firstName, lastName },
+          data: { telegramId, firstName, lastName } as any,
         });
       } else {
         user = await this.prisma.user.create({
@@ -207,10 +213,140 @@ export class AuthService {
             lastName,
             role: 'BUYER',
             emailVerified: false,
-          },
+          } as any,
         });
       }
     }
+    return this.login(user);
+  }
+
+  /**
+   * Найти или создать пользователя по Telegram ID (для входа через бота по ссылке).
+   */
+  async findOrCreateUserByTelegramId(
+    telegramId: string,
+    firstName?: string,
+    lastName?: string,
+  ): Promise<{ id: string; email: string; role: UserRole }> {
+    const first = (firstName ?? '').trim() || 'User';
+    const last = (lastName ?? '').trim() || '';
+    const email = `telegram_${telegramId}@t.me`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramId in schema
+    let user = await this.prisma.user.findFirst({
+      where: { telegramId } as any,
+      select: { id: true, email: true, role: true, isBlocked: true },
+    });
+    if (user) {
+      if (user.isBlocked) throw new ForbiddenException('Account blocked');
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { firstName: first, lastName: last },
+      });
+      return user;
+    }
+    const existingByEmail = await this.prisma.user.findUnique({ where: { email } });
+    if (existingByEmail) {
+      await this.prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: { telegramId, firstName: first, lastName: last } as any,
+      });
+      return { id: existingByEmail.id, email: existingByEmail.email, role: existingByEmail.role };
+    }
+    const created = await this.prisma.user.create({
+      data: {
+        email,
+        telegramId,
+        firstName: first,
+        lastName: last,
+        role: 'BUYER',
+        emailVerified: false,
+      } as any,
+    });
+    return { id: created.id, email: created.email, role: created.role };
+  }
+
+  /**
+   * Запрос на вход через Telegram: создаёт одноразовый токен и возвращает ссылку на бота.
+   */
+  async requestTelegramLogin(): Promise<{ token: string; loginUrl: string }> {
+    const botUsername = this.config.get<string>('TELEGRAM_BOT_USERNAME');
+    if (!botUsername?.trim()) {
+      this.logger.warn('TELEGRAM_BOT_USERNAME not set, Telegram login link unavailable');
+      throw new BadRequestException('Telegram login is not configured');
+    }
+    const token = uuidv4().replace(/-/g, '').slice(0, 32);
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
+    await (this.prisma as any).telegramLoginToken.create({
+      data: { token, expiresAt },
+    });
+    const loginUrl = `https://t.me/${botUsername.trim()}?start=login_${token}`;
+    return { token, loginUrl };
+  }
+
+  /**
+   * Запрос на привязку Telegram к уже залогиненному пользователю (auth/register и т.д.).
+   */
+  async requestTelegramLink(userId: string): Promise<{ token: string; linkUrl: string }> {
+    const botUsername = this.config.get<string>('TELEGRAM_BOT_USERNAME');
+    if (!botUsername?.trim()) {
+      this.logger.warn('TELEGRAM_BOT_USERNAME not set');
+      throw new BadRequestException('Telegram link is not configured');
+    }
+    const token = uuidv4().replace(/-/g, '').slice(0, 32);
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
+    await (this.prisma as any).telegramLoginToken.create({
+      data: { token, expiresAt, linkUserId: userId },
+    });
+    const linkUrl = `https://t.me/${botUsername.trim()}?start=link_${token}`;
+    return { token, linkUrl };
+  }
+
+  /**
+   * Проверка токена: вход (JWT) или привязка Telegram к аккаунту (linked).
+   */
+  async verifyTelegramLogin(
+    token: string,
+  ): Promise<
+    | { status: 'pending' }
+    | { status: 'linked' }
+    | { accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }
+  > {
+    const loginTokens = (this.prisma as any).telegramLoginToken;
+    const row = await loginTokens.findUnique({ where: { token } });
+    if (!row || row.expiresAt < new Date()) {
+      if (row) await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
+      throw new UnauthorizedException('Link expired or invalid');
+    }
+    if (!row.telegramChatId) {
+      return { status: 'pending' };
+    }
+    const linkUserId = (row as { linkUserId?: string | null }).linkUserId;
+    if (linkUserId) {
+      const other = await this.prisma.user.findFirst({
+        where: { telegramId: row.telegramChatId } as any,
+      });
+      if (other && other.id !== linkUserId) {
+        await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
+        throw new BadRequestException('Bu Telegram hisob allaqachon boshqa hisobga ulangan.');
+      }
+      await this.prisma.user.update({
+        where: { id: linkUserId },
+        data: { telegramId: row.telegramChatId } as any,
+      });
+      await loginTokens.delete({ where: { id: row.id } });
+      return { status: 'linked' };
+    }
+    const user = await this.prisma.user.findFirst({
+      where: { telegramId: row.telegramChatId } as any,
+    });
+    if (!user) {
+      await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
+      throw new UnauthorizedException('User not found');
+    }
+    if (user.isBlocked) throw new ForbiddenException('Account blocked');
+    await loginTokens.delete({ where: { id: row.id } });
     return this.login(user);
   }
 }

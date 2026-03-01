@@ -497,6 +497,135 @@ export class AdminService {
     return this.prisma.banner.delete({ where: { id } });
   }
 
+  /** Заявки на продавца: список с фильтром по status (PENDING | APPROVED | REJECTED). */
+  async getSellerApplications(page = 1, limit = 20, status?: string) {
+    const skip = (Math.max(1, Number(page)) - 1) * Math.max(1, Math.min(50, Number(limit) || 20));
+    const take = Math.max(1, Math.min(50, Number(limit) || 20));
+    const where = status && ['PENDING', 'APPROVED', 'REJECTED'].includes(status) ? { status } : {};
+    const [data, total] = await Promise.all([
+      this.prisma.sellerApplication.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+      }),
+      this.prisma.sellerApplication.count({ where }),
+    ]);
+    return { data, total, page: Math.max(1, Number(page)), limit: take, totalPages: Math.ceil(total / take) };
+  }
+
+  /** Одобрить заявку: создать Shop, выставить role = SELLER. */
+  async approveSellerApplication(applicationId: string, adminUserId: string) {
+    const app = await this.prisma.sellerApplication.findUnique({
+      where: { id: applicationId },
+      include: { user: true },
+    });
+    if (!app) throw new BadRequestException('Ariza topilmadi.');
+    if (app.status !== 'PENDING') throw new BadRequestException('Ariza allaqachon ko‘rib chiqilgan.');
+    let slug = app.shopName
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'shop';
+    const existing = await this.prisma.shop.findUnique({ where: { slug } });
+    if (existing) {
+      let suffix = 1;
+      while (await this.prisma.shop.findUnique({ where: { slug: `${slug}-${suffix}` } })) suffix += 1;
+      slug = `${slug}-${suffix}`;
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.shop.create({
+        data: {
+          userId: app.userId,
+          name: app.shopName,
+          slug,
+          description: app.description ?? null,
+        },
+      });
+      await tx.user.update({
+        where: { id: app.userId },
+        data: { role: 'SELLER' },
+      });
+      await tx.sellerApplication.update({
+        where: { id: applicationId },
+        data: { status: 'APPROVED', reviewedAt: new Date(), reviewedById: adminUserId },
+      });
+    });
+    return { ok: true, message: 'Ariza qabul qilindi. Foydalanuvchi endi sotuvchi.' };
+  }
+
+  /** Отклонить заявку. */
+  async rejectSellerApplication(applicationId: string, adminUserId: string, rejectReason?: string) {
+    const app = await this.prisma.sellerApplication.findUnique({ where: { id: applicationId } });
+    if (!app) throw new BadRequestException('Ariza topilmadi.');
+    if (app.status !== 'PENDING') throw new BadRequestException('Ariza allaqachon ko‘rib chiqilgan.');
+    await this.prisma.sellerApplication.update({
+      where: { id: applicationId },
+      data: { status: 'REJECTED', rejectReason: rejectReason ?? null, reviewedAt: new Date(), reviewedById: adminUserId },
+    });
+    return { ok: true, message: 'Ariza rad etildi.' };
+  }
+
+  /** Список запросов на изменение данных магазина (ожидают одобрения). */
+  async getPendingShopUpdates(page = 1, limit = 20) {
+    const skip = (Math.max(1, Number(page)) - 1) * Math.max(1, Math.min(50, Number(limit) || 20));
+    const take = Math.max(1, Math.min(50, Number(limit) || 20));
+    const [data, total] = await Promise.all([
+      this.prisma.pendingShopUpdate.findMany({
+        where: { status: 'PENDING' },
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { shop: { select: { id: true, name: true, slug: true, userId: true, user: { select: { email: true, firstName: true, lastName: true } } } } },
+      }),
+      this.prisma.pendingShopUpdate.count({ where: { status: 'PENDING' } }),
+    ]);
+    return { data, total, page: Math.max(1, Number(page)), limit: take, totalPages: Math.ceil(total / take) };
+  }
+
+  /** Одобрить изменение данных магазина: применить requested* к Shop. */
+  async approvePendingShopUpdate(pendingId: string, adminUserId: string) {
+    const pending = await this.prisma.pendingShopUpdate.findUnique({
+      where: { id: pendingId },
+      include: { shop: true },
+    });
+    if (!pending) throw new BadRequestException('So‘rov topilmadi.');
+    if (pending.status !== 'PENDING') throw new BadRequestException('So‘rov allaqachon ko‘rib chiqilgan.');
+    const slugExists = await this.prisma.shop.findFirst({
+      where: { slug: pending.requestedSlug, id: { not: pending.shopId } },
+    });
+    if (slugExists) throw new BadRequestException(`Slug "${pending.requestedSlug}" allaqachon band.`);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.shop.update({
+        where: { id: pending.shopId },
+        data: {
+          name: pending.requestedName,
+          slug: pending.requestedSlug,
+          description: pending.requestedDescription ?? undefined,
+        },
+      });
+      await tx.pendingShopUpdate.update({
+        where: { id: pendingId },
+        data: { status: 'APPROVED', reviewedAt: new Date(), reviewedById: adminUserId },
+      });
+    });
+    return { ok: true, message: 'O‘zgarishlar qabul qilindi.' };
+  }
+
+  /** Отклонить изменение данных магазина. */
+  async rejectPendingShopUpdate(pendingId: string, adminUserId: string, rejectReason?: string) {
+    const pending = await this.prisma.pendingShopUpdate.findUnique({ where: { id: pendingId } });
+    if (!pending) throw new BadRequestException('So‘rov topilmadi.');
+    if (pending.status !== 'PENDING') throw new BadRequestException('So‘rov allaqachon ko‘rib chiqilgan.');
+    await this.prisma.pendingShopUpdate.update({
+      where: { id: pendingId },
+      data: { status: 'REJECTED', rejectReason: rejectReason ?? null, reviewedAt: new Date(), reviewedById: adminUserId },
+    });
+    return { ok: true, message: 'So‘rov rad etildi.' };
+  }
+
   /** List all reviews for admin (with product and user info); optional filter by isModerated */
   async getReviews(page = 1, limit = 20, isModerated?: boolean) {
     const skip = Math.max(0, (Number(page) || 1) - 1) * Math.max(1, Math.min(100, Number(limit) || 20));

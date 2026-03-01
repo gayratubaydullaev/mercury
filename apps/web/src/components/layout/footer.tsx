@@ -30,6 +30,7 @@ const footerSections = [
     links: [
       { href: '/auth/login', label: 'Kirish' },
       { href: '/auth/register', label: "Roʻyxatdan oʻtish" },
+      { href: '/become-seller', label: "Sotuvchi boʻlish" },
     ],
   },
 ];

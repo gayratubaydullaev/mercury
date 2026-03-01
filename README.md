@@ -145,11 +145,57 @@ API da Telegram bot (buyurtmalar, statistika, sotuvchi/admin bildirishnomalari) 
   - **CORS:** `CORS_ORIGIN` da faqat https domenlaringizni ko‘rsating (masalan `https://myshop.uz`).
 - **HSTS:** Production da API va Web ikkalasi ham HSTS header yuboradi (brauzer faqat HTTPS orqali ulanishni majburiy qiladi).
 
+## CI/CD (Mercury / MyShopUZ)
+
+GitHub Actions orqali avtomatik ishlaydi:
+
+- **CI** (`.github/workflows/ci.yml`): har `push` / `pull_request` da `main` va `develop` uchun:
+  - Loyiha ildizida `pnpm install --frozen-lockfile`
+  - Prisma client generatsiya (`pnpm db:generate`)
+  - `pnpm run lint` (API + Web)
+  - `pnpm run build` (muhit o‘zgaruvchilari CI uchun berilgan)
+  - `pnpm run test`
+
+- **CD** (`.github/workflows/cd.yml`): `main` ga push qilinganda:
+  - API uchun Docker image yig‘iladi va **GitHub Container Registry** (ghcr.io) ga push qilinadi.
+  - Image: `ghcr.io/<owner>/myshopuz-api:latest` va `ghcr.io/<owner>/myshopuz-api:<short-sha>`.
+  - Serverni yangilash: yangi image ni pull qilib, container ni qayta ishga tushiring.
+
+**Eslatma:** Web (Next.js) ni Vercel yoki boshqa platformaga ulaganingizda ular o‘zlari repodan build qiladi; API ni GHCR image dan yoki Railway/Render orqali deploy qilishingiz mumkin.
+
 ## Deploy
 
 - **Frontend**: Vercel – `apps/web`, `NEXT_PUBLIC_API_URL` ni **https://** bilan oʻrnating
 - **Backend**: Railway yoki VPS – Dockerfile ishlatiladi, `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` (https domen) kerak
 - **Cloudflare**: DNS proxy va DDoS himoya; SSL/TLS rejimini “Full (strict)” qiling
+
+### .env sozlash: domenda (masalan samarkand.site)
+
+**API** (`apps/api/.env`):
+
+```env
+DATABASE_URL="postgresql://user:password@host:5432/myshopuz"
+JWT_SECRET=your-super-secret-key-min-32-chars
+JWT_ACCESS_EXPIRES=15m
+# Frontend domeni — CORS va cookie. Bir nechta bo'lsa vergul bilan
+CORS_ORIGIN=https://samarkand.site,https://www.samarkand.site
+CSRF_SECRET=your-csrf-secret-min-32-characters-for-production
+# Frontend manzili: Telegram Web App va bildirishnomalardagi linklar
+APP_URL=https://samarkand.site
+TELEGRAM_BOT_TOKEN=123456789:ABC...
+# Qolgan (SMTP, Click, Payme, Cloudinary va boshqalar) — ixtiyoriy
+```
+
+**Web** (`apps/web/.env.local` yoki build ortidagi muhit):
+
+```env
+# API manzili. Agar API subdomenda bo'lsa:
+NEXT_PUBLIC_API_URL=https://api.samarkand.site
+# Sitemap va robots uchun asosiy sayt manzili
+NEXT_PUBLIC_SITE_URL=https://samarkand.site
+```
+
+**Eslatma:** Agar API va Web bir domen ostida (masalan Nginx orqali) bo'lsa: Web `https://samarkand.site`, API `https://samarkand.site/api` — unda `NEXT_PUBLIC_API_URL=https://samarkand.site` qo'ying. Subdomen (api.samarkand.site) ishlatilsa — yuqoridagi kabi `NEXT_PUBLIC_API_URL=https://api.samarkand.site`.
 
 ## Test
 

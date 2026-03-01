@@ -5,6 +5,7 @@ import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { BlockUserDto } from './dto/block-user.dto';
 import { SetRoleDto } from './dto/set-role.dto';
@@ -186,5 +187,53 @@ export class AdminController {
   ) {
     const filter = isModerated === 'true' ? true : isModerated === 'false' ? false : undefined;
     return this.admin.getReviews(page ?? 1, limit ?? 20, filter);
+  }
+
+  @Get('seller-applications')
+  @ApiOperation({ summary: 'List seller applications (PENDING / APPROVED / REJECTED)' })
+  getSellerApplications(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+  ) {
+    return this.admin.getSellerApplications(page ?? 1, limit ?? 20, status);
+  }
+
+  @Post('seller-applications/:id/approve')
+  @ApiOperation({ summary: 'Approve seller application — create shop and set role SELLER' })
+  approveSellerApplication(@Param('id') id: string, @CurrentUser('id') adminId: string) {
+    return this.admin.approveSellerApplication(id, adminId);
+  }
+
+  @Post('seller-applications/:id/reject')
+  @ApiOperation({ summary: 'Reject seller application' })
+  rejectSellerApplication(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.admin.rejectSellerApplication(id, adminId, body.reason);
+  }
+
+  @Get('pending-shop-updates')
+  @ApiOperation({ summary: 'List pending shop data change requests' })
+  getPendingShopUpdates(@Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.admin.getPendingShopUpdates(page ?? 1, limit ?? 20);
+  }
+
+  @Post('pending-shop-updates/:id/approve')
+  @ApiOperation({ summary: 'Approve pending shop update' })
+  approvePendingShopUpdate(@Param('id') id: string, @CurrentUser('id') adminId: string) {
+    return this.admin.approvePendingShopUpdate(id, adminId);
+  }
+
+  @Post('pending-shop-updates/:id/reject')
+  @ApiOperation({ summary: 'Reject pending shop update' })
+  rejectPendingShopUpdate(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.admin.rejectPendingShopUpdate(id, adminId, body.reason);
   }
 }

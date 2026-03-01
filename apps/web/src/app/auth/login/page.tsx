@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -15,6 +15,17 @@ import { apiFetch } from '@/lib/api';
 import { API_URL } from '@/lib/utils';
 import { loginSchema, type LoginInput } from '@/lib/validations';
 
+function TelegramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
+
+const TELEGRAM_POLL_INTERVAL = 2000;
+const TELEGRAM_POLL_MAX_ATTEMPTS = 150; // ~5 min
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +37,10 @@ function LoginForm() {
   const [submitError, setSubmitError] = useState('');
   const [resetDone, setResetDone] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [tgLoading, setTgLoading] = useState(false);
+  const [tgWaiting, setTgWaiting] = useState(false);
+  const [tgError, setTgError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -33,6 +48,60 @@ function LoginForm() {
   });
 
   useEffect(() => setMounted(true), []);
+
+  const startTelegramLogin = () => {
+    setTgError('');
+    setTgLoading(true);
+    apiFetch(API_URL + '/auth/telegram/request-login', { method: 'POST' })
+      .then((r) => r.json())
+      .then((data: { token?: string; loginUrl?: string; message?: string }) => {
+        if (!data.token || !data.loginUrl) {
+          setTgError(data?.message ?? 'Telegram kirish sozlanmagan.');
+          setTgLoading(false);
+          return;
+        }
+        window.open(data.loginUrl, '_blank', 'noopener');
+        setTgWaiting(true);
+        setTgLoading(false);
+        let attempts = 0;
+        pollRef.current = setInterval(() => {
+          attempts += 1;
+          if (attempts > TELEGRAM_POLL_MAX_ATTEMPTS) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setTgWaiting(false);
+            setTgError('Vaqt tugadi. Qayta urinib koʻring.');
+            return;
+          }
+          fetch(`${API_URL}/auth/telegram/verify?token=${encodeURIComponent(data.token!)}`, { credentials: 'include' })
+            .then((r) => r.json())
+            .then((res: { status?: string; accessToken?: string; user?: unknown }) => {
+              if (res.status === 'pending') return;
+              if (res.accessToken) {
+                if (pollRef.current) clearInterval(pollRef.current);
+                pollRef.current = null;
+                setTgWaiting(false);
+                localStorage.setItem('accessToken', res.accessToken);
+                window.dispatchEvent(new Event('auth-change'));
+                router.push(next);
+                router.refresh();
+              }
+            })
+            .catch(() => {});
+        }, TELEGRAM_POLL_INTERVAL);
+      })
+      .catch(() => {
+        setTgError('Serverga ulanishda xatolik.');
+        setTgLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
   const isDev =
     mounted &&
     process.env.NODE_ENV !== 'production' &&
@@ -137,10 +206,35 @@ function LoginForm() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full gap-2" size="lg" disabled={loading}>
+            <Button type="submit" className="w-full gap-2" size="lg" disabled={loading || tgLoading || tgWaiting}>
               {loading ? 'Kiritilmoqda...' : 'Kirish'}
               <LogIn className="h-4 w-4" />
             </Button>
+            <div className="relative flex items-center gap-2 w-full">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">yoki</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              size="lg"
+              disabled={loading || tgLoading}
+              onClick={startTelegramLogin}
+            >
+              {tgWaiting ? (
+                <>Telegramda Start bosing, keyin shu oynaga qayting…</>
+              ) : (
+                <>
+                  <TelegramIcon className="h-5 w-5" />
+                  Telegram orqali kirish
+                </>
+              )}
+            </Button>
+            {tgError && (
+              <p className="text-sm text-destructive text-center" role="alert">{tgError}</p>
+            )}
             <p className="text-sm text-muted-foreground text-center">
               Hisobingiz yoʻqmi?{' '}
               <Link href="/auth/register" className="text-primary font-medium hover:underline underline-offset-2">

@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthService } from '../auth/auth.service';
 import { TelegramService } from './telegram.service';
 // CommonJS module: use require-style import so constructor is available at runtime
 import TelegramBot = require('node-telegram-bot-api');
@@ -33,6 +34,19 @@ const MAIN_MENU_ROWS: TelegramBot.InlineKeyboardButton[][] = [
 ];
 const MAIN_MENU: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: MAIN_MENU_ROWS };
 
+/** Меню для обычных пользователей (покупателей): каталог, мои заказы, помощь. */
+function getBuyerMenuRows(webAppUrl: string | null): TelegramBot.InlineKeyboardButton[][] {
+  const rows: TelegramBot.InlineKeyboardButton[][] = [];
+  if (webAppUrl) {
+    rows.push([{ text: "🛒 Do'kon (katalog, savatcha)", web_app: { url: webAppUrl }, style: 'primary' }]);
+  }
+  rows.push(
+    [{ text: '📋 Mening buyurtmalarim', callback_data: 'buyer_orders', style: 'primary' }, { text: '❓ Yordam', callback_data: 'cmd:help' }],
+    [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
+  );
+  return rows;
+}
+
 const MAX_MESSAGE_LENGTH = 4096;
 function truncateForTelegram(text: string, suffix = '…'): string {
   if (text.length <= MAX_MESSAGE_LENGTH) return text;
@@ -47,6 +61,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private config: ConfigService,
     private prisma: PrismaService,
+    private auth: AuthService,
     private telegram: TelegramService,
   ) {}
 
@@ -60,11 +75,12 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     this.bot.on('message', (msg: TelegramBot.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
     this.bot.on('callback_query', (query: TelegramBot.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
     this.bot.setMyCommands([
-      { command: 'start', description: 'Botni ishga tushirish / kod olish' },
-      { command: 'orders', description: 'Aktiv buyurtmalar' },
-      { command: 'stats', description: 'Statistika' },
-      { command: 'pending', description: 'Kutilmoqda' },
-      { command: 'today', description: 'Bugungi buyurtmalar' },
+      { command: 'start', description: 'Botni ishga tushirish' },
+      { command: 'shop', description: "Do'konni ochish (veb-ilova)" },
+      { command: 'orders', description: "Mening buyurtmalarim / Sotuvchi: buyurtmalar" },
+      { command: 'stats', description: 'Statistika (sotuvchi)' },
+      { command: 'pending', description: 'Kutilmoqda (sotuvchi)' },
+      { command: 'today', description: 'Bugun (sotuvchi)' },
       { command: 'help', description: 'Yordam' },
     ]).catch(() => {});
 
@@ -95,6 +111,17 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     return (row as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId ?? null;
   }
 
+  /** Покупатель по Telegram chat ID (в личке chat.id = user id). */
+  private async getBuyerByTelegramChatId(chatId: string): Promise<{ id: string; firstName: string; lastName: string } | null> {
+    const user = await this.prisma.user.findFirst({
+      // telegramId в schema.prisma; типы обновляются после npx prisma generate
+      // @ts-expect-error - Prisma client может быть сгенерирован до добавления telegramId
+      where: { telegramId: chatId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    return user;
+  }
+
   /** Send new message or edit existing (when messageId provided) to avoid spamming. */
   private async sendOrEdit(
     chatId: string,
@@ -117,20 +144,23 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Menu with optional "Veb panel" and Web App button. */
+  /** Menu: для админа/продавца — полное меню; для покупателя — каталог, мои заказы, помощь. */
   private async getMenuWithPanel(chatId: string): Promise<TelegramBot.InlineKeyboardMarkup> {
     const baseUrl = this.telegram.getBaseUrl();
-    const rows = [...MAIN_MENU_ROWS];
-    if (baseUrl) {
-      const webAppUrl = `${baseUrl.replace(/\/$/, '')}/telegram-app`;
-      rows.unshift([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
-      const adminChatId = await this.getAdminTelegramChatId();
-      const isAdmin = adminChatId === chatId;
-      const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
-      if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
-      else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
+    const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
+    const adminChatId = await this.getAdminTelegramChatId();
+    const isAdmin = adminChatId === chatId;
+    const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+    if (isAdmin || shop) {
+      const rows = [...MAIN_MENU_ROWS];
+      if (webAppUrl) rows.unshift([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
+      if (baseUrl) {
+        if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
+        else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
+      }
+      return { inline_keyboard: rows };
     }
-    return { inline_keyboard: rows };
+    return { inline_keyboard: getBuyerMenuRows(webAppUrl) };
   }
 
   private async sendMenuResponse(chatId: string, messageId?: number) {
@@ -141,33 +171,132 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleMessage(msg: TelegramBot.Message) {
-    const text = (msg.text?.trim() ?? '').toLowerCase();
+    const rawText = msg.text?.trim() ?? '';
+    const text = rawText.toLowerCase();
     const chatId = String(msg.chat.id);
 
+    // Привязка Telegram к аккаунту (пользователь уже зарегистрирован на сайте): /start link_<token>
+    const linkStartMatch = rawText.match(/^\/start\s+link_(.+)$/i);
+    if (linkStartMatch) {
+      const token = linkStartMatch[1].trim();
+      if (token) {
+        const linkRow = await (this.prisma as any).telegramLoginToken.findUnique({
+          where: { token },
+        });
+        if (!linkRow || linkRow.expiresAt < new Date()) {
+          await this.bot!.sendMessage(
+            chatId,
+            '⏱ Link muddati tugagan. Saytda "Telegram ulash" tugmasini qayta bosing.',
+          );
+          return;
+        }
+        if (!(linkRow as { linkUserId?: string | null }).linkUserId) {
+          await this.bot!.sendMessage(chatId, 'Bu link kirish uchun. Saytda "Telegram orqali kirish" tugmasidan foydalaning.');
+          return;
+        }
+        await (this.prisma as any).telegramLoginToken.update({
+          where: { id: linkRow.id },
+          data: { telegramChatId: chatId },
+        });
+        await this.bot!.sendMessage(
+          chatId,
+          '✅ Telegram hisobingiz saytdagi hisobingizga ulandi. Endi sayt oynasiga qayting — buyurtmalar haqida xabar olasiz.',
+        );
+        return;
+      }
+    }
+
+    // Вход по ссылке с сайта: /start login_<token>
+    const loginStartMatch = rawText.match(/^\/start\s+login_(.+)$/i);
+    if (loginStartMatch) {
+      const token = loginStartMatch[1].trim();
+      if (token) {
+        const loginRow = await (this.prisma as any).telegramLoginToken.findUnique({
+          where: { token },
+        });
+        if (!loginRow || loginRow.expiresAt < new Date()) {
+          await this.bot!.sendMessage(
+            chatId,
+            '⏱ Link muddati tugagan. Saytda "Telegram orqali kirish" tugmasini qayta bosing.',
+          );
+          return;
+        }
+        await (this.prisma as any).telegramLoginToken.update({
+          where: { id: loginRow.id },
+          data: { telegramChatId: chatId },
+        });
+        const from = msg.from as { first_name?: string; last_name?: string } | undefined;
+        try {
+          await this.auth.findOrCreateUserByTelegramId(
+            chatId,
+            from?.first_name,
+            from?.last_name,
+          );
+        } catch (e) {
+          this.logger.warn('findOrCreateUserByTelegramId failed', e);
+          await this.bot!.sendMessage(chatId, 'Xatolik yuz berdi. Qayta urinib koʻring.');
+          return;
+        }
+        await this.bot!.sendMessage(
+          chatId,
+          '✅ Siz tizimga kirdingiz. Endi sayt oynasiga qayting — avtomatik kirish amalga oshadi.',
+        );
+        return;
+      }
+    }
+
+    const adminChatId = await this.getAdminTelegramChatId();
+    const isAdmin = adminChatId === chatId;
+    const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+    const buyer = await this.getBuyerByTelegramChatId(chatId);
+
     if (text === '/start' || text === '/link') {
-      const code = await this.telegram.createLinkCode(chatId);
+      const menuMarkup = await this.getMenuWithPanel(chatId);
+      if (isAdmin || shop) {
+        const code = await this.telegram.createLinkCode(chatId);
+        await this.bot!.sendMessage(
+          chatId,
+          `Assalomu alaykum! <b>MyShopUZ</b> boti.\n\n` +
+            `Doʻkoningizni yoki admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> boʻlimida kiriting:\n\n` +
+            `<code>${code}</code>\n\n` +
+            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalardan foydalaning:`,
+          { parse_mode: 'HTML', reply_markup: menuMarkup },
+        );
+      } else {
+        const welcome =
+          buyer
+            ? `Salom, ${esc(buyer.firstName)}! <b>MyShopUZ</b> doʻkoni.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
+            : `Assalomu alaykum! <b>MyShopUZ</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
+        await this.bot!.sendMessage(chatId, welcome, { parse_mode: 'HTML', reply_markup: menuMarkup });
+      }
+      return;
+    }
+
+    if (text === '/shop' || text === '/catalog' || text === '/do\'kon') {
+      const menuMarkup = await this.getMenuWithPanel(chatId);
       await this.bot!.sendMessage(
         chatId,
-        `Assalomu alaykum! <b>MyShopUZ</b> boti.\n\n` +
-          `Doʻkoningizni yoki admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> boʻlimida kiriting:\n\n` +
-          `<code>${code}</code>\n\n` +
-          `Kod 15 daqiqa amal qiladi. Quyidagi tugmalardan foydalaning:`,
-        { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+        "🛒 Do'kon — katalog, savatcha va buyurtmalar. Quyidagi tugmani bosing:",
+        { parse_mode: 'HTML', reply_markup: menuMarkup },
       );
       return;
     }
 
-    if (text === '/orders') return this.sendOrdersResponse(chatId);
+    if (text === '/orders') {
+      if (buyer && !shop && !isAdmin) return this.sendBuyerOrdersResponse(chatId);
+      return this.sendOrdersResponse(chatId);
+    }
     if (text === '/stats') return this.sendStatsResponse(chatId);
     if (text === '/pending') return this.sendPendingResponse(chatId);
     if (text === '/today') return this.sendTodayResponse(chatId);
-    if (text === '/help') return this.sendHelpResponse(chatId);
+    if (text === '/help') return this.sendHelpResponse(chatId, undefined, buyer, shop, isAdmin);
 
     if (text.length > 0) {
+      const menuMarkup = await this.getMenuWithPanel(chatId);
       await this.bot!.sendMessage(
         chatId,
         'Quyidagi tugmalardan yoki buyruqlardan foydalaning:',
-        { reply_markup: MAIN_MENU },
+        { reply_markup: menuMarkup },
       );
     }
   }
@@ -376,19 +505,91 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private async sendHelpResponse(chatId: string, messageId?: number) {
-    const text =
-      '<b>MyShopUZ bot</b>\n\n' +
-      'Sotuvchilar va admin uchun. Avval Sozlamalarda kodni kiriting.\n\n' +
-      '<b>Buyruqlar:</b>\n' +
-      '• /start, /link — Ulash kodi\n' +
-      '• /orders — Aktiv buyurtmalar\n' +
-      '• /stats — Statistika\n' +
-      '• /pending — Kutilmoqda\n' +
-      '• /today — Bugungi buyurtmalar\n' +
-      '• /help — Yordam\n\n' +
-      'Buyurtma xabarida tugmalar orqali holatni oʻzgartiring. Tugmalar — xabarni yangilaydi (yangi xabar yaratmaydi).';
-    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+  private async sendBuyerOrdersResponse(chatId: string, messageId?: number) {
+    const buyer = await this.getBuyerByTelegramChatId(chatId);
+    if (!buyer) {
+      const menuMarkup = await this.getMenuWithPanel(chatId);
+      await this.sendOrEdit(
+        chatId,
+        "Mening buyurtmalarim ko'rish uchun avval do'konni oching (quyidagi tugma) va bir marta kiriting — keyin buyurtmalar shu yerdan ko'rinadi.",
+        { parse_mode: 'HTML', reply_markup: menuMarkup },
+        messageId,
+      );
+      return;
+    }
+    const orders = await this.prisma.order.findMany({
+      where: { buyerId: buyer.id },
+      take: 15,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: { include: { product: { select: { title: true } } } },
+        seller: { select: { shop: { select: { name: true } } } },
+      },
+    });
+    const baseUrl = this.telegram.getBaseUrl();
+    const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
+    const menuRows = getBuyerMenuRows(webAppUrl);
+    if (orders.length === 0) {
+      await this.sendOrEdit(
+        chatId,
+        '📋 <b>Mening buyurtmalarim</b>\n\nHali buyurtmalar yoʻq. Doʻkonda xarid qilish uchun quyidagi tugmani bosing.',
+        { parse_mode: 'HTML', reply_markup: { inline_keyboard: menuRows } },
+        messageId,
+      );
+      return;
+    }
+    const lines = orders.map(
+      (o) =>
+        `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+    );
+    const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+    for (let i = 0; i < Math.min(orders.length, 10); i += 2) {
+      const row: TelegramBot.InlineKeyboardButton[] = [];
+      row.push({ text: `📄 ${orders[i].orderNumber}`, callback_data: `buyer_order_detail:${orders[i].id}`, style: 'primary' });
+      if (orders[i + 1]) row.push({ text: `📄 ${orders[i + 1].orderNumber}`, callback_data: `buyer_order_detail:${orders[i + 1].id}`, style: 'primary' });
+      orderButtons.push(row);
+    }
+    const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...menuRows] };
+    await this.sendOrEdit(
+      chatId,
+      '📋 <b>Mening buyurtmalarim</b>\n\nBatafsil uchun tugmani bosing:\n\n' + lines.join('\n'),
+      { parse_mode: 'HTML', reply_markup },
+      messageId,
+    );
+  }
+
+  private async sendHelpResponse(
+    chatId: string,
+    messageId?: number,
+    buyer?: { id: string } | null,
+    shop?: { id: string } | null,
+    isAdmin?: boolean,
+  ) {
+    const menuMarkup = await this.getMenuWithPanel(chatId);
+    let isSellerOrAdmin = !!shop || !!isAdmin;
+    if (isSellerOrAdmin === false && buyer === undefined) {
+      const adminChatId = await this.getAdminTelegramChatId();
+      const shopFound = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+      isSellerOrAdmin = adminChatId === chatId || !!shopFound;
+    }
+    const text = isSellerOrAdmin
+      ? '<b>MyShopUZ bot</b>\n\n' +
+        'Sotuvchilar va admin uchun. Avval Sozlamalarda kodni kiriting.\n\n' +
+        '<b>Buyruqlar:</b>\n' +
+        '• /start, /link — Ulash kodi\n' +
+        '• /orders — Aktiv buyurtmalar\n' +
+        '• /stats — Statistika\n' +
+        '• /pending — Kutilmoqda\n' +
+        '• /today — Bugungi buyurtmalar\n' +
+        '• /help — Yordam\n\n' +
+        'Buyurtma xabarida tugmalar orqali holatni oʻzgartiring.'
+      : '<b>MyShopUZ — xaridorlar uchun</b>\n\n' +
+        '• <b>/start</b> — Bosh menyu\n' +
+        '• <b>/shop</b> — Do\'konni ochish (veb-ilova)\n' +
+        '• <b>/orders</b> — Mening buyurtmalarim\n' +
+        '• <b>/help</b> — Yordam\n\n' +
+        "Do'kon tugmasi orqali katalog, savatcha va buyurtma berish. Birinchi ochishda avtomatik ro'yxatdan o'tasiz.";
+    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: menuMarkup }, messageId);
   }
 
   /**
@@ -405,11 +606,84 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       await this.bot.answerCallbackQuery(query.id);
       const msgId = query.message?.message_id;
       if (cmd === 'menu') return this.sendMenuResponse(String(chatId), msgId);
-      if (cmd === 'orders') return this.sendOrdersResponse(String(chatId), msgId);
+      if (cmd === 'orders') {
+        const buyer = await this.getBuyerByTelegramChatId(String(chatId));
+        const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: String(chatId) }, select: { id: true } });
+        const adminChatId = await this.getAdminTelegramChatId();
+        if (buyer && !shop && adminChatId !== String(chatId)) return this.sendBuyerOrdersResponse(String(chatId), msgId);
+        return this.sendOrdersResponse(String(chatId), msgId);
+      }
       if (cmd === 'stats') return this.sendStatsResponse(String(chatId), msgId);
       if (cmd === 'pending') return this.sendPendingResponse(String(chatId), msgId);
       if (cmd === 'today') return this.sendTodayResponse(String(chatId), msgId);
-      if (cmd === 'help') return this.sendHelpResponse(String(chatId), msgId);
+      if (cmd === 'help') {
+        const buyer = await this.getBuyerByTelegramChatId(String(chatId));
+        const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: String(chatId) }, select: { id: true } });
+        const adminChatId = await this.getAdminTelegramChatId();
+        return this.sendHelpResponse(String(chatId), msgId, buyer, shop, adminChatId === String(chatId));
+      }
+      return;
+    }
+
+    if (data === 'buyer_orders') {
+      await this.bot.answerCallbackQuery(query.id);
+      return this.sendBuyerOrdersResponse(String(chatId), query.message?.message_id);
+    }
+
+    if (data.startsWith('buyer_order_detail:')) {
+      const orderId = data.slice(19);
+      const buyer = await this.getBuyerByTelegramChatId(String(chatId));
+      if (!buyer) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Avval do\'konni oching va kiriting.' });
+        return;
+      }
+      await this.bot.answerCallbackQuery(query.id, { text: 'Yuklanmoqda…' });
+      const orderInclude = {
+        items: { include: { product: { select: { title: true } }, variant: true } },
+        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+      } as const;
+      const order = await this.prisma.order.findFirst({
+        where: { id: orderId, buyerId: buyer.id },
+        include: orderInclude,
+      });
+      if (!order) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Buyurtma topilmadi.' });
+        return;
+      }
+      type BuyerOrderWithRelations = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
+      const o = order as BuyerOrderWithRelations;
+      const sellerName = o.seller
+        ? `${o.seller.firstName} ${o.seller.lastName}${o.seller.shop ? ` (${o.seller.shop.name})` : ''}`
+        : '—';
+      const addr =
+        o.shippingAddress && typeof o.shippingAddress === 'object'
+          ? Object.entries(o.shippingAddress as Record<string, unknown>)
+              .filter(([, v]) => v != null && String(v).trim() !== '')
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ') || '—'
+          : '—';
+      const itemsLines = o.items
+        .map(
+          (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
+            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(JSON.stringify(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+        )
+        .join('\n');
+      const text =
+        '📄 <b>Buyurtma batafsil</b>\n\n' +
+        `📋 Raqam: <code>${esc(o.orderNumber)}</code>\n` +
+        `📌 Holat: ${STATUS_LABELS[o.status] ?? o.status}\n` +
+        `💳 To'lov: ${o.paymentStatus ?? '—'} (${o.paymentMethod ?? '—'})\n` +
+        `🚚 Yetkazish: ${o.deliveryType ?? '—'}\n` +
+        `💰 Jami: ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
+        `📅 Sana: ${new Date(o.createdAt).toLocaleString('uz-UZ')}\n\n` +
+        `🏪 Sotuvchi: ${esc(sellerName)}\n📍 Manzil: ${esc(addr)}\n` +
+        (o.notes ? `📝 Izoh: ${esc(o.notes)}\n` : '') +
+        '\n<b>Mahsulotlar:</b>\n' +
+        itemsLines.split('\n').map((l: string) => esc(l)).join('\n');
+      const baseUrl = this.telegram.getBaseUrl();
+      const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
+      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...getBuyerMenuRows(webAppUrl)] };
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup }, messageId);
       return;
     }
 

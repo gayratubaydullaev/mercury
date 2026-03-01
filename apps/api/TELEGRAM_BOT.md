@@ -4,12 +4,15 @@
 
 **Админ** может привязать один чат в настройках платформы — в него приходят **полные** уведомления по каждому заказу: новый заказ и любое изменение статуса (включая оплату) с полной информацией (хозир, сотувчи, манзил, тўлов, махсулотлар).
 
+**Харидор** (фойдаланувчи Telegram орқали авторизация қилган, яъни `user.telegram_id` тўлдирилган): buyurtma расмийлаштирилганда «Buyurtmangiz qabul qilindi» хабар ва buyurtma ҳолати ўзгарганда «Buyurtmangiz yangilandi» хабар бот орқали юборилади. Тугма — «Mening buyurtmalarim» (сайтдаги buyurtmalar саҳифаси).
+
 ## Настройка
 
 1. Создайте бота в Telegram через [@BotFather](https://t.me/BotFather): `/newbot`, укажите имя и username (например `MyShopUZSellerBot`).
-2. Скопируйте выданный токен и добавьте в `.env`:
+2. Скопируйте выданный токен и **username бота** (без @). Добавьте в `.env`:
    ```
    TELEGRAM_BOT_TOKEN=123456789:ABCdefGHI...
+   TELEGRAM_BOT_USERNAME=MyShopUZSellerBot
    ```
 3. Примените миграции (если ещё не применены):
    ```bash
@@ -60,9 +63,28 @@
 
 Тип чата (личный/группа/канал) сохраняется в поле `telegramType` (сейчас при привязке по коду сохраняется `PERSONAL`; при необходимости можно доработать определение типа по `chat_id` или через Bot API `getChat`).
 
+## Kirish saytda Telegram orqali
+
+На странице входа (Kirish) есть кнопка **«Telegram orqali kirish»**. Пользователь нажимает её → открывается ссылка на бота с параметром `start=login_<token>`. В Telegram пользователь нажимает **Start** (или отправляет команду автоматически) → бот привязывает его аккаунт к токену и создаёт/находит пользователя по `telegram_id`. Сайт опрашивает `GET /auth/telegram/verify?token=...` и при успехе выдаёт JWT и перенаправляет пользователя. Для работы ссылки в `.env` должен быть задан **TELEGRAM_BOT_USERNAME** (username бота без @).
+
+## Telegramni mavjud hisobga ulash
+
+Если пользователь уже зарегистрирован через **auth/register** (email + пароль), он может привязать Telegram к этому аккаунту:
+
+1. Войти на сайт под своим аккаунтом.
+2. В **Shaxsiy kabinet** (Profil) в блоке **«Telegram»** нажать **«Telegram ulash»**.
+3. Откроется ссылка на бота с параметром `start=link_<token>`. В Telegram нажать **Start**.
+4. Бот ответит, что аккаунт привязан. Страница кабинета опрашивает `GET /auth/telegram/verify?token=...` и при `status: "linked"` обновляет профиль — отображается «Ulangan».
+5. После привязки пользователь получает уведомления о заказах в Telegram (новый заказ, смена статуса), как и при первом входе через Telegram.
+
+Один Telegram-аккаунт можно привязать только к одному аккаунту сайта. Если этот Telegram уже привязан к другому пользователю, API вернёт ошибку.
+
 ## API (Web App — без JWT)
 
 - `POST /auth/telegram` — вход/регистрация по данным Telegram Web App. Body: `{ "initData": "<query string из window.Telegram.WebApp.initData>" }`. Ответ: `{ accessToken, expiresAt, user }`; также выставляется cookie `refreshToken`. Требуется `TELEGRAM_BOT_TOKEN` в `.env`.
+- `POST /auth/telegram/request-login` — запрос на вход через бота. Ответ: `{ token, loginUrl }` (например `https://t.me/BotUsername?start=login_xxx`). Требуется `TELEGRAM_BOT_USERNAME` в `.env`.
+- `POST /auth/telegram/request-link` — **требуется JWT.** Запрос на привязку Telegram к текущему аккаунту. Ответ: `{ token, linkUrl }` (например `https://t.me/BotUsername?start=link_xxx`). Пользователь открывает ссылку в боте и нажимает Start; затем фронт опрашивает verify.
+- `GET /auth/telegram/verify?token=xxx` — проверка: если пользователь нажал Start по ссылке **login_** — возвращает `{ accessToken, expiresAt, user }` и выставляет cookie; если по ссылке **link_** — возвращает `{ status: "linked" }` (JWT не выдаётся); иначе `{ status: "pending" }`.
 
 ## API (продавец, JWT)
 
@@ -84,5 +106,6 @@
 - В таблице `shops`: поля `telegram_chat_id`, `telegram_type`.
 - В таблице `platform_settings`: поле `admin_telegram_chat_id`.
 - Таблица `telegram_link_codes`: одноразовые коды для привязки (срок действия 15 минут).
+- Таблица `telegram_login_tokens`: одноразовые токены для входа с сайта (поле `telegram_chat_id` заполняется ботом при `/start login_<token>`; срок действия 5 минут).
 
 Если `TELEGRAM_BOT_TOKEN` не задан, бот не запускается, отправка уведомлений пропускается.
