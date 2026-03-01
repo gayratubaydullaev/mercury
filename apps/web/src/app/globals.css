@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Как в примере Kem4yn-1 — светло-серый фон */
+    --background: 240 5% 96%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08), transparent 70%);
+    /* Scroll on mobile to avoid expensive fixed repaint during scroll */
+    background-attachment: scroll;
+  }
+  @media (min-width: 768px) {
+    body { background-attachment: fixed; }
+  }
+  .dark body {
+    background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12), transparent 60%);
+  }
+}
+
+/* Blob animation for home background (like Kem4yn-1) */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+.animate-blob {
+  animation: blob 7s infinite ease-in-out;
+}
+
+/* Home product grid: faster scroll on mobile — skip painting off-screen cards */
+.home-product-grid-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 280px;
+}
+/* Light fade-in only on desktop, no animation on mobile for smooth scroll */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .home-product-grid .home-product-grid-item {
+    animation: home-card-fade 0.35s ease-out backwards;
+  }
+  .home-product-grid .home-product-grid-item:nth-child(1) { animation-delay: 0.02s; }
+  .home-product-grid .home-product-grid-item:nth-child(2) { animation-delay: 0.04s; }
+  .home-product-grid .home-product-grid-item:nth-child(3) { animation-delay: 0.06s; }
+  .home-product-grid .home-product-grid-item:nth-child(4) { animation-delay: 0.08s; }
+  .home-product-grid .home-product-grid-item:nth-child(5) { animation-delay: 0.1s; }
+  .home-product-grid .home-product-grid-item:nth-child(6) { animation-delay: 0.12s; }
+}
+@keyframes home-card-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

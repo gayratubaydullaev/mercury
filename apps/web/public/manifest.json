@@ -1,0 +1,10 @@
+{
+  "name": "MyShopUZ",
+  "short_name": "MyShopUZ",
+  "description": "O'zbekiston bo'ylab xaridlar markazi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "lang": "uz"
+}

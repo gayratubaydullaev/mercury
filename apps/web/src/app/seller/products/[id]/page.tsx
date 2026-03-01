@@ -1,0 +1,411 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { API_URL } from '@/lib/utils';
+import { apiFetch, getCsrfToken } from '@/lib/api';
+import { ArrowLeft, Upload, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Category = { id: string; name: string; slug: string; parentId: string | null; children?: Category[] };
+
+type Product = {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  comparePrice: string | null;
+  stock: number;
+  sku: string | null;
+  categoryId: string;
+  isActive: boolean;
+  options?: Record<string, string[]> | null;
+  specs?: Record<string, string> | null;
+  images: { id: string; url: string }[];
+  category: { id: string; name: string };
+  variants?: { id: string; options: Record<string, string>; stock: number; imageUrl: string | null }[];
+};
+
+export default function EditProductPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [comparePrice, setComparePrice] = useState('');
+  const [stock, setStock] = useState('0');
+  const [sku, setSku] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [isActive, setIsActive] = useState(true);
+  const [optionsRows, setOptionsRows] = useState<{ name: string; values: string }[]>([]);
+  const [variantRows, setVariantRows] = useState<{ options: Record<string, string>; stock: number; imageUrl: string }[]>([]);
+  const [specsRows, setSpecsRows] = useState<{ key: string; value: string }[]>([]);
+
+  useEffect(() => {
+    if (!token || !id) return;
+    apiFetch(`${API_URL}/products/my/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((p: Product) => {
+        setProduct(p);
+        setTitle(p.title);
+        setDescription(p.description);
+        setPrice(String(p.price));
+        setComparePrice(p.comparePrice != null ? String(p.comparePrice) : '');
+        setStock(String(p.stock));
+        setSku(p.sku ?? '');
+        setCategoryId(p.categoryId);
+        setImageUrls((p.images ?? []).map((i) => i.url));
+        setIsActive(p.isActive);
+        const op = p.options as Record<string, string[]> | null | undefined;
+        if (op && typeof op === 'object') {
+          setOptionsRows(Object.entries(op).map(([name, values]) => ({ name, values: Array.isArray(values) ? values.join(', ') : '' })));
+        }
+        const sp = p.specs as Record<string, string> | null | undefined;
+        if (sp && typeof sp === 'object') {
+          setSpecsRows(Object.entries(sp).map(([key, value]) => ({ key, value: String(value) })));
+        }
+        if (p.variants?.length) {
+          setVariantRows(p.variants.map((v) => ({ options: v.options as Record<string, string>, stock: v.stock, imageUrl: v.imageUrl ?? '' })));
+        }
+      })
+      .catch(() => setProduct(null));
+  }, [token, id]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(`${API_URL}/categories?parentId=null`)
+      .then((r) => r.json())
+      .then((roots: Category[]) => setCategories(roots ?? []))
+      .catch(() => setCategories([]));
+  }, [token]);
+
+  const leafCategories = categories.flatMap((c) => (c.children ?? []));
+
+  const uploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setUploading(true);
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const csrf = await getCsrfToken();
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      if (csrf) headers['x-csrf-token'] = csrf;
+      const r = await fetch(`${API_URL}/upload/image`, {
+        method: 'POST',
+        headers,
+        body: form,
+        credentials: 'include',
+      });
+      const data = await r.json();
+      if (data?.url) setImageUrls((prev) => [...prev, data.url]);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const uploadVariantImage = async (e: React.ChangeEvent<HTMLInputElement>, variantIndex: number) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setUploading(true);
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const csrf = await getCsrfToken();
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      if (csrf) headers['x-csrf-token'] = csrf;
+      const r = await fetch(`${API_URL}/upload/image`, {
+        method: 'POST',
+        headers,
+        body: form,
+        credentials: 'include',
+      });
+      const data = await r.json();
+      if (data?.url) setVariantRows((prev) => prev.map((v, i) => (i === variantIndex ? { ...v, imageUrl: data.url } : v)));
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !id) return;
+    const priceNum = parseFloat(price.replace(/\s/g, '').replace(',', '.'));
+    const compareNum = comparePrice ? parseFloat(comparePrice.replace(/\s/g, '').replace(',', '.')) : undefined;
+    if (isNaN(priceNum) || priceNum < 0) {
+      alert('Narxni toʻgʻri kiriting');
+      return;
+    }
+    if (!title.trim()) {
+      alert('Mahsulot nomini kiriting');
+      return;
+    }
+    if (!description.trim()) {
+      alert('Tavsifni kiriting');
+      return;
+    }
+    if (!categoryId) {
+      alert('Kategoriyani tanlang');
+      return;
+    }
+    const options: Record<string, string[]> = {};
+    optionsRows.forEach((row) => {
+      const key = row.name.trim();
+      if (!key) return;
+      const vals = row.values.split(',').map((v) => v.trim()).filter(Boolean);
+      if (vals.length) options[key] = vals;
+    });
+    const specs = specsRows.length ? Object.fromEntries(specsRows.filter((r) => r.key.trim()).map((r) => [r.key.trim(), r.value.trim()])) : undefined;
+    const variants =
+      variantRows.length > 0
+        ? variantRows.map((v) => ({ options: v.options, stock: Math.max(0, v.stock), imageUrl: v.imageUrl.trim() || undefined }))
+        : undefined;
+    setLoading(true);
+    apiFetch(`${API_URL}/products/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: title.trim(),
+        description: description.trim(),
+        price: priceNum,
+        comparePrice: compareNum != null && !isNaN(compareNum) ? compareNum : undefined,
+        stock: variantRows.length > 0 ? variantRows.reduce((s, v) => s + v.stock, 0) : Math.max(0, parseInt(stock, 10) || 0),
+        sku: sku.trim() || undefined,
+        categoryId,
+        imageUrls,
+        isActive,
+        options: Object.keys(options).length ? options : undefined,
+        specs: specs && Object.keys(specs).length ? specs : undefined,
+        variants,
+      }),
+    })
+      .then((r) => r.json())
+      .then(() => {
+        toast.success('Tovar saqlandi');
+        router.push('/seller/products');
+      })
+      .catch((err) => {
+        const msg = err?.message ?? err?.response?.data?.message ?? 'Xatolik';
+        toast.error(msg);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  if (!token) return null;
+  if (product === null) return <div className="max-w-2xl p-4"><Skeleton className="h-64 w-full" /><p className="text-muted-foreground mt-2">Tovar topilmadi yoki ruxsat yoʻq.</p><Button variant="outline" asChild><Link href="/seller/products">← Orqaga</Link></Button></div>;
+  if (!product.id) return <div className="max-w-2xl p-4"><Skeleton className="h-64 w-full" /></div>;
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/seller/products"><ArrowLeft className="h-5 w-5" /></Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Tovarni tahrirlash</h1>
+          <p className="text-muted-foreground text-sm">{product.title}</p>
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="space-y-6">
+        <Card>
+          <CardHeader><CardTitle>Asosiy</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nomi *</label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Mahsulot nomi" className="mt-1" required />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tavsif *</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tavsif" className="mt-1 w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm" required />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Narx (soʻm) *</label>
+                <Input type="text" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Solishtirish narxi (soʻm)</label>
+                <Input type="text" inputMode="numeric" value={comparePrice} onChange={(e) => setComparePrice(e.target.value)} placeholder="Ixtiyoriy" className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Qoldiq</label>
+                <Input type="number" min={0} value={stock} onChange={(e) => setStock(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">SKU</label>
+                <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Ixtiyoriy" className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Kategoriya *</label>
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                <option value="">Ostkategoriyani tanlang</option>
+                {leafCategories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Variantlar (ixtiyoriy)</label>
+              <p className="text-xs text-muted-foreground mb-2">Masalan: Oʻlcham — S, M, L yoki Rang — Qora, Oq. Bitta umumiy qoldiq.</p>
+              {optionsRows.map((row, idx) => (
+                <div key={idx} className="flex gap-2 mb-2">
+                  <Input
+                    placeholder="Nomi (Oʻlcham, Rang...)"
+                    value={row.name}
+                    onChange={(e) => setOptionsRows((prev) => prev.map((r, i) => i === idx ? { ...r, name: e.target.value } : r))}
+                    className="flex-1 max-w-[140px]"
+                  />
+                  <Input
+                    placeholder="Qiymatlar (vergul bilan)"
+                    value={row.values}
+                    onChange={(e) => setOptionsRows((prev) => prev.map((r, i) => i === idx ? { ...r, values: e.target.value } : r))}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground" onClick={() => setOptionsRows((prev) => prev.filter((_, i) => i !== idx))} aria-label="Oʻchirish">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setOptionsRows((prev) => [...prev, { name: '', values: '' }])}>
+                + Variant qoʻshish
+              </Button>
+            </div>
+            {optionsRows.some((r) => r.name.trim() && r.values.split(',').map((v) => v.trim()).filter(Boolean).length > 0) && (
+              <div>
+                <label className="text-sm font-medium">Variantlar boʻyicha qoldiq va rasm</label>
+                {variantRows.map((vr, idx) => (
+                  <div key={idx} className="flex flex-wrap items-end gap-2 mb-2 p-2 rounded-lg border bg-muted/30">
+                    {optionsRows.filter((r) => r.name.trim()).map((row) => {
+                      const vals = row.values.split(',').map((v) => v.trim()).filter(Boolean);
+                      if (!vals.length) return null;
+                      return (
+                        <div key={row.name} className="flex flex-col">
+                          <label className="text-xs text-muted-foreground">{row.name}</label>
+                          <select
+                            value={vr.options[row.name] ?? vals[0]}
+                            onChange={(e) =>
+                              setVariantRows((prev) =>
+                                prev.map((v, i) => (i === idx ? { ...v, options: { ...v.options, [row.name]: e.target.value } } : v))
+                              )
+                            }
+                            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm min-w-[80px]"
+                          >
+                            {vals.map((val) => (
+                              <option key={val} value={val}>{val}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                    <div className="flex flex-col">
+                      <label className="text-xs text-muted-foreground">Qoldiq</label>
+                      <Input type="number" min={0} value={vr.stock} onChange={(e) => setVariantRows((prev) => prev.map((v, i) => (i === idx ? { ...v, stock: parseInt(e.target.value, 10) || 0 } : v)))} className="w-20" />
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-[140px]">
+                      <label className="text-xs text-muted-foreground">Variant rasmi</label>
+                      <div className="flex gap-1 items-center">
+                        <Input placeholder="URL yoki yuklang" value={vr.imageUrl} onChange={(e) => setVariantRows((prev) => prev.map((v, i) => (i === idx ? { ...v, imageUrl: e.target.value } : v)))} className="text-sm flex-1 min-w-0" />
+                        <label className="shrink-0 cursor-pointer">
+                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadVariantImage(e, idx)} disabled={uploading} />
+                          <span className="inline-flex items-center justify-center h-10 px-2 rounded-md border border-input bg-background text-xs font-medium hover:bg-accent">Yuklash</span>
+                        </label>
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground" onClick={() => setVariantRows((prev) => prev.filter((_, i) => i !== idx))} aria-label="Oʻchirish">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const opts: Record<string, string> = {};
+                    optionsRows.forEach((r) => {
+                      const key = r.name.trim();
+                      if (!key) return;
+                      const vals = r.values.split(',').map((v) => v.trim()).filter(Boolean);
+                      const first = vals[0];
+                      if (first) opts[key] = first;
+                    });
+                    setVariantRows((prev) => [...prev, { options: opts, stock: 0, imageUrl: '' }]);
+                  }}
+                >
+                  + Variant qator qoʻshish
+                </Button>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium">Xususiyatlar (ixtiyoriy)</label>
+              {specsRows.map((row, idx) => (
+                <div key={idx} className="flex gap-2 mb-2">
+                  <Input placeholder="Nomi" value={row.key} onChange={(e) => setSpecsRows((prev) => prev.map((r, i) => (i === idx ? { ...r, key: e.target.value } : r)))} className="flex-1 max-w-[140px]" />
+                  <Input placeholder="Qiymat" value={row.value} onChange={(e) => setSpecsRows((prev) => prev.map((r, i) => (i === idx ? { ...r, value: e.target.value } : r)))} className="flex-1" />
+                  <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground" onClick={() => setSpecsRows((prev) => prev.filter((_, i) => i !== idx))} aria-label="Oʻchirish">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setSpecsRows((prev) => [...prev, { key: '', value: '' }])}>
+                + Xususiyat qoʻshish
+              </Button>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              <span className="text-sm font-medium">Tovar faol (katalogda koʻrinadi)</span>
+            </label>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Rasmlar</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {imageUrls.map((url, i) => (
+                <div key={i} className="relative group w-24 h-24 rounded-lg border overflow-hidden bg-muted">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition" aria-label="Oʻchirish">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <label className="w-24 h-24 rounded-lg border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 transition">
+                <input type="file" accept="image/*" className="hidden" onChange={uploadImage} disabled={uploading} />
+                {uploading ? <span className="text-xs">Yuklanmoqda...</span> : <Upload className="h-6 w-6 text-muted-foreground" />}
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-2">
+          <Button type="submit" disabled={loading}>{loading ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
+          <Button type="button" variant="outline" asChild><Link href="/seller/products">Bekor qilish</Link></Button>
+        </div>
+      </form>
+    </div>
+  );
+}

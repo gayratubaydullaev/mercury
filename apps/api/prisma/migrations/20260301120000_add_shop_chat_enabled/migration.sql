@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "shops" ADD COLUMN IF NOT EXISTS "chat_enabled" BOOLEAN NOT NULL DEFAULT true;

@@ -1,0 +1,187 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { API_URL, formatPrice } from '@/lib/utils';
+import { apiFetch } from '@/lib/api';
+import { Store, Percent } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+type Seller = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isBlocked: boolean;
+  shop: { id: string; name: string; slug: string; commissionRate?: number | null } | null;
+  productsCount: number;
+  ordersCount: number;
+  totalRevenue: string;
+};
+
+export default function AdminSellersPage() {
+  const [data, setData] = useState<{ data: Seller[]; total: number } | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [commissionModal, setCommissionModal] = useState<{ open: boolean; seller: Seller | null }>({ open: false, seller: null });
+  const [commissionValue, setCommissionValue] = useState('');
+  const [commissionSubmitting, setCommissionSubmitting] = useState(false);
+  const [commissionError, setCommissionError] = useState('');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const fetchSellers = useCallback(() => {
+    if (!token) return;
+    setLoadError('');
+    apiFetch(`${API_URL}/admin/sellers?limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoadError(''); })
+      .catch(() => { setData({ data: [], total: 0 }); setLoadError('API ga ulanishda xatolik.'); });
+  }, [token]);
+
+  useEffect(() => {
+    fetchSellers();
+  }, [fetchSellers]);
+
+  const openCommissionModal = (seller: Seller) => {
+    setCommissionModal({ open: true, seller });
+    const rate = seller.shop?.commissionRate;
+    setCommissionValue(rate != null && rate !== undefined ? String(rate) : '');
+    setCommissionError('');
+  };
+
+  const closeCommissionModal = () => {
+    setCommissionModal({ open: false, seller: null });
+    setCommissionSubmitting(false);
+    setCommissionError('');
+  };
+
+  const submitCommission = () => {
+    const seller = commissionModal.seller;
+    if (!seller || !token) return;
+    const trimmed = commissionValue.trim();
+    const value = trimmed === '' ? null : parseFloat(trimmed.replace(/,/g, '.'));
+    if (trimmed !== '' && (value == null || Number.isNaN(value) || value < 0 || value > 100)) {
+      setCommissionError('0–100 orasida kiriting yoki boʻsh qoldiring (platforma %)');
+      return;
+    }
+    setCommissionSubmitting(true);
+    setCommissionError('');
+    apiFetch(`${API_URL}/admin/sellers/${seller.id}/commission`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ commissionRate: value }),
+    })
+      .then(() => {
+        closeCommissionModal();
+        fetchSellers();
+        toast.success('Komissiya saqlandi');
+      })
+      .catch(() => {
+        setCommissionError('Saqlashda xatolik');
+        setCommissionSubmitting(false);
+        toast.error('Komissiya saqlanmadi');
+      });
+  };
+
+  if (!token) return <p>Kirish kerak</p>;
+  if (!data) return <Skeleton className="h-64 w-full" />;
+
+  const sellers = Array.isArray(data?.data) ? data.data : [];
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+        <Store className="h-7 w-7" />
+        Sotuvchilar
+      </h1>
+      <p className="text-muted-foreground mb-6">Tovarlar, buyurtmalar va daromad boʻyicha</p>
+      {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left py-2 px-2 font-medium">F.I.O / Email</th>
+              <th className="text-left py-2 px-2 font-medium">Doʻkon</th>
+              <th className="text-right py-2 px-2 font-medium">Komissiya %</th>
+              <th className="text-right py-2 px-2 font-medium">Tovarlar</th>
+              <th className="text-right py-2 px-2 font-medium">Buyurtmalar</th>
+              <th className="text-right py-2 px-2 font-medium">Daromad</th>
+              <th className="text-left py-2 px-2 font-medium w-24"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sellers.map((s) => (
+              <tr key={s.id} className="border-b hover:bg-muted/50">
+                <td className="py-3 px-2">
+                  <p className="font-medium">{s.firstName} {s.lastName}</p>
+                  <p className="text-muted-foreground text-xs">{s.email}</p>
+                  {s.isBlocked && <Badge variant="destructive" className="mt-1">Bloklangan</Badge>}
+                </td>
+                <td className="py-3 px-2">{s.shop ? s.shop.name : '—'}</td>
+                <td className="py-3 px-2 text-right">
+                  {s.shop?.commissionRate != null ? `${Number(s.shop.commissionRate)}%` : 'Platforma'}
+                </td>
+                <td className="py-3 px-2 text-right">{s.productsCount}</td>
+                <td className="py-3 px-2 text-right">{s.ordersCount}</td>
+                <td className="py-3 px-2 text-right font-medium">{formatPrice(Number(s.totalRevenue))} soʻm</td>
+                <td className="py-3 px-2">
+                  <Button variant="ghost" size="sm" onClick={() => openCommissionModal(s)} className="gap-1" title="Komissiyani oʻzgartirish">
+                    <Percent className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {sellers.length === 0 && !loadError && <p className="text-muted-foreground py-8">Sotuvchilar yoʻq</p>}
+
+      <Dialog open={commissionModal.open} onOpenChange={(open) => !open && closeCommissionModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Komissiya %</DialogTitle>
+            <DialogDescription>
+              {commissionModal.seller && (
+                <>Sotuvchi: {commissionModal.seller.firstName} {commissionModal.seller.lastName}. Boʻsh qoldirsangiz, platforma foizi qoʻllanadi.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="commission-rate">Foiz (0–100 yoki boʻsh)</Label>
+              <Input
+                id="commission-rate"
+                type="text"
+                inputMode="decimal"
+                placeholder="Platforma default"
+                value={commissionValue}
+                onChange={(e) => setCommissionValue(e.target.value)}
+              />
+            </div>
+            {commissionError && <p className="text-sm text-destructive">{commissionError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCommissionModal} disabled={commissionSubmitting}>Bekor qilish</Button>
+            <Button onClick={submitCommission} disabled={commissionSubmitting}>
+              {commissionSubmitting ? 'Saqlanmoqda…' : 'Saqlash'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

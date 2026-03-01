@@ -1,0 +1,98 @@
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class ChatService {
+  constructor(private prisma: PrismaService) {}
+
+  private async isSellerChatEnabled(sellerId: string): Promise<boolean> {
+    const shop = await this.prisma.shop.findFirst({ where: { userId: sellerId }, select: { chatEnabled: true } });
+    return shop?.chatEnabled ?? true;
+  }
+
+  async getOrCreateSession(buyerId: string, sellerId: string, productId?: string) {
+    if (buyerId === sellerId) throw new ForbiddenException('Cannot chat with yourself');
+    const chatEnabled = await this.isSellerChatEnabled(sellerId);
+    if (!chatEnabled) {
+      throw new ForbiddenException('Sotuvchi hozircha xabarlarni qabul qilmaydi');
+    }
+    let session = await this.prisma.chatSession.findFirst({
+      where: { buyerId, sellerId, productId: productId ?? null },
+      include: { messages: { orderBy: { createdAt: 'asc' } }, product: true },
+    });
+    if (!session) {
+      session = await this.prisma.chatSession.create({
+        data: { buyerId, sellerId, productId },
+        include: { messages: true, product: true },
+      });
+    }
+    return session;
+  }
+
+  async getMySessions(userId: string, asBuyer: boolean) {
+    const where = asBuyer ? { buyerId: userId } : { sellerId: userId };
+    return this.prisma.chatSession.findMany({
+      where,
+      include: {
+        messages: { take: 1, orderBy: { createdAt: 'desc' } },
+        buyer: { select: { firstName: true, lastName: true } },
+        seller: { select: { firstName: true, lastName: true } },
+        product: { select: { title: true, slug: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async getSession(sessionId: string, userId: string) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        buyer: { select: { id: true, firstName: true, lastName: true } },
+        seller: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            shop: { select: { chatEnabled: true } },
+          },
+        },
+        product: { select: { id: true, title: true, slug: true } },
+      },
+    });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.buyerId !== userId && session.sellerId !== userId) throw new ForbiddenException();
+    return session;
+  }
+
+  async sendMessage(sessionId: string, senderId: string, content: string) {
+    const session = await this.prisma.chatSession.findUnique({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.buyerId !== senderId && session.sellerId !== senderId) throw new ForbiddenException();
+    if (!content?.trim()) throw new ForbiddenException('Content is required');
+    // Agar xaridor yozayotgan bo'lsa va sotuvchi chatni o'chirgan bo'lsa — rad etish
+    if (session.buyerId === senderId) {
+      const chatEnabled = await this.isSellerChatEnabled(session.sellerId);
+      if (!chatEnabled) throw new ForbiddenException('Sotuvchi hozircha xabarlarni qabul qilmaydi');
+    }
+    await this.prisma.chatSession.update({ where: { id: sessionId }, data: { updatedAt: new Date() } });
+    return this.prisma.chatMessage.create({
+      data: { sessionId, senderId, content: content.trim() },
+      include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+    });
+  }
+
+  async getMessages(sessionId: string, userId: string) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+        },
+      },
+    });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.buyerId !== userId && session.sellerId !== userId) throw new ForbiddenException();
+    return session.messages;
+  }
+}
