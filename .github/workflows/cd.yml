@@ -56,7 +56,7 @@ jobs:
     # Run only when deploy is enabled (set repository variable DEPLOY_ENABLED = true and add secrets)
     if: success() && vars.DEPLOY_ENABLED == 'true'
     env:
-      DEPLOY_IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+      DEPLOY_IMAGE: ghcr.io/${{ github.repository_owner }}/myshopuz-api:latest
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/myshopuz' }}
     steps:
       - name: Deploy via SSH
