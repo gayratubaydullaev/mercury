@@ -36,10 +36,10 @@ export default function SellerProductsPage() {
   const products = data.data ?? [];
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Tovarlar</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Tovarlar</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Mahsulotlar roʻyxati va tahrirlash</p>
         </div>
         <Button asChild><Link href="/seller/products/new">Yangi tovar</Link></Button>
@@ -55,6 +55,13 @@ export default function SellerProductsPage() {
                 <p className="font-medium truncate">{p.title}</p>
                 <p className="text-primary">{formatPrice(Number(p.price))} soʻm</p>
                 <p className="text-sm text-muted-foreground">Qoldiq: {p.stock}</p>
+                <p className="text-xs mt-0.5">
+                  {p.isModerated ? (
+                    <span className="text-green-600 font-medium">Tasdiqlangan — katalogda koʻrinadi</span>
+                  ) : (
+                    <span className="text-amber-600 font-medium">Moderatsiya kutilmoqda — admin tasdiqlagach katalogda chiqadi</span>
+                  )}
+                </p>
                 <Link href={`/seller/products/${p.id}`} className="text-sm text-primary underline">Tahrirlash</Link>
               </div>
             </CardContent>

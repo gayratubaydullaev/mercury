@@ -59,7 +59,7 @@ export class ReviewsService {
 
   async getForProduct(productId: string) {
     return this.prisma.review.findMany({
-      where: { productId },
+      where: { productId, isModerated: true },
       include: { user: { select: { firstName: true, lastName: true } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -74,6 +74,13 @@ export class ReviewsService {
     if (review.product.shop.userId !== sellerId) throw new ForbiddenException();
     const text = typeof reply === 'string' ? reply.trim() : '';
     return this.prisma.review.update({ where: { id: reviewId }, data: { sellerReply: text || null } });
+  }
+
+  /** Admin: approve or reject review (moderation) */
+  async setModerated(id: string, approve: boolean) {
+    const review = await this.prisma.review.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Review not found');
+    return this.prisma.review.update({ where: { id }, data: { isModerated: approve } });
   }
 
   /** Only for admin: delete a review by id */

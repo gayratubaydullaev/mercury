@@ -103,8 +103,8 @@ export default function AdminSellersPage() {
   const sellers = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
         <Store className="h-7 w-7" />
         Sotuvchilar
       </h1>

@@ -47,19 +47,19 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
     : null);
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/50">
+    <div className="min-h-screen flex flex-col bg-muted/50 overflow-x-hidden">
       <main className="flex-1 pb-40 md:pb-12">
-        <div className="w-full px-0 lg:px-6 py-0 lg:py-6">
-          {/* Breadcrumb — только desktop */}
+        <div className="w-full max-w-full px-3 sm:px-4 lg:px-6 py-2 lg:py-6">
+          {/* Breadcrumb — только desktop (lg и выше) */}
           <div className="hidden lg:block">
             <ProductBreadcrumbs category={product.category} productTitle={product.title} />
           </div>
 
-          {/* DESKTOP: 3 колонки (как в Kem4yn: варианты в средней колонке) */}
+          {/* DESKTOP: 3 колонки от lg (1024px), колонки гибкие — при сужении не переполняют */}
           <ProductSelectionProvider product={{ ...product, stock: stock ?? 0 }}>
-          <div className="hidden lg:grid lg:grid-cols-[500px_500px_260px] xl:grid-cols-[650px_650px_300px] gap-6 xl:gap-10 items-stretch">
-            {/* 1. Галерея — высота по соотношению основного фото (3/4), чтобы низ средней колонки совпадал с низом фото */}
-            <div className="bg-card rounded-2xl p-1 shadow-sm border border-border w-full min-h-0 overflow-hidden lg:aspect-[500/522] xl:aspect-[650/722]">
+          <div className="hidden lg:grid lg:grid-cols-[1fr_1fr_minmax(220px,300px)] gap-4 lg:gap-6 items-stretch min-w-0">
+            {/* 1. Галерея */}
+            <div className="bg-card rounded-2xl p-1 shadow-sm border border-border w-full min-w-0 min-h-0 overflow-hidden lg:aspect-[4/5]">
               <div className="h-full w-full min-h-0">
                 <ProductGalleryWithVariant product={product} title={product.title} />
               </div>
@@ -111,13 +111,13 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                 <div className="flex items-end gap-2 flex-wrap">
                   <div className="flex flex-col">
                     <span className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
-                      {formatPrice(price)} soʻm
+                      {formatPrice(price)} soʻm{product.unit ? ` / ${product.unit}` : ''}
                     </span>
                   </div>
                   {discountPercent != null && discountPercent > 0 && (
                     <div className="mb-1">
                       <span className="text-base text-muted-foreground line-through decoration-red-400 decoration-2">
-                        {formatPrice(comparePrice ?? price)} soʻm
+                        {formatPrice(comparePrice ?? price)} soʻm{product.unit ? ` / ${product.unit}` : ''}
                       </span>
                       <Badge variant="destructive" className="ml-1.5 bg-red-100 text-red-600 hover:bg-red-200 border-red-200 text-[9px] px-1 h-3.5">
                         −{discountPercent}%
@@ -136,12 +136,12 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
             </div>
           </div>
 
-          {/* Блок отзывов под сеткой — как в примере */}
+          {/* Блок отзывов под сеткой — desktop */}
           <div className="hidden lg:block mt-12 mb-12">
             <ReviewsSection productId={product.id} />
           </div>
 
-          {/* MOBILE */}
+          {/* Мобильный и узкий планшет: вертикальный layout (до lg) */}
           <div className="lg:hidden flex flex-col">
             <div className="relative">
               <Link
@@ -169,7 +169,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
               </div>
             </div>
 
-            <div className="px-1 pt-1 pb-0 space-y-1 bg-card rounded-t-2xl -mt-4 relative z-10 shadow-lg border-t border-x border-border">
+            <div className="px-4 pt-4 pb-0 space-y-1 bg-card rounded-t-2xl -mt-4 relative z-10 shadow-lg border-t border-x border-border">
               <div className="space-y-0.5">
                 <h1 className="text-lg font-bold text-foreground leading-tight">
                   {product.title}
@@ -186,7 +186,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                 </div>
                 <div className="flex items-end gap-2 pt-0.5">
                   <span className="text-xl font-bold text-foreground">
-                    {formatPrice(price)} soʻm
+                    {formatPrice(price)} soʻm{product.unit ? ` / ${product.unit}` : ''}
                   </span>
                   {discountPercent != null && discountPercent > 0 && (
                     <Badge variant="destructive" className="mb-1 bg-red-100 text-red-600 border-red-200 text-[10px] px-1.5 h-4">
@@ -212,7 +212,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
               )}
 
               {/* Блок отзывов — как в примере */}
-              <div className="-mx-1 px-1 bg-muted py-1 pb-1">
+              <div className="-mx-4 px-4 bg-muted py-3 pb-3">
                 <ReviewsSection productId={product.id} initialReviews={reviews} />
               </div>
             </div>
@@ -224,7 +224,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
 
           {/* Похожие товары */}
           {product.category?.id && (
-            <div className="px-1 lg:px-0 -mt-2 lg:mt-0 relative z-20">
+            <div className="px-0 lg:px-0 -mt-2 lg:mt-0 relative z-20">
               <RelatedProducts categoryId={product.category.id} currentProductId={product.id} />
             </div>
           )}

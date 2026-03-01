@@ -1,4 +1,4 @@
--- Consolidated migration: full schema (init + product options, guest orders, delivery type, banners, platform flags, payout records, variants and specs)
+-- Consolidated migration: full schema (init, options, variants, specs, chat_enabled, unit, multiple reviews per product)
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('BUYER', 'SELLER', 'ADMIN');
@@ -81,6 +81,7 @@ CREATE TABLE "shops" (
     "pickup_address" JSONB,
     "commission_rate" DECIMAL(5,2),
     "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "chat_enabled" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -103,6 +104,7 @@ CREATE TABLE "products" (
     "is_moderated" BOOLEAN NOT NULL DEFAULT false,
     "options" JSONB,
     "specs" JSONB,
+    "unit" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -334,8 +336,8 @@ CREATE UNIQUE INDEX "carts_session_id_key" ON "carts"("session_id");
 -- CreateIndex
 CREATE UNIQUE INDEX "cart_items_cart_id_product_id_variant_id_key" ON "cart_items"("cart_id", "product_id", "variant_id");
 
--- CreateIndex
-CREATE UNIQUE INDEX "reviews_product_id_user_id_key" ON "reviews"("product_id", "user_id");
+-- CreateIndex (multiple reviews per user per product allowed)
+CREATE INDEX "reviews_product_id_user_id_idx" ON "reviews"("product_id", "user_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "favorites_user_id_product_id_key" ON "favorites"("user_id", "product_id");

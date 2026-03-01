@@ -20,7 +20,7 @@ function CatalogHeaderFallback() {
 
 export default function CatalogPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <Suspense fallback={<CatalogHeaderFallback />}>
         <CatalogTitle />
         <CatalogFilters />

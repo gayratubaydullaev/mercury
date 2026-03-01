@@ -27,12 +27,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz" suppressHydrationWarning>
-      <body className={inter.variable + ' font-sans antialiased min-h-screen bg-background text-foreground'}>
+      <body className={inter.variable + ' font-sans antialiased min-h-screen bg-background text-foreground overflow-x-hidden'}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <CsrfPrefetch />
             <PwaRegister />
-            <div className="flex flex-col min-h-screen">
+            <div className="flex flex-col min-h-screen w-full max-w-full min-w-0">
             <Header />
             <BannerCarouselWrapper />
             <div className="flex-1 pb-20 md:pb-0 flex flex-col">

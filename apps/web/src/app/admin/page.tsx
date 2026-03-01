@@ -27,8 +27,8 @@ export default function AdminDashboardPage() {
   }, [token]);
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">Bosh sahifa</h1>
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">Bosh sahifa</h1>
       <p className="text-muted-foreground mb-6">Platformani boshqarish</p>
 
       {(token && !stats) && (

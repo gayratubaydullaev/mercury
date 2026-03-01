@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { MessageSquare, Star, Trash2 } from 'lucide-react';
+import { MessageSquare, Star, Trash2, Check, X } from 'lucide-react';
 
 type Review = {
   id: string;
   rating: number;
   comment: string | null;
   sellerReply: string | null;
+  isModerated: boolean;
   createdAt: string;
   user: { id: string; firstName: string; lastName: string };
   product: { id: string; title: string };
@@ -24,11 +25,13 @@ export default function AdminReviewsPage() {
   const [data, setData] = useState<{ data: Review[]; total: number; page: number; totalPages: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'false' | 'true' | ''>('');
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const load = () => {
     if (!token) return;
-    apiFetch(`${API_URL}/admin/reviews?page=1&limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+    const q = filter ? `&isModerated=${filter}` : '';
+    apiFetch(`${API_URL}/admin/reviews?page=1&limit=50${q}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ data: [], total: 0, page: 1, totalPages: 0 }));
@@ -36,7 +39,23 @@ export default function AdminReviewsPage() {
 
   useEffect(() => {
     load();
-  }, [token]);
+  }, [token, filter]);
+
+  const handleModerate = (id: string, approve: boolean) => {
+    if (!token) return;
+    setLoading(true);
+    apiFetch(`${API_URL}/reviews/${id}/moderate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ approve }),
+    })
+      .then(() => {
+        toast.success(approve ? 'Sharh tasdiqlandi' : 'Sharh rad etildi');
+        load();
+      })
+      .catch(() => toast.error('Amal bajarilmadi'))
+      .finally(() => setLoading(false));
+  };
 
   const handleDelete = (id: string) => {
     if (!token) return;
@@ -59,14 +78,20 @@ export default function AdminReviewsPage() {
   const reviews = data.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+    <div className="space-y-6 min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
         <MessageSquare className="h-7 w-7" />
-        Sharhlar
+        Sharhlar (moderatsiya)
       </h1>
 
+      <div className="flex gap-2 flex-wrap">
+        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('')}>Barchasi</Button>
+        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('false')}>Moderatsiya qilinmagan</Button>
+        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
+      </div>
+
       <Card>
-        <CardHeader><CardTitle>Barcha sharhlar ({data.total})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Sharhlar ({data.total})</CardTitle></CardHeader>
         <CardContent>
           {reviews.length === 0 ? (
             <p className="text-muted-foreground">Sharhlar yoʻq.</p>
@@ -85,16 +110,33 @@ export default function AdminReviewsPage() {
                       <span className="text-sm text-muted-foreground">
                         {new Date(r.createdAt).toLocaleDateString('uz-UZ')}
                       </span>
+                      {r.isModerated ? (
+                        <span className="text-xs text-green-600 font-medium">Tasdiqlangan</span>
+                      ) : (
+                        <span className="text-xs text-amber-600 font-medium">Moderatsiya kutilmoqda</span>
+                      )}
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(r.id)}
-                      disabled={loading || deletingId === r.id}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Oʻchirish
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {!r.isModerated && (
+                        <>
+                          <Button size="sm" onClick={() => handleModerate(r.id, true)} disabled={loading} className="text-green-600">
+                            <Check className="h-4 w-4 mr-1" /> Tasdiqlash
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleModerate(r.id, false)} disabled={loading}>
+                            <X className="h-4 w-4 mr-1" /> Rad etish
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(r.id)}
+                        disabled={loading || deletingId === r.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Oʻchirish
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Tovar: <Link href={`/product/${r.product.id}`} className="text-primary underline">{r.product.title}</Link>

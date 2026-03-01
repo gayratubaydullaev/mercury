@@ -36,6 +36,7 @@ export class ProductsService {
         shopId: shop.id,
         options: dto.options ?? undefined,
         specs: dto.specs ?? undefined,
+        unit: dto.unit?.trim() || undefined,
         images: dto.imageUrls?.length
           ? { create: dto.imageUrls.map((url, i) => ({ url, sortOrder: i })) }
           : undefined,
@@ -113,7 +114,7 @@ export class ProductsService {
       }
       const products = await this.prisma.product.findMany({
         where: { id: { in: ids } },
-        include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { select: { rating: true } } },
+        include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { where: { isModerated: true }, select: { rating: true } } },
       });
       const orderMap = new Map(ids.map((id, i) => [id, i]));
       products.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
@@ -173,7 +174,7 @@ export class ProductsService {
       }
       rows = await this.prisma.product.findMany({
         where: { id: { in: ids } },
-        include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { select: { rating: true } } },
+        include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { where: { isModerated: true }, select: { rating: true } } },
       });
       const orderMap = new Map(ids.map((id, i) => [id, i]));
       rows.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
@@ -184,7 +185,7 @@ export class ProductsService {
           orderBy,
           skip,
           take: limit,
-          include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { select: { rating: true } } },
+          include: { images: true, category: true, shop: { select: { name: true, slug: true } }, variants: true, reviews: { where: { isModerated: true }, select: { rating: true } } },
         }),
         this.prisma.product.count({ where }),
       ]);
@@ -213,7 +214,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, isActive: true },
-      include: { images: true, category: true, shop: true, variants: true, reviews: { include: { user: { select: { firstName: true, lastName: true } } } } },
+      include: { images: true, category: true, shop: true, variants: true, reviews: { where: { isModerated: true }, include: { user: { select: { firstName: true, lastName: true } } } } },
     });
     if (!product) throw new NotFoundException('Product not found');
     const reviewsCount = product.reviews.length;
@@ -224,7 +225,7 @@ export class ProductsService {
   async findBySlug(shopSlug: string, productSlug: string) {
     const product = await this.prisma.product.findFirst({
       where: { slug: productSlug, shop: { slug: shopSlug }, isActive: true },
-      include: { images: true, category: true, shop: true, variants: true, reviews: { include: { user: { select: { firstName: true, lastName: true } } } },
+      include: { images: true, category: true, shop: true, variants: true, reviews: { where: { isModerated: true }, include: { user: { select: { firstName: true, lastName: true } } } },
       },
     });
     if (!product) throw new NotFoundException('Product not found');
@@ -249,6 +250,7 @@ export class ProductsService {
     if (rest.price != null) data.price = new Decimal(rest.price);
     if (rest.comparePrice != null) data.comparePrice = new Decimal(rest.comparePrice);
     if (rest.specs !== undefined) data.specs = rest.specs ?? Prisma.JsonNull;
+    if ((rest as { unit?: string }).unit !== undefined) data.unit = (rest as { unit?: string }).unit?.trim() || null;
     if (imageUrls !== undefined) {
       await this.prisma.productImage.deleteMany({ where: { productId: id } });
       data.images = imageUrls?.length

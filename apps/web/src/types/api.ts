@@ -17,6 +17,7 @@ export interface ApiProduct {
   price: string | number;
   comparePrice?: string | number | null;
   stock?: number;
+  unit?: string | null;
   images: { url: string }[];
   shop?: { name?: string; slug: string };
   createdAt?: string;
@@ -61,6 +62,7 @@ export function apiProductToCardProduct(p: ApiProduct): ProductCardProduct {
     price: String(p.price),
     comparePrice: p.comparePrice != null ? String(p.comparePrice) : null,
     stock: p.stock,
+    unit: p.unit ?? undefined,
     images: p.images ?? [],
     shop: p.shop,
     createdAt: p.createdAt,

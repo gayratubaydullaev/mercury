@@ -178,7 +178,7 @@ export function CheckoutForm() {
   };
 
   return (
-    <form onSubmit={submit} className="max-w-lg space-y-6">
+    <form onSubmit={submit} className="w-full max-w-full space-y-6">
       {hasOutOfStock && (
         <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
           <p className="font-medium">Baʼzi mahsulotlar tugagan yoki yetarli miqdorda mavjud emas. Savat sahifasiga oʻtib miqdorni yangilang yoki mahsulotni olib tashlang.</p>

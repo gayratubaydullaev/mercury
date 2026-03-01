@@ -142,8 +142,8 @@ export default function FavoritesPage() {
 
   if (!list.length) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold mb-6">Sevimlilar</h1>
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">Sevimlilar</h1>
         <p className="text-muted-foreground">
           Sevimlilar boʻsh. <Link href="/catalog" className="text-primary underline">Katalog</Link>
           {!token && <span> — mehmon sifatida saqlangan sevimlilar shu yerda koʻrinadi.</span>}
@@ -153,8 +153,8 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Sevimlilar</h1>
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6">Sevimlilar</h1>
       {!token && <p className="text-muted-foreground text-sm mb-4">Mehmon rejimida. Kirish orqali sevimlilar hisobingizga saqlanadi.</p>}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-4">
         {list.map((fav) => (

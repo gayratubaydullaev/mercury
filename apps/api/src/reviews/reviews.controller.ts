@@ -51,6 +51,15 @@ export class ReviewsController {
     return this.reviews.sellerReply(id, userId, body.reply ?? '');
   }
 
+  @Post(':id/moderate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin: approve or reject review' })
+  moderate(@Param('id') id: string, @Body() body: { approve: boolean }) {
+    return this.reviews.setModerated(id, !!body.approve);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

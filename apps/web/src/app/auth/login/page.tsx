@@ -72,9 +72,9 @@ function LoginForm() {
         : null;
 
   return (
-    <div className="max-w-sm mx-auto py-12">
-      <h1 className="text-2xl font-bold mb-6">Tizimga kirish</h1>
-      {reasonMessage && <p className="text-muted-foreground mb-4">{reasonMessage}</p>}
+    <div className="w-full max-w-sm mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6">Tizimga kirish</h1>
+      {reasonMessage && <p className="text-muted-foreground mb-4 text-sm sm:text-base">{reasonMessage}</p>}
       <form onSubmit={submit} className="space-y-4">
         <div>
           <Input
@@ -148,8 +148,8 @@ function LoginForm() {
 
 function LoginFallback() {
   return (
-    <div className="max-w-sm mx-auto py-12">
-      <h1 className="text-2xl font-bold mb-6">Tizimga kirish</h1>
+    <div className="w-full max-w-sm mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6">Tizimga kirish</h1>
       <div className="space-y-4 animate-pulse">
         <div className="h-10 rounded-md bg-muted" />
         <div className="h-10 rounded-md bg-muted" />

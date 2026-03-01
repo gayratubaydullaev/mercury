@@ -80,8 +80,8 @@ export default function AdminUsersPage() {
   const users = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">Foydalanuvchilar</h1>
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">Foydalanuvchilar</h1>
       <p className="text-muted-foreground mb-4">Koʻrish, bloklash va rol berish</p>
       <div className="flex flex-wrap gap-2 mb-4">
         <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => setRoleFilter('')}>Barchasi</Button>

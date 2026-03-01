@@ -35,7 +35,7 @@ export default function SellerOrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-2">Buyurtmalar</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">Buyurtmalar</h1>
       <p className="text-muted-foreground mb-6">Doʻkoningizga kelgan buyurtmalar</p>
       <div className="space-y-4">
         {orders.map((o) => (

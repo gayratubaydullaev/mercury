@@ -440,12 +440,14 @@ export class AdminService {
     return this.prisma.banner.delete({ where: { id } });
   }
 
-  /** List all reviews for admin (with product and user info) */
-  async getReviews(page = 1, limit = 20) {
+  /** List all reviews for admin (with product and user info); optional filter by isModerated */
+  async getReviews(page = 1, limit = 20, isModerated?: boolean) {
     const skip = Math.max(0, (Number(page) || 1) - 1) * Math.max(1, Math.min(100, Number(limit) || 20));
     const take = Math.max(1, Math.min(100, Number(limit) || 20));
+    const where = isModerated !== undefined ? { isModerated } : {};
     const [data, total] = await Promise.all([
       this.prisma.review.findMany({
+        where,
         skip,
         take,
         orderBy: { createdAt: 'desc' },
@@ -454,7 +456,7 @@ export class AdminService {
           product: { select: { id: true, title: true } },
         },
       }),
-      this.prisma.review.count(),
+      this.prisma.review.count({ where }),
     ]);
     return { data, total, page: Math.max(1, Number(page) || 1), limit: take, totalPages: Math.ceil(total / take) };
   }

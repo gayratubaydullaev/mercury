@@ -108,7 +108,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold mb-2">Platforma sozlamalari</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-2">Platforma sozlamalari</h1>
         <p className="text-muted-foreground mb-6">Komissiya, toʻlov usullari va yetkazib berish</p>
         {error && <p className="text-destructive text-sm mb-4">{error}</p>}
       </div>

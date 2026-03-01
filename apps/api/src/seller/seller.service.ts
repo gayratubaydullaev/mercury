@@ -52,12 +52,22 @@ export class SellerService {
 
   async getStats(userId: string) {
     const shop = await this.prisma.shop.findFirst({ where: { userId } });
-    if (!shop) return { ordersCount: 0, totalRevenue: '0' };
-    const [ordersCount, sum] = await Promise.all([
+    if (!shop) {
+      return { ordersCount: 0, pendingOrdersCount: 0, totalRevenue: '0', productsCount: 0, shopSlug: null };
+    }
+    const [ordersCount, pendingOrdersCount, sum, productsCount] = await Promise.all([
       this.prisma.order.count({ where: { sellerId: userId } }),
+      this.prisma.order.count({ where: { sellerId: userId, status: 'PENDING' } }),
       this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { sellerId: userId, paymentStatus: 'PAID' } }),
+      this.prisma.product.count({ where: { shopId: shop.id, isActive: true } }),
     ]);
-    return { ordersCount, totalRevenue: sum._sum.totalAmount?.toString() ?? '0' };
+    return {
+      ordersCount,
+      pendingOrdersCount,
+      totalRevenue: sum._sum.totalAmount?.toString() ?? '0',
+      productsCount,
+      shopSlug: shop.slug,
+    };
   }
 
   /** Reviews for all products of the seller's shop (for reply UI) */

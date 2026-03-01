@@ -119,7 +119,7 @@ export default function AdminBannersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
         <ImageIcon className="h-7 w-7" />
         Bannerlar
       </h1>

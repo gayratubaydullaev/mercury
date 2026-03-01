@@ -76,15 +76,15 @@ export default function AccountPage() {
     router.refresh();
   };
 
-  if (!user) return <div className="max-w-2xl mx-auto px-4"><Skeleton className="h-64 w-full rounded-xl" /></div>;
+  if (!user) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
 
   const roleLabel = user.role === 'ADMIN' ? 'Admin' : user.role === 'SELLER' ? 'Sotuvchi' : 'Xaridor';
   const initials = [user.firstName, user.lastName].map((s) => s?.charAt(0) ?? '').join('').toUpperCase() || '?';
   const joinedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' }) : '';
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pb-8">
-      <h1 className="text-2xl font-bold mb-2">Shaxsiy kabinet</h1>
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 pb-8">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">Shaxsiy kabinet</h1>
       <p className="text-muted-foreground text-sm mb-6">Profil va buyurtmalar</p>
 
       <Card className="mb-6">

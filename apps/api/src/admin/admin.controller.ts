@@ -161,7 +161,12 @@ export class AdminController {
 
   @Get('reviews')
   @ApiOperation({ summary: 'List all reviews (for admin)' })
-  getReviews(@Query('page') page?: number, @Query('limit') limit?: number) {
-    return this.admin.getReviews(page ?? 1, limit ?? 20);
+  getReviews(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('isModerated') isModerated?: string,
+  ) {
+    const filter = isModerated === 'true' ? true : isModerated === 'false' ? false : undefined;
+    return this.admin.getReviews(page ?? 1, limit ?? 20, filter);
   }
 }

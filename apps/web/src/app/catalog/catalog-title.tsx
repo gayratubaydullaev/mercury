@@ -47,7 +47,7 @@ export function CatalogTitle() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="text-2xl font-bold text-foreground hover:underline underline-offset-2 text-left"
+          className="text-xl sm:text-2xl font-bold text-foreground hover:underline underline-offset-2 text-left break-words"
         >
           {displayName}
         </button>

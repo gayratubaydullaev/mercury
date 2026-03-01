@@ -87,7 +87,7 @@ export function CartContent() {
           const overRequested = item.quantity > available && available > 0;
           const stockWarning = outOfStock ? 'Mahsulot tugadi' : overRequested ? `Faqat ${available} ta mavjud` : null;
           return (
-            <div key={item.id} className="flex gap-4 p-4 rounded-xl border bg-card">
+            <div key={item.id} className="flex flex-wrap gap-3 sm:gap-4 p-4 rounded-xl border bg-card">
               <Link href={`/product/${item.product.id}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-muted block">
                 {item.product.images?.[0] && <Image src={item.product.images[0].url} alt="" fill className="object-cover" sizes="96px" />}
               </Link>
@@ -125,7 +125,7 @@ export function CartContent() {
                   </div>
                 </div>
               </div>
-              <p className="font-semibold shrink-0 self-start">{formatPrice(Number(item.product.price) * item.quantity)} soʻm</p>
+              <p className="font-semibold shrink-0 self-start w-full sm:w-auto text-left sm:text-right">{formatPrice(Number(item.product.price) * item.quantity)} soʻm</p>
             </div>
           );
         })}

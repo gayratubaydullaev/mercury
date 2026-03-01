@@ -156,6 +156,7 @@ model Product {
   isModerated Boolean  @default(false) @map("is_moderated")
   options     Json?    @map("options")
   specs       Json?    @map("specs")   // Xususiyatlar: { "Material": "Paxta", "Og'irlik": "200g" }
+  unit        String?  @map("unit")    // Birlik: dona, kg, m2, m, l — ixtiyoriy
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

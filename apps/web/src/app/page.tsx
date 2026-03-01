@@ -15,7 +15,7 @@ function ProductGridFallback() {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Fixed background blobs — only on desktop; on mobile omitted for smooth scroll */}
       <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none hidden md:block">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply opacity-50 animate-blob will-change-transform" />

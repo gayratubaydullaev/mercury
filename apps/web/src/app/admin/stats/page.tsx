@@ -28,9 +28,9 @@ export default function AdminStatsPage() {
   const sellerRows = Array.isArray(payouts?.data) ? payouts.data : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0">
       <div>
-        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
           <BarChart3 className="h-7 w-7" />
           Analitika
         </h1>

@@ -300,7 +300,7 @@ export function Header() {
                 </svg>
               </Button>
               {catalogOpen && (
-                <div className="fixed left-0 top-24 z-50 flex w-[560px] max-h-[calc(100vh-6rem)] rounded-r-xl border border-l-0 border-border bg-card shadow-xl overflow-hidden">
+                <div className="fixed left-0 top-24 z-50 flex w-[min(560px,100vw-2rem)] max-w-full max-h-[calc(100vh-6rem)] rounded-r-xl border border-l-0 border-border bg-card shadow-xl overflow-hidden">
                   {/* Левая колонка — категории (скролл при большом списке) */}
                   <div className="w-72 shrink-0 border-r border-border bg-card py-2 overflow-y-auto max-h-[calc(100vh-6rem)] min-h-0">
                     <Link

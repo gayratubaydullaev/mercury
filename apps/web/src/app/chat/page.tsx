@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,9 +21,15 @@ type Session = {
 
 export default function ChatListPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const asParam = searchParams.get('as');
   const [sessions, setSessions] = useState<Session[] | null>(null);
-  const [asBuyer, setAsBuyer] = useState(true);
+  const [asBuyer, setAsBuyer] = useState(asParam === 'seller' ? false : true);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  useEffect(() => {
+    setAsBuyer(asParam === 'seller' ? false : true);
+  }, [asParam]);
 
   useEffect(() => {
     if (!token) {
@@ -71,9 +77,9 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4 pb-24">
-      <h1 className="text-2xl font-bold mb-4">Xabarlar</h1>
-      <div className="flex gap-2 mb-4">
+    <div className="w-full max-w-lg mx-auto px-4 sm:px-6 py-4 pb-24">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">Xabarlar</h1>
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button variant={asBuyer ? 'default' : 'outline'} size="sm" onClick={() => setAsBuyer(true)}>
           Mening suhbatlarim
         </Button>

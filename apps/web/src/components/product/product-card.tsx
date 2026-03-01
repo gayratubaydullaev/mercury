@@ -22,6 +22,7 @@ export interface ProductCardProduct {
   price: string;
   comparePrice?: string | null;
   stock?: number;
+  unit?: string | null;
   images: { url: string }[];
   shop?: { name?: string; slug: string };
   createdAt?: string;
@@ -180,7 +181,7 @@ function ProductCardInner({ product, className, initialFavorite, onFavoriteChang
           <div className="flex flex-col">
             {comparePrice != null && comparePrice > price && (
               <span className="text-sm text-muted-foreground line-through leading-tight">
-                {formatPrice(comparePrice)} soʻm
+                {formatPrice(comparePrice)} soʻm{product.unit ? ` / ${product.unit}` : ''}
               </span>
             )}
             <div className="flex items-baseline gap-2 overflow-hidden">
@@ -190,7 +191,7 @@ function ProductCardInner({ product, className, initialFavorite, onFavoriteChang
                   priceStr.length > 12 ? 'text-base' : 'text-lg'
                 )}
               >
-                {priceStr} soʻm
+                {priceStr} soʻm{product.unit ? ` / ${product.unit}` : ''}
               </span>
             </div>
           </div>

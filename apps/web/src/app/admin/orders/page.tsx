@@ -26,8 +26,8 @@ export default function AdminOrdersPage() {
   const errorMessage = 'message' in data ? data.message : null;
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">Barcha buyurtmalar</h1>
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">Barcha buyurtmalar</h1>
       <p className="text-muted-foreground mb-6">Platformadagi barcha buyurtmalar</p>
       {orders.length === 0 && errorMessage && (
         <p className="text-destructive text-sm mb-4">{errorMessage}</p>

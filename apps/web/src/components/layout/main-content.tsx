@@ -9,8 +9,8 @@ export function MainContent({ children }: { children: React.ReactNode }) {
     <main
       className={
         isProductPage
-          ? 'w-full flex-1'
-          : 'w-full px-0.5 md:px-6 pt-1 md:pt-4 pb-6 flex-1'
+          ? 'w-full max-w-full min-w-0 flex-1'
+          : 'w-full max-w-full min-w-0 px-3 sm:px-4 md:px-6 pt-1 md:pt-4 pb-6 flex-1'
       }
     >
       {children}

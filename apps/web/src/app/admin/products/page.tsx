@@ -64,9 +64,9 @@ export default function AdminProductsPage() {
   const products = data.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {loadError && <p className="text-destructive text-sm">{loadError}</p>}
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
         <Package className="h-7 w-7" />
         Moderatsiya (tovarlar)
       </h1>
@@ -85,7 +85,7 @@ export default function AdminProductsPage() {
           ) : (
             <ul className="space-y-3">
               {products.map((p) => (
-                <li key={p.id} className="flex items-center gap-4 p-3 rounded-lg border bg-card">
+                <li key={p.id} className="flex flex-wrap items-center gap-3 sm:gap-4 p-3 rounded-lg border bg-card">
                   <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted shrink-0">
                     {p.images?.[0] ? (
                       <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="56px" />
@@ -98,7 +98,7 @@ export default function AdminProductsPage() {
                     <p className="text-sm text-muted-foreground">{p.shop?.name} · {p.category?.name}</p>
                     <p className="text-sm">{formatPrice(Number(p.price))} soʻm</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {p.isModerated ? (
                       <span className="text-sm text-green-600 font-medium">Tasdiqlangan</span>
                     ) : (
