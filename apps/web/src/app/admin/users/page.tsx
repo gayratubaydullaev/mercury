@@ -26,23 +26,34 @@ interface AdminUser {
 
 interface AdminUsersResponse {
   data: AdminUser[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
   message?: string;
 }
+
+const PAGE_SIZE = 20;
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<AdminUsersResponse | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const load = () => {
     if (!token) return;
-    const q = roleFilter ? `?role=${roleFilter}` : '';
+    const params = new URLSearchParams();
+    if (roleFilter) params.set('role', roleFilter);
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    const q = `?${params.toString()}`;
     apiGetJson<AdminUsersResponse>(`${API_URL}/admin/users${q}`, { headers: { Authorization: `Bearer ${token}` } }).then(setData).catch(() => setData(null));
   };
 
   useEffect(() => {
     load();
-  }, [token, roleFilter]);
+  }, [token, roleFilter, page]);
 
   const block = (id: string, block: boolean) => {
     if (!token) return;
@@ -79,18 +90,29 @@ export default function AdminUsersPage() {
 
   const users = Array.isArray(data?.data) ? data.data : [];
 
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
+  const currentPage = data?.page ?? 1;
+
   return (
     <div className="min-w-0">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Foydalanuvchilar</h1>
-      <p className="text-muted-foreground mb-4">Koʻrish, bloklash va rol berish</p>
+      <p className="text-muted-foreground mb-4">Koʻrish, bloklash va rol berish. Jami: {total}</p>
       <div className="flex flex-wrap gap-2 mb-4">
-        <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => setRoleFilter('')}>Barchasi</Button>
+        <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
         {ROLES.map((r) => (
-          <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" onClick={() => setRoleFilter(r)}>{ROLE_LABELS[r]}</Button>
+          <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" onClick={() => { setRoleFilter(r); setPage(1); }}>{ROLE_LABELS[r]}</Button>
         ))}
       </div>
       {users.length === 0 && isApiError(data) && data.message && (
         <p className="text-destructive text-sm mb-4">{data.message}</p>
+      )}
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+          <span className="text-sm text-muted-foreground">Sahifa {currentPage} / {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Keyingi</Button>
+        </div>
       )}
       <div className="space-y-3 max-w-3xl">
         {users.map((u) => (

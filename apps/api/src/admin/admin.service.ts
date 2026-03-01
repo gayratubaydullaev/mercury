@@ -162,17 +162,28 @@ export class AdminService {
   }
 
   async getStats() {
-    const [usersCount, productsCount, ordersCount, totalRevenue] = await Promise.all([
+    const [
+      usersCount,
+      productsCount,
+      ordersCount,
+      totalRevenue,
+      pendingProductsCount,
+      pendingReviewsCount,
+    ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.product.count({ where: { isActive: true } }),
       this.prisma.order.count(),
       this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'PAID' } }),
+      this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
+      this.prisma.review.count({ where: { isModerated: false } }),
     ]);
     return {
       usersCount,
       productsCount,
       ordersCount,
       totalRevenue: totalRevenue._sum.totalAmount?.toString() ?? '0',
+      pendingProductsCount,
+      pendingReviewsCount,
     };
   }
 

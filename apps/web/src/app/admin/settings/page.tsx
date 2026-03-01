@@ -5,10 +5,12 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { Banknote, Truck } from 'lucide-react';
+import { Banknote, Truck, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type Settings = {
   commissionRate: string;
@@ -117,46 +119,56 @@ export default function AdminSettingsPage() {
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5" /> Komissiya va minimal toʻlov</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <Input type="number" step="0.01" placeholder="Komissiya %" value={commission} onChange={(e) => setCommission(e.target.value)} />
-            <Input type="number" placeholder="Min to'lov (soʻm)" value={minPayout} onChange={(e) => setMinPayout(e.target.value)} />
+            <div className="space-y-2">
+              <Label htmlFor="commission">Komissiya (%)</Label>
+              <Input id="commission" type="number" step="0.01" min="0" max="100" placeholder="5" value={commission} onChange={(e) => setCommission(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minPayout">Minimal toʻlov (soʻm)</Label>
+              <Input id="minPayout" type="number" min="0" placeholder="100000" value={minPayout} onChange={(e) => setMinPayout(e.target.value)} />
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Toʻlov usullari</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-3">Qaysi toʻlov usullarini xaridorlar uchun koʻrsatish (yoqish/oʻchirish)</p>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.paymentClickEnabled} onChange={() => toggle('paymentClickEnabled')} />
-              <span>Click</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.paymentPaymeEnabled} onChange={() => toggle('paymentPaymeEnabled')} />
-              <span>Payme</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.paymentCashEnabled} onChange={() => toggle('paymentCashEnabled')} />
-              <span>Naqd</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.paymentCardOnDeliveryEnabled} onChange={() => toggle('paymentCardOnDeliveryEnabled')} />
-              <span>Karta (yetkazib berishda)</span>
-            </label>
+          <CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> Toʻlov usullari</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">Qaysi toʻlov usullarini xaridorlar uchun koʻrsatish</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.paymentClickEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.paymentClickEnabled} onChange={() => toggle('paymentClickEnabled')} />
+                <span className="font-medium">Click</span>
+              </label>
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.paymentPaymeEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.paymentPaymeEnabled} onChange={() => toggle('paymentPaymeEnabled')} />
+                <span className="font-medium">Payme</span>
+              </label>
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.paymentCashEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.paymentCashEnabled} onChange={() => toggle('paymentCashEnabled')} />
+                <span className="font-medium">Naqd</span>
+              </label>
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.paymentCardOnDeliveryEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.paymentCardOnDeliveryEnabled} onChange={() => toggle('paymentCardOnDeliveryEnabled')} />
+                <span className="font-medium">Karta (yetkazib berishda)</span>
+              </label>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" /> Yetkazib berish / samoviyoz</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-3">Qaysi usullarni xaridorlar uchun koʻrsatish</p>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.deliveryEnabled} onChange={() => toggle('deliveryEnabled')} />
-              <span>Yetkazib berish</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={paymentDelivery.pickupEnabled} onChange={() => toggle('pickupEnabled')} />
-              <span>Oʻzim olib ketaman (samoviyoz)</span>
-            </label>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" /> Yetkazib berish</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">Qaysi usullarni xaridorlar uchun koʻrsatish</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.deliveryEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.deliveryEnabled} onChange={() => toggle('deliveryEnabled')} />
+                <span className="font-medium">Yetkazib berish</span>
+              </label>
+              <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.pickupEnabled && 'border-primary bg-primary/5')}>
+                <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.pickupEnabled} onChange={() => toggle('pickupEnabled')} />
+                <span className="font-medium">Oʻzim olib ketaman</span>
+              </label>
+            </div>
           </CardContent>
         </Card>
 

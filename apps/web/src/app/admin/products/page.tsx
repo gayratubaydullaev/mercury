@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -22,11 +23,16 @@ type Product = {
 };
 
 export default function AdminProductsPage() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<{ data: Product[]; total: number; page: number; totalPages: number } | null>(null);
   const [filter, setFilter] = useState<'false' | 'true' | ''>('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  useEffect(() => {
+    if (searchParams.get('filter') === 'pending') setFilter('false');
+  }, [searchParams]);
 
   const load = () => {
     if (!token) return;

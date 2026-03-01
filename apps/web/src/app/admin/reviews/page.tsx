@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { MessageSquare, Star, Trash2, Check, X } from 'lucide-react';
+
+const PAGE_SIZE = 20;
 
 type Review = {
   id: string;
@@ -22,16 +25,23 @@ type Review = {
 };
 
 export default function AdminReviewsPage() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<{ data: Review[]; total: number; page: number; totalPages: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'false' | 'true' | ''>('');
+  const [page, setPage] = useState(1);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  useEffect(() => {
+    if (searchParams.get('filter') === 'pending') setFilter('false');
+  }, [searchParams]);
 
   const load = () => {
     if (!token) return;
-    const q = filter ? `&isModerated=${filter}` : '';
-    apiFetch(`${API_URL}/admin/reviews?page=1&limit=50${q}`, { headers: { Authorization: `Bearer ${token}` } })
+    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (filter) params.set('isModerated', filter);
+    apiFetch(`${API_URL}/admin/reviews?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ data: [], total: 0, page: 1, totalPages: 0 }));
@@ -39,7 +49,7 @@ export default function AdminReviewsPage() {
 
   useEffect(() => {
     load();
-  }, [token, filter]);
+  }, [token, filter, page]);
 
   const handleModerate = (id: string, approve: boolean) => {
     if (!token) return;
@@ -84,10 +94,17 @@ export default function AdminReviewsPage() {
         Sharhlar (moderatsiya)
       </h1>
 
-      <div className="flex gap-2 flex-wrap">
-        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('')}>Barchasi</Button>
-        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('false')}>Moderatsiya qilinmagan</Button>
-        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
+      <div className="flex gap-2 flex-wrap items-center">
+        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter(''); setPage(1); }}>Barchasi</Button>
+        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter('false'); setPage(1); }}>Moderatsiya qilinmagan</Button>
+        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" onClick={() => { setFilter('true'); setPage(1); }}>Tasdiqlangan</Button>
+        {data && data.totalPages > 1 && (
+          <div className="flex items-center gap-2 ml-4">
+            <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+            <span className="text-sm text-muted-foreground">Sahifa {data.page} / {data.totalPages}</span>
+            <Button variant="outline" size="sm" disabled={data.page >= data.totalPages} onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}>Keyingi</Button>
+          </div>
+        )}
       </div>
 
       <Card>

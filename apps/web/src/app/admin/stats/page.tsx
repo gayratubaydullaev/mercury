@@ -9,7 +9,14 @@ import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { BarChart3, Store } from 'lucide-react';
 
-type PayoutRow = { seller: { id: string; firstName: string; lastName: string; email: string }; total: number; commission: number; ordersCount: number };
+type PayoutRow = {
+  seller: { id: string; firstName: string; lastName: string; email: string };
+  total: number;
+  commission: number;
+  ordersCount: number;
+  totalPaid?: number;
+  balance?: number;
+};
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState<{ usersCount: number; productsCount: number; ordersCount: number; totalRevenue: string } | null>(null);
@@ -75,6 +82,8 @@ export default function AdminStatsPage() {
                     <th className="text-right py-2 px-3 font-medium">Buyurtmalar</th>
                     <th className="text-right py-2 px-3 font-medium">Jami</th>
                     <th className="text-right py-2 px-3 font-medium">Komissiya</th>
+                    <th className="text-right py-2 px-3 font-medium">Toʻlangan</th>
+                    <th className="text-right py-2 px-3 font-medium">Qoldiq</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -87,6 +96,8 @@ export default function AdminStatsPage() {
                       <td className="py-2 px-3 text-right">{row.ordersCount}</td>
                       <td className="py-2 px-3 text-right">{formatPrice(row.total)} soʻm</td>
                       <td className="py-2 px-3 text-right">{formatPrice(row.commission)} soʻm</td>
+                      <td className="py-2 px-3 text-right">{formatPrice(row.totalPaid ?? 0)} soʻm</td>
+                      <td className="py-2 px-3 text-right font-medium">{formatPrice(row.balance ?? row.commission)} soʻm</td>
                     </tr>
                   ))}
                 </tbody>
