@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateBannerDto {
   @ApiProperty()

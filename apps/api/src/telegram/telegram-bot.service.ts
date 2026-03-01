@@ -3,8 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { TelegramService } from './telegram.service';
-// CommonJS module: use require-style import so constructor is available at runtime
-import TelegramBot = require('node-telegram-bot-api');
+import TelegramBot from 'node-telegram-bot-api';
 import { OrderStatus, Prisma } from '@prisma/client';
 
 function esc(s: string): string {
@@ -180,6 +179,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (linkStartMatch) {
       const token = linkStartMatch[1].trim();
       if (token) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
         const linkRow = await (this.prisma as any).telegramLoginToken.findUnique({
           where: { token },
         });
@@ -194,6 +194,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           await this.bot!.sendMessage(chatId, 'Bu link kirish uchun. Saytda "Telegram orqali kirish" tugmasidan foydalaning.');
           return;
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
         await (this.prisma as any).telegramLoginToken.update({
           where: { id: linkRow.id },
           data: { telegramChatId: chatId },
@@ -211,6 +212,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (loginStartMatch) {
       const token = loginStartMatch[1].trim();
       if (token) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
         const loginRow = await (this.prisma as any).telegramLoginToken.findUnique({
           where: { token },
         });
@@ -221,6 +223,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           );
           return;
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
         await (this.prisma as any).telegramLoginToken.update({
           where: { id: loginRow.id },
           data: { telegramChatId: chatId },
