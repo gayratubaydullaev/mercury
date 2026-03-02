@@ -103,6 +103,7 @@ pnpm run dev
 |--------|--------|--------|
 | `ECONNREFUSED 127.0.0.1:4000`, "Failed to proxy" | API (port 4000) ishlamayapti | Ildizdan `pnpm run dev` ishlating yoki boshqa terminalda `cd apps/api && pnpm run dev` ni ishga tushiring. |
 | API ishga tushmayapti | PostgreSQL/Redis ulanishi yoki `.env` | `apps/api/.env` da `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` toʻgʻri ekanligini tekshiring. `pnpm db:migrate` bajarilgan boʻlishi kerak. |
+| `telegram_login_tokens` does not exist, 500 при «Telegram orqali kirish» | Migratsiyalar serverni bazaga qoʻllanmagan | Serverni (production) da: `cd apps/api && pnpm run prisma:migrate:deploy`. `DATABASE_URL` production bazaga yoʻnaltirilgan boʻlishi kerak. |
 
 ### 5. Docker (lokal)
 
@@ -218,6 +219,8 @@ CSRF_SECRET=your-csrf-secret-min-32-characters-for-production
 # Frontend manzili: Telegram Web App va bildirishnomalardagi linklar
 APP_URL=https://samarkand.site
 TELEGRAM_BOT_TOKEN=123456789:ABC...
+# Saytda «Telegram orqali kirish» tugmasi uchun — bot username (@ siz, masalan MyShopUZBot)
+TELEGRAM_BOT_USERNAME=MyShopUZBot
 # Qolgan (SMTP, Click, Payme, Cloudinary va boshqalar) — ixtiyoriy
 ```
 

@@ -53,13 +53,19 @@ function LoginForm() {
     setTgError('');
     setTgLoading(true);
     apiFetch(API_URL + '/auth/telegram/request-login', { method: 'POST' })
-      .then((r) => r.json())
-      .then((data: { token?: string; loginUrl?: string; message?: string }) => {
+      .then(async (r) => {
+        const data = (await r.json()) as { token?: string; loginUrl?: string; message?: string };
+        if (!r.ok) {
+          setTgError(data?.message ?? 'Telegram kirish sozlanmagan. (Server sozlamalarini tekshiring.)');
+          setTgLoading(false);
+          return;
+        }
         if (!data.token || !data.loginUrl) {
           setTgError(data?.message ?? 'Telegram kirish sozlanmagan.');
           setTgLoading(false);
           return;
         }
+        const loginToken = data.token;
         window.open(data.loginUrl, '_blank', 'noopener');
         setTgWaiting(true);
         setTgLoading(false);
@@ -73,7 +79,7 @@ function LoginForm() {
             setTgError('Vaqt tugadi. Qayta urinib koʻring.');
             return;
           }
-          fetch(`${API_URL}/auth/telegram/verify?token=${encodeURIComponent(data.token!)}`, { credentials: 'include' })
+          fetch(`${API_URL}/auth/telegram/verify?token=${encodeURIComponent(loginToken)}`, { credentials: 'include' })
             .then((r) => r.json())
             .then((res: { status?: string; accessToken?: string; user?: unknown }) => {
               if (res.status === 'pending') return;
