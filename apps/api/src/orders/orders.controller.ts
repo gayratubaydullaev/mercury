@@ -70,6 +70,13 @@ export class OrdersController {
     return this.orders.findSellerOrders(userId, pageNum, limitNum, statusFilter);
   }
 
+  @Get('guest-lookup')
+  @Public()
+  @ApiOperation({ summary: 'Guest order lookup by order number + phone (no auth)' })
+  guestLookup(@Query('orderNumber') orderNumber: string, @Query('guestPhone') guestPhone: string) {
+    return this.orders.findGuestOrderByNumberAndPhone(orderNumber ?? '', guestPhone ?? '');
+  }
+
   @Get(':id/guest-view')
   @Public()
   @ApiOperation({ summary: 'Get order by guest view token (no auth)' })

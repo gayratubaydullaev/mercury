@@ -27,7 +27,16 @@ export default function MyOrdersPage() {
       .catch(() => setData({ data: [] }));
   }, [token]);
 
-  if (!token) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 py-8"><p className="text-muted-foreground">Kirish kerak.</p><Button asChild><Link href="/auth/login?next=/orders">Kirish</Link></Button></div>;
+  if (!token) return (
+    <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 py-8 space-y-4">
+      <p className="text-muted-foreground">Buyurtmalaringizni koʻrish uchun tizimga kiring.</p>
+      <div className="flex flex-wrap gap-3">
+        <Button asChild><Link href="/auth/login?next=/orders">Kirish</Link></Button>
+        <Button variant="outline" asChild><Link href="/order/lookup">Mehmon buyurtmasini koʻrish</Link></Button>
+      </div>
+      <p className="text-sm text-muted-foreground">Tizimga kirmagan holda buyurtma bergan boʻlsangiz, &quot;Mehmon buyurtmasini koʻrish&quot; orqali buyurtma raqami va telefon raqamingizni kiritib koʻring.</p>
+    </div>
+  );
   if (forbidden) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 py-8"><p className="text-muted-foreground mb-4">Buyurtmalar faqat xaridorlar uchun. Sotuvchi boʻlsangiz, doʻkon buyurtmalari Sotuvchi kabinetida.</p><Button asChild variant="outline"><Link href="/account">← Profil</Link></Button></div>;
   if (!data) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6"><Skeleton className="h-48 w-full rounded-xl" /></div>;
 

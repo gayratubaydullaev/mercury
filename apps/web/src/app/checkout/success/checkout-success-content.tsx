@@ -188,9 +188,19 @@ export function CheckoutSuccessContent() {
             </Link>
           </Button>
         )}
+        {orders.length > 0 && (
+          <Button variant="outline" asChild>
+            <Link href="/order/lookup">Keyinroq raqam va telefon orqali koʻrish</Link>
+          </Button>
+        )}
         <Button asChild><Link href="/orders">Buyurtmalarim</Link></Button>
         <Button asChild variant="outline"><Link href="/catalog">Katalog</Link></Button>
       </div>
+      {orders.length > 0 && (
+        <p className="text-center text-sm text-muted-foreground pt-2">
+          Havolani yoʻqotsangiz, <Link href="/order/lookup" className="text-primary underline">Buyurtmani tekshirish</Link> sahifasida buyurtma raqami va telefon raqamingizni kiritib koʻring.
+        </p>
+      )}
     </div>
   );
 }

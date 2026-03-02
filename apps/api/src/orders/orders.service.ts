@@ -163,6 +163,32 @@ export class OrdersService {
     return order;
   }
 
+  /** Normalize phone for lookup: digits only (e.g. 998901234567). */
+  private normalizePhone(phone: string): string {
+    return (phone || '').replace(/\D/g, '');
+  }
+
+  /** Get guest order by order number + phone (public). For guests who lost the view link. */
+  async findGuestOrderByNumberAndPhone(orderNumber: string, guestPhone: string) {
+    const phone = this.normalizePhone(guestPhone ?? '');
+    if (!orderNumber?.trim() || !phone) throw new NotFoundException('Order not found');
+    const order = await this.prisma.order.findFirst({
+      where: {
+        orderNumber: orderNumber.trim(),
+        buyerId: null,
+        guestPhone: { not: null },
+      },
+      include: {
+        items: { include: { product: { include: { images: true, shop: true } }, variant: true } },
+        seller: { include: { shop: true } },
+      },
+    });
+    if (!order || this.normalizePhone(order.guestPhone ?? '') !== phone) {
+      throw new NotFoundException('Order not found');
+    }
+    return order;
+  }
+
   /** Get order by id + guest view token (public, for guests to view their order after checkout). */
   async findOneByGuestToken(id: string, token: string) {
     if (!token?.trim()) throw new NotFoundException('Order not found');

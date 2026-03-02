@@ -10,7 +10,7 @@ import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 
 export default function SellerOrdersPage() {
-  const [data, setData] = useState<{ data: { id: string; orderNumber: string; status: string; totalAmount: string; createdAt: string; buyer: { firstName: string; lastName: string } }[] } | null>(null);
+  const [data, setData] = useState<{ data: { id: string; orderNumber: string; status: string; totalAmount: string; createdAt: string; buyer: { firstName: string; lastName: string } | null; guestPhone?: string | null }[] } | null>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function SellerOrdersPage() {
           <Card key={o.id}>
             <CardHeader className="pb-2"><span className="font-mono">{o.orderNumber}</span> <span className="text-sm text-muted-foreground">{new Date(o.createdAt).toLocaleDateString('uz-UZ')}</span></CardHeader>
             <CardContent>
-              <p>Buyurtmachi: {o.buyer.firstName} {o.buyer.lastName}</p>
+              <p>Buyurtmachi: {o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</p>
               <p className="font-semibold">{formatPrice(Number(o.totalAmount))} soʻm</p>
               <Badge className="mr-2">{o.status}</Badge>
               {o.status === 'PENDING' && <Button size="sm" onClick={() => updateStatus(o.id, 'CONFIRMED')}>Tasdiqlash</Button>}

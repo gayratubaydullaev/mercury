@@ -26,7 +26,8 @@ type Order = {
   status: string;
   totalAmount: string;
   createdAt: string;
-  buyer: { firstName: string; lastName: string };
+  buyer: { firstName: string; lastName: string } | null;
+  guestPhone?: string | null;
 };
 
 const statusLabel: Record<string, string> = {
@@ -172,7 +173,7 @@ export default function SellerDashboardPage() {
                   <Link href="/seller/orders" className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm">{o.orderNumber}</span>
-                      <span className="text-muted-foreground text-sm">{o.buyer.firstName} {o.buyer.lastName}</span>
+                      <span className="text-muted-foreground text-sm">{o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</span>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{statusLabel[o.status] ?? o.status}</span>
                     </div>
                     <span className="font-semibold text-sm">{formatPrice(Number(o.totalAmount))} soʻm</span>
