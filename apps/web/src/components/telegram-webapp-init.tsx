@@ -10,7 +10,7 @@ const SWIPE_THRESHOLD = 60;
 /**
  * Инициализирует Telegram Web App (expand, отключение вертикальных свайпов, подтверждение выхода)
  * и обрабатывает свайп от левого края вправо как "назад" (router.back).
- * Вешается на layout telegram-app.
+ * Настройки жестов повторно применяются при возврате на вкладку/фокус, чтобы клиент не сбрасывал их.
  */
 export function TelegramWebAppInit({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,20 +18,45 @@ export function TelegramWebAppInit({ children }: { children: React.ReactNode }) 
   const twaRef = useRef<ReturnType<typeof getTelegramWebApp>>(undefined);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
+  const reinit = () => {
+    const twa = getTelegramWebApp();
+    if (twa) {
+      twaRef.current = twa;
+      initTelegramWebApp(twa);
+    }
+  };
+
   useEffect(() => {
     let done = false;
     const run = () => {
       const twa = getTelegramWebApp();
       if (twa && !done) {
         done = true;
-        twaRef.current = twa;
-        initTelegramWebApp(twa);
+        reinit();
         return;
       }
       if (!done) setTimeout(run, 50);
     };
     run();
   }, []);
+
+  // Повторно применяем отключение вертикальных свайпов и подтверждение выхода при возврате в приложение
+  useEffect(() => {
+    const onVisible = () => reinit();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+    };
+  }, []);
+
+  // После навигации в подстраницах снова применяем настройки (часть клиентов сбрасывает после перехода)
+  useEffect(() => {
+    reinit();
+  }, [pathname]);
 
   useEffect(() => {
     const el = document.documentElement;

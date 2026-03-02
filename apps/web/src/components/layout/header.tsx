@@ -168,6 +168,12 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Закрывать выпадающий каталог при смене страницы
+  useEffect(() => {
+    setCatalogOpen(false);
+    setHoveredCategory(null);
+  }, [pathname]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = searchQuery.trim();

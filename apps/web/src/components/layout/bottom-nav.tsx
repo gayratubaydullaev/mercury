@@ -121,6 +121,12 @@ export function BottomNav() {
       .catch(() => setCategories([]));
   }, [catalogOpen]);
 
+  // Закрывать панель каталога при смене страницы или при переходе по навигации
+  useEffect(() => {
+    setCatalogOpen(false);
+    setSelectedCategory(null);
+  }, [pathname]);
+
   const closeCatalog = () => {
     setCatalogOpen(false);
     setSelectedCategory(null);
@@ -176,6 +182,7 @@ export function BottomNav() {
                 className={baseClasses}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
+                onClick={closeCatalog}
               >
                 <span className="relative flex items-center justify-center w-6 h-6">
                   <Icon className="h-6 w-6 shrink-0" />

@@ -10,7 +10,7 @@ export const metadata = {
 export default function TelegramAppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+      <Script src="https://telegram.org/js/telegram-web-app.js?60" strategy="beforeInteractive" />
       <TelegramWebAppInit>{children}</TelegramWebAppInit>
     </>
   );
