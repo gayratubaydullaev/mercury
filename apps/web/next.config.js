@@ -3,6 +3,8 @@ const apiServerUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
+  // Unique build ID per deploy to avoid "Failed to find Server Action" after deploy (stale client/server mismatch)
+  generateBuildId: async () => process.env.BUILD_ID || `build-${Date.now()}`,
   async rewrites() {
     return [{ source: '/api-proxy/:path*', destination: `${apiServerUrl}/:path*` }];
   },

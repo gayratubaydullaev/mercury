@@ -17,6 +17,22 @@ export function formatPrice(value: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+/** Проверка JWT по полю exp (без верификации подписи). Если токен невалидный или истёк — true. */
+export function isTokenExpired(token: string | null): boolean {
+  if (!token?.trim()) return true;
+  try {
+    const parts = token.trim().split('.');
+    if (parts.length !== 3) return true;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(typeof atob !== 'undefined' ? atob(payload) : Buffer.from(payload, 'base64').toString());
+    const exp = decoded?.exp;
+    if (typeof exp !== 'number') return false;
+    return Date.now() / 1000 >= exp - 60;
+  } catch {
+    return true;
+  }
+}
+
 /** Транслитерация кириллицы в латиницу для поиска (русский, узбекский и др.). */
 export function transliterateCyrillicToLatin(text: string): string {
   const map: Record<string, string> = {

@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product/product-card';
-import { API_URL } from '@/lib/utils';
+import { API_URL, isTokenExpired } from '@/lib/utils';
 import { apiFetch, apiGetJson } from '@/lib/api';
 import { getGuestFavoriteIds, removeGuestFavorite } from '@/lib/guest-favorites';
+import { useAuth } from '@/contexts/auth-context';
 import { type ApiProduct, apiProductToCardProduct } from '@/types/api';
 
 interface FavItem {
@@ -44,17 +45,19 @@ const FavoritesSkeleton = () => (
 );
 
 export default function FavoritesPage() {
+  const { token, setToken } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [list, setList] = useState<FavItem[] | null>(null);
   const [guestIds, setGuestIds] = useState<string[]>([]);
-  const [token, setToken] = useState<string | null>(null);
 
   const fetchFavs = (t: string | null) => {
-    if (t) {
-      apiGetJson<FavItem[]>(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${t}` } })
-        .then(setList)
-        .catch(() => setList([]));
+    if (!t || isTokenExpired(t)) {
+      if (t) setToken(null);
+      return;
     }
+    apiGetJson<FavItem[]>(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${t}` } })
+      .then(setList)
+      .catch(() => setList([]));
   };
 
   const fetchGuestFavs = () => {
@@ -79,8 +82,23 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    const t = localStorage.getItem('accessToken');
-    setToken(t);
+    const t = token;
+    if (t && isTokenExpired(t)) {
+      setToken(null);
+      const ids = getGuestFavoriteIds();
+      setGuestIds(ids);
+      if (ids.length === 0) setList([]);
+      else {
+        Promise.all(ids.map((id) => fetchProductOrNull(id)))
+          .then((products) => {
+            setList(
+              products.filter((p): p is ApiProduct => p != null).map((p) => ({ id: p.id, product: p }))
+            );
+          })
+          .catch(() => setList([]));
+      }
+      return;
+    }
     if (t) {
       apiGetJson<FavItem[]>(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${t}` } })
         .then(setList)
@@ -88,9 +106,8 @@ export default function FavoritesPage() {
     } else {
       const ids = getGuestFavoriteIds();
       setGuestIds(ids);
-      if (ids.length === 0) {
-        setList([]);
-      } else {
+      if (ids.length === 0) setList([]);
+      else {
         Promise.all(ids.map((id) => fetchProductOrNull(id)))
           .then((products) => {
             setList(
@@ -100,7 +117,7 @@ export default function FavoritesPage() {
           .catch(() => setList([]));
       }
     }
-  }, [mounted]);
+  }, [mounted, token, setToken]);
 
   useEffect(() => {
     if (!mounted || token) return;

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, LayoutGrid, ShoppingCart, Heart, User, ChevronRight, ArrowLeft, X } from 'lucide-react';
-import { API_URL, cn } from '@/lib/utils';
+import { API_URL, cn, isTokenExpired } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
 import { getGuestFavoriteIds } from '@/lib/guest-favorites';
@@ -55,6 +55,11 @@ function useFavoritesCount() {
     }
     function fetchFav() {
       if (!token) {
+        updateGuest();
+        return;
+      }
+      if (isTokenExpired(token)) {
+        setToken(null);
         updateGuest();
         return;
       }

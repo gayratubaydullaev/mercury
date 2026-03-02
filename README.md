@@ -104,6 +104,8 @@ pnpm run dev
 | `ECONNREFUSED 127.0.0.1:4000`, "Failed to proxy" | API (port 4000) ishlamayapti | Ildizdan `pnpm run dev` ishlating yoki boshqa terminalda `cd apps/api && pnpm run dev` ni ishga tushiring. |
 | API ishga tushmayapti | PostgreSQL/Redis ulanishi yoki `.env` | `apps/api/.env` da `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` toʻgʻri ekanligini tekshiring. `pnpm db:migrate` bajarilgan boʻlishi kerak. |
 | `telegram_login_tokens` does not exist, 500 при «Telegram orqali kirish» | Migratsiyalar serverni bazaga qoʻllanmagan | Serverni (production) da: `cd apps/api && pnpm run prisma:migrate:deploy`. `DATABASE_URL` production bazaga yoʻnaltirilgan boʻlishi kerak. |
+| `Failed to find Server Action`, `Cannot read properties of null (reading 'digest')` (Next.js web) | Eski build yoki keshlangan JS yangi serverni bilan mos emas | Serverni: `cd apps/web && rm -rf .next && pnpm build && pnpm start` (yoki processni qayta ishga tushiring). Har bir deploy dan keyin Node processni toʻliq qayta ishga tushiring. |
+| API: `connect ETIMEDOUT` (IPv6 yoki 443) | Tashqi xizmatga (DB, Redis, Telegram va hokazo) ulanish vaqti tugadi | Tarmoq/firewall tekshiring; `DATABASE_URL` va boshqa URL larni IPv4 ga oʻzgartiring yoki serverni IPv4 orqali chiqishga majburlang. |
 
 ### 5. Docker (lokal)
 

@@ -8,7 +8,7 @@ import { ShoppingCart, User, Sun, Moon, Heart, LayoutGrid, Search, Loader2 } fro
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTheme } from 'next-themes';
-import { cn, API_URL, formatPrice, transliterateCyrillicToLatin } from '@/lib/utils';
+import { cn, API_URL, formatPrice, transliterateCyrillicToLatin, isTokenExpired } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
 import { getGuestFavoriteIds } from '@/lib/guest-favorites';
@@ -84,6 +84,11 @@ function useFavoritesCount() {
     }
     function fetchFav() {
       if (!token) {
+        updateGuest();
+        return;
+      }
+      if (isTokenExpired(token)) {
+        setToken(null);
         updateGuest();
         return;
       }
