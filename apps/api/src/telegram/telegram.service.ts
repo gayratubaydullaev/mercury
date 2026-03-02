@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import TelegramBot from 'node-telegram-bot-api';
+import * as TelegramBotModule from 'node-telegram-bot-api';
+
+// node-telegram-bot-api is CJS: module.exports = TelegramBot — no .default at runtime
+const TelegramBot = (TelegramBotModule as { default?: typeof TelegramBotModule }).default ?? TelegramBotModule;
 
 const LINK_CODE_EXPIRE_MS = 15 * 60 * 1000;
 const LINK_CODE_LENGTH = 6;
@@ -35,8 +38,8 @@ function canChangeStatus(current: string): boolean {
   return !['DELIVERED', 'CANCELLED'].includes(current);
 }
 
-function orderStatusKeyboard(orderId: string, currentStatus: string): TelegramBot.InlineKeyboardMarkup {
-  const buttons: TelegramBot.InlineKeyboardButton[] = [];
+function orderStatusKeyboard(orderId: string, currentStatus: string): TelegramBotModule.InlineKeyboardMarkup {
+  const buttons: TelegramBotModule.InlineKeyboardButton[] = [];
   if (currentStatus === 'PENDING') {
     buttons.push({ text: '✓ Tasdiqlash', callback_data: `order:${orderId}:CONFIRMED`, style: 'success' as const });
     buttons.push({ text: '✕ Bekor qilish', callback_data: `order:${orderId}:CANCELLED`, style: 'danger' as const });
@@ -58,7 +61,7 @@ function orderStatusKeyboard(orderId: string, currentStatus: string): TelegramBo
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
-  private bot: TelegramBot | null = null;
+  private bot: InstanceType<typeof TelegramBot> | null = null;
 
   constructor(
     private config: ConfigService,
@@ -78,7 +81,7 @@ export class TelegramService {
   async sendMessage(
     chatId: string,
     text: string,
-    options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: TelegramBot.InlineKeyboardMarkup },
+    options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: TelegramBotModule.InlineKeyboardMarkup },
   ): Promise<boolean> {
     if (!this.bot) return false;
     try {
@@ -148,12 +151,12 @@ export class TelegramService {
         `👤 Xaridor: ${escapeHtml(buyerName)}`;
     }
 
-    const rows: TelegramBot.InlineKeyboardButton[][] = [];
+    const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
     if (event === 'new_order' || (event === 'status_updated' && canChangeStatus(order.status))) {
       const kb = orderStatusKeyboard(order.id, order.status);
       if (kb.inline_keyboard[0]?.length) rows.push(kb.inline_keyboard[0]);
     }
-    const bottomRow: TelegramBot.InlineKeyboardButton[] = [];
+    const bottomRow: TelegramBotModule.InlineKeyboardButton[] = [];
     bottomRow.push({ text: '📄 Batafsil', callback_data: `order_detail:${order.id}`, style: 'primary' as const });
     if (baseUrl) bottomRow.push({ text: '📋 Buyurtmalar', url: `${baseUrl}/seller/orders`, style: 'primary' as const });
     rows.push(bottomRow);
@@ -222,7 +225,7 @@ export class TelegramService {
         `🏪 Sotuvchi: ${escapeHtml(sellerName)}`;
     }
 
-    const rows: TelegramBot.InlineKeyboardButton[][] = [];
+    const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
     if (baseUrl) {
       rows.push([{ text: '📋 Mening buyurtmalarim', url: `${baseUrl}/orders`, style: 'primary' as const }]);
     }
@@ -337,7 +340,7 @@ export class TelegramService {
       `\n<b>Mahsulotlar:</b>\n${itemsLines.split('\n').map((l) => escapeHtml(l)).join('\n')}`;
 
     const baseUrl = this.getBaseUrl();
-    const adminRows: TelegramBot.InlineKeyboardButton[][] = [];
+    const adminRows: TelegramBotModule.InlineKeyboardButton[][] = [];
     if (order.id) adminRows.push([{ text: '📄 Batafsil', callback_data: `admin_order_detail:${order.id}`, style: 'primary' as const }]);
     if (baseUrl) adminRows.push([{ text: '📋 Buyurtmalar', url: `${baseUrl}/admin/orders`, style: 'primary' as const }]);
     const replyMarkup = adminRows.length > 0 ? { inline_keyboard: adminRows } : undefined;

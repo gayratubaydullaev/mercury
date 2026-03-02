@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { TelegramService } from './telegram.service';
-import TelegramBot from 'node-telegram-bot-api';
+import * as TelegramBotModule from 'node-telegram-bot-api';
+
+// node-telegram-bot-api is CJS: module.exports = TelegramBot — no .default at runtime
+const TelegramBot = (TelegramBotModule as { default?: typeof TelegramBotModule }).default ?? TelegramBotModule;
 import { OrderStatus, Prisma } from '@prisma/client';
 
 function esc(s: string): string {
@@ -19,7 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Bekor qilindi',
 };
 
-const MAIN_MENU_ROWS: TelegramBot.InlineKeyboardButton[][] = [
+const MAIN_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
   [
     { text: '📋 Buyurtmalar', callback_data: 'cmd:orders', style: 'primary' },
     { text: '📊 Statistika', callback_data: 'cmd:stats', style: 'primary' },
@@ -31,11 +34,11 @@ const MAIN_MENU_ROWS: TelegramBot.InlineKeyboardButton[][] = [
   [{ text: '❓ Yordam', callback_data: 'cmd:help' }],
   [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
 ];
-const MAIN_MENU: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: MAIN_MENU_ROWS };
+const MAIN_MENU: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: MAIN_MENU_ROWS };
 
 /** Меню для обычных пользователей (покупателей): каталог, мои заказы, помощь. */
-function getBuyerMenuRows(webAppUrl: string | null): TelegramBot.InlineKeyboardButton[][] {
-  const rows: TelegramBot.InlineKeyboardButton[][] = [];
+function getBuyerMenuRows(webAppUrl: string | null): TelegramBotModule.InlineKeyboardButton[][] {
+  const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
   if (webAppUrl) {
     rows.push([{ text: "🛒 Do'kon (katalog, savatcha)", web_app: { url: webAppUrl }, style: 'primary' }]);
   }
@@ -55,7 +58,7 @@ function truncateForTelegram(text: string, suffix = '…'): string {
 @Injectable()
 export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TelegramBotService.name);
-  private bot: TelegramBot | null = null;
+  private bot: InstanceType<typeof TelegramBot> | null = null;
 
   constructor(
     private config: ConfigService,
@@ -71,8 +74,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.bot = new TelegramBot(token, { polling: true });
-    this.bot.on('message', (msg: TelegramBot.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
-    this.bot.on('callback_query', (query: TelegramBot.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
+    this.bot.on('message', (msg: TelegramBotModule.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
+    this.bot.on('callback_query', (query: TelegramBotModule.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
     this.bot.setMyCommands([
       { command: 'start', description: 'Botni ishga tushirish' },
       { command: 'shop', description: "Do'konni ochish (veb-ilova)" },
@@ -123,7 +126,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private async sendOrEdit(
     chatId: string,
     text: string,
-    options: { parse_mode?: 'HTML'; reply_markup?: TelegramBot.InlineKeyboardMarkup },
+    options: { parse_mode?: 'HTML'; reply_markup?: TelegramBotModule.InlineKeyboardMarkup },
     messageId?: number,
   ): Promise<void> {
     const safeText = truncateForTelegram(text);
@@ -142,7 +145,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Menu: для админа/продавца — полное меню; для покупателя — каталог, мои заказы, помощь. */
-  private async getMenuWithPanel(chatId: string): Promise<TelegramBot.InlineKeyboardMarkup> {
+  private async getMenuWithPanel(chatId: string): Promise<TelegramBotModule.InlineKeyboardMarkup> {
     const baseUrl = this.telegram.getBaseUrl();
     const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
     const adminChatId = await this.getAdminTelegramChatId();
@@ -167,7 +170,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: menuMarkup }, messageId);
   }
 
-  private async handleMessage(msg: TelegramBot.Message) {
+  private async handleMessage(msg: TelegramBotModule.Message) {
     const rawText = msg.text?.trim() ?? '';
     const text = rawText.toLowerCase();
     const chatId = String(msg.chat.id);
@@ -318,15 +321,15 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         (o) =>
           `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
       );
-      const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+      const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
       const forButtons = orders.slice(0, 10);
       for (let i = 0; i < forButtons.length; i += 2) {
-        const row: TelegramBot.InlineKeyboardButton[] = [];
+        const row: TelegramBotModule.InlineKeyboardButton[] = [];
         row.push({ text: `📄 ${forButtons[i].orderNumber}`, callback_data: `admin_order_detail:${forButtons[i].id}`, style: 'primary' });
         if (forButtons[i + 1]) row.push({ text: `📄 ${forButtons[i + 1].orderNumber}`, callback_data: `admin_order_detail:${forButtons[i + 1].id}`, style: 'primary' });
         orderButtons.push(row);
       }
-      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
       await this.sendOrEdit(chatId, '📋 <b>Admin: Soʻnggi buyurtmalar</b>\n\nQuyidagi tugmalardan batafsil oling:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
       return;
     }
@@ -352,14 +355,14 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       (o) =>
         `📋 ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
     );
-    const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+    const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
     for (let i = 0; i < orders.length; i += 2) {
-      const row: TelegramBot.InlineKeyboardButton[] = [];
+      const row: TelegramBotModule.InlineKeyboardButton[] = [];
       row.push({ text: `📄 ${orders[i].orderNumber}`, callback_data: `order_detail:${orders[i].id}`, style: 'primary' });
       if (orders[i + 1]) row.push({ text: `📄 ${orders[i + 1].orderNumber}`, callback_data: `order_detail:${orders[i + 1].id}`, style: 'primary' });
       orderButtons.push(row);
     }
-    const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+    const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
     await this.sendOrEdit(chatId, '<b>Aktiv buyurtmalar</b>\n\nBatafsil uchun tugmani bosing:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
   }
 
@@ -424,7 +427,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           { text: '💬 Sharhlar', url: `${baseUrl}/admin/reviews`, style: 'primary' },
         ]);
       }
-      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: rows };
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: rows };
       await this.sendOrEdit(
         chatId,
         '⏳ <b>Moderatsiya kutilmoqda</b>\n\n📦 Tovarlar: ' + pendingProducts + '\n💬 Sharhlar: ' + pendingReviews + (baseUrl ? '\n\nTugmalar orqali veb panelda oching.' : ''),
@@ -543,14 +546,14 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       (o) =>
         `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
     );
-    const orderButtons: TelegramBot.InlineKeyboardButton[][] = [];
+    const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
     for (let i = 0; i < Math.min(orders.length, 10); i += 2) {
-      const row: TelegramBot.InlineKeyboardButton[] = [];
+      const row: TelegramBotModule.InlineKeyboardButton[] = [];
       row.push({ text: `📄 ${orders[i].orderNumber}`, callback_data: `buyer_order_detail:${orders[i].id}`, style: 'primary' });
       if (orders[i + 1]) row.push({ text: `📄 ${orders[i + 1].orderNumber}`, callback_data: `buyer_order_detail:${orders[i + 1].id}`, style: 'primary' });
       orderButtons.push(row);
     }
-    const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...menuRows] };
+    const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...menuRows] };
     await this.sendOrEdit(
       chatId,
       '📋 <b>Mening buyurtmalarim</b>\n\nBatafsil uchun tugmani bosing:\n\n' + lines.join('\n'),
@@ -596,7 +599,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   /**
    * Chat → shop (by telegramChatId) → only that seller's orders.
    */
-  private async handleCallback(query: TelegramBot.CallbackQuery) {
+  private async handleCallback(query: TelegramBotModule.CallbackQuery) {
     const data = query.data;
     const chatId = query.message?.chat?.id;
     const messageId = query.message?.message_id;
@@ -683,7 +686,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         itemsLines.split('\n').map((l: string) => esc(l)).join('\n');
       const baseUrl = this.telegram.getBaseUrl();
       const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
-      const reply_markup: TelegramBot.InlineKeyboardMarkup = { inline_keyboard: [...getBuyerMenuRows(webAppUrl)] };
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...getBuyerMenuRows(webAppUrl)] };
       await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup }, messageId);
       return;
     }
@@ -828,7 +831,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
     const label = STATUS_LABELS[status] ?? status;
     await this.bot.answerCallbackQuery(query.id, { text: `Holat: ${label}` });
-    const msg = query.message as TelegramBot.Message | undefined;
+    const msg = query.message as TelegramBotModule.Message | undefined;
     const currentText = msg?.text ?? 'Buyurtma';
     await this.bot.editMessageReplyMarkup(
       { inline_keyboard: [] },
