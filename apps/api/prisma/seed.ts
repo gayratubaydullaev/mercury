@@ -202,7 +202,10 @@ async function main() {
   const richVariants: Record<string, { options: Record<string, string>; stock: number; imageUrl?: string; sku: string; priceOverride?: number }[]> = {
     'samsung-a54': [
       { options: { Rang: 'Qora', Xotira: '128GB' }, stock: 8, sku: 'SAM-A54-128-BLK' },
+      { options: { Rang: 'Qora', Xotira: '256GB' }, stock: 6, sku: 'SAM-A54-256-BLK', priceOverride: 4990000 },
       { options: { Rang: 'Binafsha', Xotira: '128GB' }, stock: 5, sku: 'SAM-A54-128-VIO', imageUrl: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&fit=crop' },
+      { options: { Rang: 'Binafsha', Xotira: '256GB' }, stock: 4, sku: 'SAM-A54-256-VIO', priceOverride: 4990000 },
+      { options: { Rang: 'Yashil', Xotira: '128GB' }, stock: 7, sku: 'SAM-A54-128-GRN' },
       { options: { Rang: 'Yashil', Xotira: '256GB' }, stock: 3, sku: 'SAM-A54-256-GRN', priceOverride: 4990000 },
     ],
     airpods: [

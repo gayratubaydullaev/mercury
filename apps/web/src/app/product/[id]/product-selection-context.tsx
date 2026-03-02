@@ -25,6 +25,14 @@ function norm(s: string): string {
   return String(s ?? '').replace(/\s+/g, '').trim();
 }
 
+/** Получить значение опции из variant.options по ключу (с учётом регистра ключа). */
+function getVariantOptionValue(o: Record<string, string>, key: string): string {
+  if (o[key] !== undefined) return o[key];
+  const lower = key.trim().toLowerCase();
+  const entry = Object.entries(o).find(([k]) => k.trim().toLowerCase() === lower);
+  return entry?.[1] ?? '';
+}
+
 function findVariant(
   variants: Variant[] | null | undefined,
   selected: SelectedOptions,
@@ -38,7 +46,7 @@ function findVariant(
   if (!hasAll) return null;
   return variants.find((v) => {
     const o = (v.options ?? {}) as Record<string, string>;
-    return optionKeys.every((k) => norm(o[k]) === norm(selected[k]));
+    return optionKeys.every((k) => norm(getVariantOptionValue(o, k)) === norm(selected[k]));
   }) ?? null;
 }
 

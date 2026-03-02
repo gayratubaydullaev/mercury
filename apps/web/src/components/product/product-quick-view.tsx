@@ -134,6 +134,12 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
     return resolved;
   };
 
+  const getVariantOptionValue = (o: Record<string, string>, key: string): string => {
+    if (o[key] !== undefined) return o[key];
+    const lower = key.trim().toLowerCase();
+    const entry = Object.entries(o).find(([k]) => k.trim().toLowerCase() === lower);
+    return entry?.[1] ?? '';
+  };
   const findVariantIdByOptions = (opts: SelectedOptions): string | null => {
     if (!product?.variants?.length || !product?.options) return null;
     const resolved = getResolvedOptions(opts);
@@ -141,8 +147,8 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
     if (optionKeys.some((k) => !resolved[k] || resolved[k].trim() === '')) return null;
     const norm = (s: string) => String(s ?? '').replace(/\s+/g, '').trim();
     const v = product.variants.find((variant) => {
-      const vo = variant.options as Record<string, string>;
-      return optionKeys.every((k) => norm(vo[k]) === norm(resolved[k]));
+      const vo = (variant.options ?? {}) as Record<string, string>;
+      return optionKeys.every((k) => norm(getVariantOptionValue(vo, k)) === norm(resolved[k]));
     });
     return v?.id ?? null;
   };
