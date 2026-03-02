@@ -20,13 +20,24 @@ type Product = {
 
 type SelectedOptions = Record<string, string>;
 
-function findVariant(variants: Variant[] | null | undefined, selected: SelectedOptions): Variant | null {
-  if (!variants?.length) return null;
-  const sel = Object.entries(selected).filter(([, v]) => v != null && v !== '');
-  if (sel.length === 0) return null;
+function norm(s: string): string {
+  return String(s ?? '').trim();
+}
+
+function findVariant(
+  variants: Variant[] | null | undefined,
+  selected: SelectedOptions,
+  optionKeys: string[]
+): Variant | null {
+  if (!variants?.length || !optionKeys.length) return null;
+  const hasAll = optionKeys.every((k) => {
+    const v = selected[k];
+    return v != null && norm(v) !== '';
+  });
+  if (!hasAll) return null;
   return variants.find((v) => {
-    const o = v.options as Record<string, string>;
-    return sel.every(([k, val]) => o[k] === val);
+    const o = (v.options ?? {}) as Record<string, string>;
+    return optionKeys.every((k) => norm(o[k]) === norm(selected[k]));
   }) ?? null;
 }
 
@@ -66,12 +77,13 @@ export function ProductSelectionProvider({
 }) {
   const options = (product.options as Record<string, string[]> | null) ?? {};
   const variants = (product.variants ?? []) as Variant[];
+  const optionKeys = useMemo(() => Object.keys(options), [options]);
 
   // По умолчанию ничего не выбрано — пользователь сам выбирает вариант; повторный клик снимает выбор
   const [selected, setSelected] = useState<SelectedOptions>(() => ({}));
 
   const variantGroups = useMemo(() => buildVariantGroups(options), [options]);
-  const currentVariant = useMemo(() => findVariant(variants, selected), [variants, selected]);
+  const currentVariant = useMemo(() => findVariant(variants, selected, optionKeys), [variants, selected, optionKeys]);
   const stock = currentVariant != null ? currentVariant.stock : product.stock;
   const variantId = currentVariant?.id;
 

@@ -168,10 +168,10 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
               </div>
             </div>
 
-            {/* Инфо — справа */}
+            {/* Инфо — справа; на мобильном порядок: заголовок → выбор варианта → цена → магазин → кнопки */}
             <div className="w-full md:w-1/2 flex flex-col md:h-full md:overflow-y-auto bg-card">
-              <div className="flex-1 space-y-3 sm:space-y-6 p-3 sm:p-4 md:p-6">
-                <div className="space-y-1">
+              <div className="flex-1 flex flex-col p-3 sm:p-4 md:p-6">
+                <div className="space-y-1 order-1">
                   <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight">
                     {ctx.product.title ?? ''}
                   </h2>
@@ -185,6 +185,15 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                   </div>
                 </div>
 
+                <div className="order-2 mt-4 md:mt-0 md:order-3">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">Variantni tanlang</h3>
+                  <ProductVariants
+                    variants={ctx.variantGroups}
+                    selected={ctx.selected}
+                    onChange={ctx.handleVariantChange}
+                  />
+                </div>
+
                 {(() => {
                   const basePrice = ctx.product.price != null ? Number(ctx.product.price) : 0;
                   const variantPrice = ctx.currentVariant?.priceOverride != null ? Number(ctx.currentVariant.priceOverride) : null;
@@ -196,7 +205,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                       ? Math.round((1 - price / comparePrice) * 100)
                       : null;
                   return (
-                    <div className="flex items-end gap-2 flex-wrap">
+                    <div className="order-3 mt-4 md:order-2 md:mt-0 flex items-end gap-2 flex-wrap">
                       <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
                         {formatPrice(price)} soʻm
                       </span>
@@ -214,17 +223,8 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                   );
                 })()}
 
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">Variantni tanlang</h3>
-                  <ProductVariants
-                    variants={ctx.variantGroups}
-                    selected={ctx.selected}
-                    onChange={ctx.handleVariantChange}
-                  />
-                </div>
-
                 {ctx.product.shop && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="order-4 mt-3 text-sm text-muted-foreground">
                     Doʻkon: <span className="font-medium text-foreground">{ctx.product.shop.name ?? ctx.product.shop.slug}</span>
                   </p>
                 )}
