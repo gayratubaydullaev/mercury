@@ -259,6 +259,19 @@ export default function AccountPage() {
             </CardContent>
           </Card>
         </Link>
+        {user.role !== 'SELLER' && (
+          <Link href="/become-seller" className="sm:col-span-2">
+            <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30 border-primary/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2.5"><Store className="h-5 w-5 text-primary" /></div>
+                <div>
+                  <p className="font-medium">Sotuvchi bo&apos;lish</p>
+                  <p className="text-xs text-muted-foreground">Do&apos;kon ochish uchun ariza yuboring — admin tasdiqlagach sotuvchi bo&apos;lasiz</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
         {user.role === 'SELLER' && (
           <Link href="/seller" className="sm:col-span-2">
             <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30">

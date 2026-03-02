@@ -153,27 +153,31 @@ function LoginForm() {
           <CardDescription>
             {reasonMessage ?? 'Email va parolingizni kiriting'}
           </CardDescription>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2 mt-3 border-[#0088cc] text-[#0088cc] hover:bg-[#0088cc]/10 hover:text-[#0088cc]"
-            size="lg"
-            disabled={loading || tgLoading}
-            onClick={startTelegramLogin}
-          >
-            {tgWaiting ? (
-              <>Telegramda Start bosing, keyin shu oynaga qayting…</>
-            ) : (
-              <>
-                <TelegramIcon className="h-5 w-5" />
-                Telegram orqali kirish
-              </>
+          <div className="flex flex-col gap-2 w-full mt-4" aria-label="Telegram orqali kirish">
+            <span className="text-xs font-medium text-muted-foreground">Telegram bot orqali</span>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2 min-h-[48px] border-[#0088cc] text-[#0088cc] hover:bg-[#0088cc]/10 hover:text-[#0088cc] bg-[#0088cc]/5 dark:bg-[#0088cc]/10"
+              size="lg"
+              disabled={loading || tgLoading}
+              onClick={startTelegramLogin}
+              id="telegram-login-btn"
+            >
+              {tgWaiting ? (
+                <>Telegramda Start bosing, keyin shu oynaga qayting…</>
+              ) : (
+                <>
+                  <TelegramIcon className="h-5 w-5 shrink-0" />
+                  Telegram orqali kirish
+                </>
+              )}
+            </Button>
+            {tgError && (
+              <p className="text-sm text-destructive text-center" role="alert">{tgError}</p>
             )}
-          </Button>
-          {tgError && (
-            <p className="text-sm text-destructive mt-2 text-center" role="alert">{tgError}</p>
-          )}
-          <div className="relative flex items-center gap-2 w-full pt-1">
+          </div>
+          <div className="relative flex items-center gap-2 w-full pt-2 mt-2">
             <div className="flex-1 h-px bg-border" />
             <span className="text-xs text-muted-foreground">yoki email bilan</span>
             <div className="flex-1 h-px bg-border" />
