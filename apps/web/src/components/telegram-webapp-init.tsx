@@ -3,27 +3,26 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTelegramWebApp, initTelegramWebApp } from '@/lib/telegram-webapp';
+import { useTelegramWebApp } from '@/contexts/telegram-webapp-context';
 
 const EDGE_WIDTH = 24;
 const SWIPE_THRESHOLD = 60;
+const HISTORY_KEY = 'twa';
 
 /**
- * Инициализирует Telegram Web App (expand, отключение вертикальных свайпов, подтверждение выхода)
- * и обрабатывает свайп от левого края вправо как "назад" (router.back).
- * Настройки жестов повторно применяются при возврате на вкладку/фокус, чтобы клиент не сбрасывал их.
+ * Инициализирует Telegram Web App, применяет Sticky App (CSS), перехват popstate для жеста «назад».
+ * Sticky: body overflow hidden + внутренний скролл — вертикальные свайпы не уходят в Telegram и не закрывают окно.
  */
 export function TelegramWebAppInit({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const twaRef = useRef<ReturnType<typeof getTelegramWebApp>>(undefined);
+  const { isTWA } = useTelegramWebApp();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const popstateHandled = useRef(false);
 
   const reinit = () => {
     const twa = getTelegramWebApp();
-    if (twa) {
-      twaRef.current = twa;
-      initTelegramWebApp(twa);
-    }
+    if (twa) initTelegramWebApp(twa);
   };
 
   useEffect(() => {
@@ -40,7 +39,6 @@ export function TelegramWebAppInit({ children }: { children: React.ReactNode }) 
     run();
   }, []);
 
-  // Повторно применяем отключение вертикальных свайпов и подтверждение выхода при возврате в приложение
   useEffect(() => {
     const onVisible = () => reinit();
     document.addEventListener('visibilitychange', onVisible);
@@ -53,10 +51,36 @@ export function TelegramWebAppInit({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // После навигации в подстраницах снова применяем настройки (часть клиентов сбрасывает после перехода)
   useEffect(() => {
     reinit();
   }, [pathname]);
+
+  // Sticky App: при isTWA — body overflow hidden, скролл только внутри обёртки (свайп вниз не закрывает окно)
+  useEffect(() => {
+    if (!isTWA || typeof document === 'undefined') return;
+    document.body.classList.add('twa-sticky-body');
+    return () => {
+      document.body.classList.remove('twa-sticky-body');
+    };
+  }, [isTWA]);
+
+  // Пытаемся перехватить жест «назад»: лишняя запись в history; при popstate снова pushState, чтобы остаться в приложении
+  useEffect(() => {
+    if (!isTWA || typeof window === 'undefined') return;
+    const state = { [HISTORY_KEY]: pathname || '/telegram-app' };
+    window.history.pushState(state, '', window.location.href);
+    const onPopState = () => {
+      if (popstateHandled.current) return;
+      popstateHandled.current = true;
+      // Остаёмся на текущей странице: снова pushState, чтобы «съесть» жест назад
+      window.history.pushState({ [HISTORY_KEY]: pathname || '/telegram-app' }, '', window.location.href);
+      setTimeout(() => {
+        popstateHandled.current = false;
+      }, 50);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [isTWA, pathname]);
 
   useEffect(() => {
     const el = document.documentElement;
@@ -84,9 +108,19 @@ export function TelegramWebAppInit({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, router]);
 
-  return (
+  const content = (
     <div className="min-h-screen min-h-[100dvh] touch-pan-y" style={{ touchAction: 'pan-y' }}>
       {children}
     </div>
   );
+
+  if (isTWA) {
+    return (
+      <div className="twa-sticky-wrap">
+        <div className="twa-sticky-content">{content}</div>
+      </div>
+    );
+  }
+
+  return content;
 }

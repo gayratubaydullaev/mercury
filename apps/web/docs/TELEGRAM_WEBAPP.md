@@ -9,6 +9,9 @@
 - **Корень приложения:** `TelegramWebAppProvider` загружает скрипт `telegram-web-app.js?60` (если ещё нет), инициализирует Web App и отдаёт контекст. `TelegramThemeApplicator` выставляет атрибут на `body` при `isTWA`.
 - **Хук `useTelegramWebApp()`:** возвращает `{ isTWA, webApp, themeParams, isReady, platform, colorScheme, reinit }`. Любая страница может проверять `isTWA` и подстраивать UI (кнопки, тема, BackButton).
 - **Маршрут `/telegram-app`:** точка входа Mini App: свой layout с `TelegramWebAppInit` (жесты, повторный init при фокусе/навигации). Если открыть эту страницу в обычном браузере (`!isTWA`), показывается подсказка «Откройте в Telegram».
+- **Сохранение окна при свайпе:**
+  - **Sticky App (CSS):** при `isTWA` на `body` вешается класс `twa-sticky-body` (overflow: hidden, height: 100dvh), контент оборачивается в `twa-sticky-wrap` (overflow-y: auto). Скролл происходит только внутри обёртки, вертикальные свайпы не уходят в Telegram и не закрывают окно (см. [Sticky App](https://docs.telegram-mini-apps.com/platform/sticky-app)).
+  - **Жест «назад»:** при `isTWA` в history делается `pushState`; при срабатывании `popstate` снова вызывается `pushState`, чтобы остаться на текущей странице. Так мы пытаемся «съесть» один жест назад, если клиент передаёт его как `history.back()`. Если клиент закрывает WebView до вызова JS, перехват невозможен — тогда остаётся только кнопка «Назад» в шапке Telegram.
 
 ## Что используем из API
 

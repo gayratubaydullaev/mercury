@@ -59,9 +59,31 @@
     background-image: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(var(--primary) / 0.08), transparent 60%);
     background-attachment: scroll;
   }
-  /* Telegram Web App: при открытии в Telegram на body ставится data-telegram-webapp; при необходимости можно использовать --tg-theme-* */
+  /* Telegram Web App: при открытии в Telegram на body ставится data-telegram-webapp */
   body[data-telegram-webapp="true"] {
-    /* Фон и текст можно переопределить из Telegram: var(--tg-theme-bg-color), var(--tg-theme-text-color) */
+    /* опционально: var(--tg-theme-bg-color), var(--tg-theme-text-color) */
+  }
+  /* Sticky App: вертикальные свайпы не передаются в Telegram, скролл только внутри .twa-sticky-wrap */
+  body.twa-sticky-body {
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+  .twa-sticky-wrap {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .twa-sticky-content {
+    min-height: calc(100% + 1px);
   }
   @media (min-width: 768px) {
     body { background-attachment: fixed; }
