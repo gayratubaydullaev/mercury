@@ -104,7 +104,7 @@ async function main() {
     categorySlug: string;
     options?: Record<string, string[]>;
   }> = [
-    { title: 'Smartfon Samsung A54', slug: 'samsung-a54', description: '5G, 128GB, qora', price: 4500000, comparePrice: 4990000, stock: 15, sku: 'SAM-A54-128', categorySlug: 'elektronika-telefonlar' },
+    { title: 'Smartfon Samsung A54', slug: 'samsung-a54', description: '5G, 128GB, qora', price: 4500000, comparePrice: 4990000, stock: 15, sku: 'SAM-A54-128', categorySlug: 'elektronika-telefonlar', options: { Rang: ['Qora', 'Binafsha', 'Yashil'], Xotira: ['128GB', '256GB'] } },
     { title: 'Noutbuk HP 15', slug: 'hp-15', description: 'Intel i5, 8GB RAM, 256GB SSD', price: 8500000, stock: 5, categorySlug: 'elektronika-noutbuklar' },
     { title: 'Quloqchinlar AirPods', slug: 'airpods', description: 'Bluetooth 5.0, oq', price: 1200000, stock: 30, categorySlug: 'elektronika-aksessuarlar', options: { Rang: ['Oq', 'Qora'] } },
     { title: 'Futbolka erkaklar uchun', slug: 'futbolka-erkak', description: '100% paxta, M, L, XL', price: 85000, stock: 100, categorySlug: 'kiyim-erkaklar', options: { "O'lcham": ['M', 'L', 'XL'], Rang: ['Oq', 'Qora', 'Ko\'k'] } },
@@ -215,9 +215,13 @@ async function main() {
     'futbolka-erkak': [
       { options: { "O'lcham": 'M', Rang: 'Oq' }, stock: 25, sku: 'TEE-M-WHT' },
       { options: { "O'lcham": 'M', Rang: 'Qora' }, stock: 30, sku: 'TEE-M-BLK' },
+      { options: { "O'lcham": 'M', Rang: "Ko'k" }, stock: 22, sku: 'TEE-M-BLU' },
       { options: { "O'lcham": 'L', Rang: 'Oq' }, stock: 20, sku: 'TEE-L-WHT' },
+      { options: { "O'lcham": 'L', Rang: 'Qora' }, stock: 24, sku: 'TEE-L-BLK' },
       { options: { "O'lcham": 'L', Rang: "Ko'k" }, stock: 18, sku: 'TEE-L-BLU' },
+      { options: { "O'lcham": 'XL', Rang: 'Oq' }, stock: 14, sku: 'TEE-XL-WHT' },
       { options: { "O'lcham": 'XL', Rang: 'Qora' }, stock: 12, sku: 'TEE-XL-BLK' },
+      { options: { "O'lcham": 'XL', Rang: "Ko'k" }, stock: 10, sku: 'TEE-XL-BLU' },
     ],
     'hp-15': [
       { options: { Rang: 'Kumush' }, stock: 4, sku: 'HP15-SLV' },

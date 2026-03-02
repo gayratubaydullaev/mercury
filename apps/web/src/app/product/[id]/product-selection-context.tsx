@@ -33,6 +33,14 @@ function getVariantOptionValue(o: Record<string, string>, key: string): string {
   return entry?.[1] ?? '';
 }
 
+/** Получить выбранное значение по ключу опции (с учётом регистра ключа в selected). */
+function getSelectedValue(selected: SelectedOptions, key: string): string {
+  if (selected[key] !== undefined) return selected[key];
+  const lower = key.trim().toLowerCase();
+  const entry = Object.entries(selected).find(([k]) => k.trim().toLowerCase() === lower);
+  return entry?.[1] ?? '';
+}
+
 function findVariant(
   variants: Variant[] | null | undefined,
   selected: SelectedOptions,
@@ -40,13 +48,13 @@ function findVariant(
 ): Variant | null {
   if (!variants?.length || !optionKeys.length) return null;
   const hasAll = optionKeys.every((k) => {
-    const v = selected[k];
+    const v = getSelectedValue(selected, k);
     return v != null && norm(v) !== '';
   });
   if (!hasAll) return null;
   return variants.find((v) => {
     const o = (v.options ?? {}) as Record<string, string>;
-    return optionKeys.every((k) => norm(getVariantOptionValue(o, k)) === norm(selected[k]));
+    return optionKeys.every((k) => norm(getVariantOptionValue(o, k)) === norm(getSelectedValue(selected, k)));
   }) ?? null;
 }
 
