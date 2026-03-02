@@ -20,8 +20,9 @@ type Product = {
 
 type SelectedOptions = Record<string, string>;
 
+/** Нормализация для сравнения: trim и убираем все пробелы (чтобы "256 GB" и "256GB" совпадали). */
 function norm(s: string): string {
-  return String(s ?? '').trim();
+  return String(s ?? '').replace(/\s+/g, '').trim();
 }
 
 function findVariant(

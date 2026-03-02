@@ -139,9 +139,10 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
     const resolved = getResolvedOptions(opts);
     const optionKeys = Object.keys(product.options);
     if (optionKeys.some((k) => !resolved[k] || resolved[k].trim() === '')) return null;
+    const norm = (s: string) => String(s ?? '').replace(/\s+/g, '').trim();
     const v = product.variants.find((variant) => {
       const vo = variant.options as Record<string, string>;
-      return optionKeys.every((k) => String(vo[k] ?? '').trim() === String(resolved[k] ?? '').trim());
+      return optionKeys.every((k) => norm(vo[k]) === norm(resolved[k]));
     });
     return v?.id ?? null;
   };
