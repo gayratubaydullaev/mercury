@@ -38,7 +38,7 @@ const footerSections = [
 export function Footer() {
   return (
     <footer className="border-t border-border/80 bg-muted/20 mt-auto w-full">
-      <div className="w-full max-w-7xl mx-auto px-0 sm:px-4 md:px-6 py-8 md:py-10 lg:py-12">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-4 md:px-6 py-8 md:py-10 lg:py-12">
         <div className="grid grid-cols-2 gap-8 sm:gap-10 md:grid-cols-4">
           {footerSections.map((section) => (
             <div key={section.title}>

@@ -30,7 +30,7 @@ export function RelatedProducts({ categoryId, currentProductId }: RelatedProduct
   if (loading) {
     return (
       <section className="mt-6 sm:mt-8 lg:mt-12 pt-6 sm:pt-8 border-t min-w-0">
-        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Sizga yoqishi mumkin</h2>
+        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 px-4 lg:px-0">Sizga yoqishi mumkin</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 min-w-0">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-3">
@@ -50,7 +50,7 @@ export function RelatedProducts({ categoryId, currentProductId }: RelatedProduct
 
   return (
     <section className="mt-6 sm:mt-8 lg:mt-12 pt-6 sm:pt-8 border-t min-w-0">
-      <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Sizga yoqishi mumkin</h2>
+      <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 px-4 lg:px-0">Sizga yoqishi mumkin</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 min-w-0">
         {products.map((p) => (
           <ProductCard key={p.id} product={p} />

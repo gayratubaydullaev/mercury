@@ -61,15 +61,15 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
         .then((r) => r.json())
         .then((p: QuickViewProduct) => {
           setProduct(p);
-          // Initial selection: first variant or first value per option
+          // Initial selection: all option keys must be set (from first variant or first value per option)
           if (p?.options && Object.keys(p.options).length > 0) {
-            if (p.variants?.length) {
-              setSelectedOptions((p.variants[0].options as Record<string, string>) ?? {});
-            } else {
-              setSelectedOptions(
-                Object.fromEntries(Object.entries(p.options).map(([k, v]) => [k, v[0] ?? '']))
-              );
+            const optionKeys = Object.keys(p.options);
+            const firstVariantOpts = (p.variants?.[0]?.options as Record<string, string> | undefined) ?? {};
+            const initial: SelectedOptions = {};
+            for (const k of optionKeys) {
+              initial[k] = firstVariantOpts[k] ?? p.options![k]?.[0] ?? '';
             }
+            setSelectedOptions(initial);
           } else {
             setSelectedOptions({});
           }
@@ -122,11 +122,27 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
     }
   }, [open, product, hasOptions, openVariantModalWhenReady, onVariantModalOpened]);
 
+  /** Собирает полный объект опций: все ключи из product.options, значения из opts или первое значение по умолчанию */
+  const getResolvedOptions = (opts: SelectedOptions): SelectedOptions => {
+    if (!product?.options) return opts;
+    const resolved: SelectedOptions = { ...opts };
+    for (const k of Object.keys(product.options)) {
+      if (!resolved[k] || resolved[k].trim() === '') {
+        resolved[k] = product.options[k]?.[0] ?? '';
+      }
+    }
+    return resolved;
+  };
+
   const findVariantIdByOptions = (opts: SelectedOptions): string | null => {
-    if (!product?.variants?.length) return null;
-    const v = product.variants.find((variant) =>
-      Object.keys(opts).every((k) => (variant.options as Record<string, string>)[k] === opts[k])
-    );
+    if (!product?.variants?.length || !product?.options) return null;
+    const resolved = getResolvedOptions(opts);
+    const optionKeys = Object.keys(product.options);
+    if (optionKeys.some((k) => !resolved[k] || resolved[k].trim() === '')) return null;
+    const v = product.variants.find((variant) => {
+      const vo = variant.options as Record<string, string>;
+      return optionKeys.every((k) => String(vo[k] ?? '').trim() === String(resolved[k] ?? '').trim());
+    });
     return v?.id ?? null;
   };
 

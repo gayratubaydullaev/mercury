@@ -148,10 +148,10 @@ export function ReviewsSection({
   const rounded = Math.round(avg * 10) / 10;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-foreground">Sharhlar</h2>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">Sharhlar</h2>
           {reviews.length > 0 && (
             <div className="flex items-center gap-1.5 text-sm">
               <div className="flex items-center gap-1 text-yellow-600 font-bold">

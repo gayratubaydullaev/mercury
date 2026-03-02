@@ -51,14 +51,14 @@ export function ProductSpecsModal({ product, trigger }: ProductSpecsModalProps) 
           <DialogTitle>Xususiyatlar va tavsif</DialogTitle>
           <DialogDescription>{product.title ?? ''}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div>
-            <h3 className="font-semibold mb-3 text-lg">Xususiyatlar</h3>
+            <h3 className="font-semibold mb-2 text-lg">Xususiyatlar</h3>
             <div className="flex flex-col gap-0 border rounded-lg overflow-hidden">
               {rows.map((r) => (
                 <div
                   key={r.name}
-                  className="flex items-center justify-between p-3 border-b last:border-0 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-2.5 sm:p-3 border-b last:border-0 hover:bg-muted/50 transition-colors"
                 >
                   <span className="text-sm text-muted-foreground">{r.name}</span>
                   <span className="text-sm font-medium text-right">{r.value}</span>
@@ -68,7 +68,7 @@ export function ProductSpecsModal({ product, trigger }: ProductSpecsModalProps) 
           </div>
           {product.description && (
             <div>
-              <h3 className="font-semibold mb-3 text-lg">Tavsif</h3>
+              <h3 className="font-semibold mb-2 text-lg">Tavsif</h3>
               <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-line">
                 {product.description}
               </div>

@@ -8,8 +8,8 @@ export function ProductVariantsSection({ isMobile = false }: { isMobile?: boolea
   if (!ctx || !ctx.variantGroups.length) return null;
 
   return (
-    <div className={isMobile ? 'rounded-xl border border-border bg-muted/40 p-3 sm:p-4' : ''}>
-      {isMobile && <h2 className="text-sm font-semibold mb-3">Variantni tanlang</h2>}
+    <div className={isMobile ? 'rounded-xl border border-border bg-muted/40 p-2 sm:p-4' : ''}>
+      {isMobile && <h2 className="text-sm font-semibold mb-2 sm:mb-3">Variantni tanlang</h2>}
       <ProductVariants
         variants={ctx.variantGroups}
         selected={ctx.selected}

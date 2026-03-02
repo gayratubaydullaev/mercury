@@ -47,10 +47,12 @@ export class OrdersController {
   @ApiOperation({ summary: 'My orders' })
   myOrders(
     @CurrentUser('id') userId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
   ) {
-    return this.orders.findMyOrders(userId, page ?? 1, limit ?? 20);
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    return this.orders.findMyOrders(userId, pageNum, limitNum);
   }
 
   @Get('seller')
@@ -58,12 +60,14 @@ export class OrdersController {
   @ApiOperation({ summary: 'Seller orders' })
   sellerOrders(
     @CurrentUser('id') userId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('status') status?: string
   ) {
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
     const statusFilter = status && Object.values(OrderStatus).includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
-    return this.orders.findSellerOrders(userId, page ?? 1, limit ?? 20, statusFilter);
+    return this.orders.findSellerOrders(userId, pageNum, limitNum, statusFilter);
   }
 
   @Get(':id/guest-view')

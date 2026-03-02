@@ -44,7 +44,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
   return (
     <div
       className={cn(
-        'grid gap-2 h-full',
+        'grid gap-2 h-full lg:h-auto',
         images.length > 1 ? 'grid-cols-1 md:grid-cols-[100px_1fr]' : 'grid-cols-1'
       )}
     >
@@ -80,15 +80,15 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
         </div>
       )}
 
-      {/* Основное изображение — на десктопе заполняет всю высоту колонки, без белой рамки */}
+      {/* Основное изображение — соотношение по ширине 4:5 на десктопе */}
       <div
         className={cn(
-          'relative group w-full min-h-0 md:h-full',
+          'relative group w-full min-h-0 lg:flex lg:items-start',
           images.length === 1 && 'max-w-lg mx-auto'
         )}
       >
         <div
-          className="aspect-[3/4] md:aspect-auto md:h-full md:min-h-0 relative rounded-2xl overflow-hidden bg-muted border border-border shadow-sm w-full cursor-zoom-in"
+          className="aspect-[3/4] md:aspect-[4/5] md:w-full relative rounded-2xl overflow-hidden bg-muted border border-border shadow-sm w-full cursor-zoom-in"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={() => setLightboxOpen(true)}
@@ -103,7 +103,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
             fill
             className="object-cover select-none touch-none"
             priority
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 768px) 100vw, (min-width: 1024px) 560px, 50vw"
             draggable={false}
           />
 

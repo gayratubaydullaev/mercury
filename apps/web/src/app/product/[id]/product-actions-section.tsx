@@ -143,15 +143,15 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
           <DialogDescription className="sr-only">Mahsulot varianti va narx</DialogDescription>
           <DialogClose
             aria-label="Yopish"
-            className="absolute top-4 right-4 z-[60] rounded-full bg-card/80 p-2 hover:bg-card transition-colors h-10 w-10 flex items-center justify-center border border-border shadow-sm backdrop-blur-sm outline-none focus:ring-0"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[60] rounded-full bg-card/80 p-2 hover:bg-card transition-colors h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center border border-border shadow-sm backdrop-blur-sm outline-none focus:ring-0"
           >
             <X className="h-5 w-5" />
           </DialogClose>
 
           <div className="flex flex-col md:flex-row h-full overflow-y-auto md:overflow-hidden">
             {/* Галерея — слева, как у карточек */}
-            <div className="w-full md:w-1/2 bg-muted/50 md:p-6 md:h-full md:overflow-y-auto shrink-0">
-              <div className="relative aspect-square md:aspect-[3/4] rounded-2xl overflow-hidden bg-muted">
+            <div className="w-full md:w-1/2 bg-muted/50 p-3 sm:p-4 md:p-6 md:h-full md:overflow-y-auto shrink-0">
+              <div className="relative aspect-square md:aspect-[3/4] rounded-xl md:rounded-2xl overflow-hidden bg-muted">
                 {(ctx.currentVariant?.imageUrl ?? ctx.product.images?.[0]?.url) ? (
                   <Image
                     src={ctx.currentVariant?.imageUrl ?? ctx.product.images?.[0]?.url ?? ''}
@@ -170,12 +170,12 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
 
             {/* Инфо — справа */}
             <div className="w-full md:w-1/2 flex flex-col md:h-full md:overflow-y-auto bg-card">
-              <div className="flex-1 space-y-6 p-4 md:p-6">
-                <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
+              <div className="flex-1 space-y-3 sm:space-y-6 p-3 sm:p-4 md:p-6">
+                <div className="space-y-1">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight">
                     {ctx.product.title ?? ''}
                   </h2>
-                  <div className="flex items-center gap-2 mt-2 text-sm">
+                  <div className="flex items-center gap-2 mt-1 sm:mt-2 text-sm">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-medium text-foreground">{ctx.product.avgRating ?? '—'}</span>
                     <span className="text-muted-foreground">·</span>
@@ -197,7 +197,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                       : null;
                   return (
                     <div className="flex items-end gap-2 flex-wrap">
-                      <span className="text-2xl font-bold text-foreground tracking-tight">
+                      <span className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
                         {formatPrice(price)} soʻm
                       </span>
                       {discountPercent != null && discountPercent > 0 && (
@@ -215,7 +215,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                 })()}
 
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Variantni tanlang</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">Variantni tanlang</h3>
                   <ProductVariants
                     variants={ctx.variantGroups}
                     selected={ctx.selected}
@@ -230,7 +230,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
                 )}
               </div>
 
-              <div className="pt-4 bg-card sticky bottom-0 z-10 border-t border-border mt-auto p-4 md:p-6 md:pt-0 pb-safe space-y-3">
+              <div className="pt-3 sm:pt-4 bg-card sticky bottom-0 z-10 border-t border-border mt-auto p-3 sm:p-4 md:p-6 md:pt-0 pb-safe space-y-2 sm:space-y-3">
                 <Button
                   onClick={addToCart}
                   disabled={!ctx.variantId || (ctx.stock ?? 0) <= 0 || adding}
