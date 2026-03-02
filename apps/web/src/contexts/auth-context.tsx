@@ -7,6 +7,8 @@ const STORAGE_KEY = 'accessToken';
 type AuthContextValue = {
   token: string | null;
   isLoggedIn: boolean;
+  /** false until localStorage has been read (client-side) — use to avoid redirecting before we know the token */
+  isReady: boolean;
   setToken: (token: string | null) => void;
   logout: () => void;
 };
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextValue = {
     token: mounted ? token : null,
     isLoggedIn: !!token,
+    isReady: mounted,
     setToken,
     logout,
   };
@@ -63,6 +66,7 @@ export function useAuth(): AuthContextValue {
     return {
       token: null,
       isLoggedIn: false,
+      isReady: false,
       setToken: () => {},
       logout: () => {},
     };

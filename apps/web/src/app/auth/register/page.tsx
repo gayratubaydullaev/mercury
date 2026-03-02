@@ -87,7 +87,7 @@ export default function RegisterPage() {
   });
 
   return (
-    <div className="w-full max-w-sm mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="w-full max-w-sm mx-auto px-0 sm:px-4 md:px-6 py-8 sm:py-12">
       <h1 className="text-xl sm:text-2xl font-bold mb-6">Roʻyxatdan oʻtish</h1>
       <form onSubmit={submit} className="space-y-4">
         <div>

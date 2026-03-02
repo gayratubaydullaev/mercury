@@ -9,10 +9,11 @@ import { useAuth } from '@/contexts/auth-context';
 
 export function SellerGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, isReady } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (!isReady) return;
     if (!token) {
       router.replace('/auth/login?next=/seller');
       return;
@@ -27,7 +28,7 @@ export function SellerGuard({ children }: { children: React.ReactNode }) {
         setAllowed(true);
       })
       .catch(() => router.replace('/auth/login?next=/seller'));
-  }, [router, token]);
+  }, [router, token, isReady]);
 
   if (allowed !== true) return <Skeleton className="h-screen w-full" />;
   return <>{children}</>;

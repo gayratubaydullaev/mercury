@@ -126,7 +126,7 @@ export default function ChatRoomPage() {
   if (!token) return null;
   if (messages === null)
     return (
-      <div className="w-full max-w-lg mx-auto px-4 sm:px-6 p-4">
+      <div className="w-full max-w-lg mx-auto px-0 sm:px-4 md:px-6 p-4">
         <Skeleton className="h-12 w-full rounded-lg mb-4" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -146,7 +146,7 @@ export default function ChatRoomPage() {
   const headerRoleLabel = otherUser ? (isSeller ? 'Xaridor' : 'Sotuvchi') : null;
 
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col min-w-0 h-[calc(100vh-8rem)] pb-24 bg-background px-2 sm:px-4">
+    <div className="w-full max-w-lg mx-auto flex flex-col min-w-0 h-[calc(100vh-8rem)] pb-24 bg-background px-0 sm:px-4">
       <div className="flex items-center gap-2 p-3 border-b shrink-0 bg-card">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link href="/chat"><ArrowLeft className="h-5 w-5" /></Link>

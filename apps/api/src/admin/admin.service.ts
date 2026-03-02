@@ -33,6 +33,7 @@ export class AdminService {
           where,
           skip,
           take,
+          orderBy: { createdAt: 'desc' },
           select: { id: true, email: true, firstName: true, lastName: true, role: true, isBlocked: true, createdAt: true },
         }),
         tx.user.count({ where }),

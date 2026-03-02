@@ -146,6 +146,12 @@ export function CheckoutForm() {
         router.push('/checkout/success');
         return;
       }
+      const firstOrderId = order.id;
+      const firstOrderToken = order.guestViewToken ?? null;
+      const successUrl =
+        isGuest && firstOrderId && firstOrderToken
+          ? `/checkout/success?orderId=${encodeURIComponent(firstOrderId)}&token=${encodeURIComponent(firstOrderToken)}`
+          : '/checkout/success';
       if (paymentMethod === 'CLICK' && token) {
         const pay = await apiFetch(`${API_URL}/payments/click/init`, {
           method: 'POST',
@@ -154,7 +160,7 @@ export function CheckoutForm() {
         });
         const data = await pay.json();
         if (data.redirectUrl) window.location.href = data.redirectUrl;
-        else router.push('/checkout/success');
+        else router.push(successUrl);
       } else if (paymentMethod === 'PAYME' && token) {
         const pay = await apiFetch(`${API_URL}/payments/payme/init`, {
           method: 'POST',
@@ -163,12 +169,12 @@ export function CheckoutForm() {
         });
         const data = await pay.json();
         if (data.paymentUrl) window.location.href = data.paymentUrl;
-        else router.push('/checkout/success');
+        else router.push(successUrl);
       } else if ((paymentMethod === 'CLICK' || paymentMethod === 'PAYME') && isGuest) {
         alert('Click yoki Payme uchun tizimga kiring');
-        router.push('/checkout/success');
+        router.push(successUrl);
       } else {
-        router.push('/checkout/success');
+        router.push(successUrl);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Xatolik');

@@ -66,6 +66,13 @@ export class OrdersController {
     return this.orders.findSellerOrders(userId, page ?? 1, limit ?? 20, statusFilter);
   }
 
+  @Get(':id/guest-view')
+  @Public()
+  @ApiOperation({ summary: 'Get order by guest view token (no auth)' })
+  findOneGuestView(@Param('id') id: string, @Query('token') token: string) {
+    return this.orders.findOneByGuestToken(id, token ?? '');
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get order' })
   findOne(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: string) {

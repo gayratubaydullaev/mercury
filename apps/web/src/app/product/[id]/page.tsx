@@ -49,7 +49,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
   return (
     <div className="min-h-screen flex flex-col bg-muted/50 overflow-x-hidden">
       <main className="flex-1 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-12">
-        <div className="w-full max-w-full min-w-0 px-4 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+        <div className="w-full max-w-full min-w-0 px-0 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
           {/* Breadcrumb — только desktop (lg и выше) */}
           <div className="hidden lg:block">
             <ProductBreadcrumbs category={product.category} productTitle={product.title} />
@@ -170,7 +170,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
               </div>
             </div>
 
-            <div className="px-4 sm:px-4 pt-4 sm:pt-5 pb-4 sm:pb-6 space-y-3 bg-card rounded-t-2xl -mt-4 relative z-10 shadow-lg border-t border-x border-border">
+            <div className="px-2 sm:px-4 pt-4 sm:pt-5 pb-4 sm:pb-6 space-y-3 bg-card rounded-t-2xl -mt-4 relative z-10 shadow-lg border-t border-x border-border">
               <div className="space-y-1.5">
                 <h1 className="text-base sm:text-lg font-bold text-foreground leading-tight pr-2">
                   {product.title}
@@ -212,7 +212,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                 </>
               )}
 
-              <div className="-mx-4 px-4 bg-muted/50 py-4 sm:py-5 rounded-lg">
+              <div className="-mx-2 sm:-mx-4 px-2 sm:px-4 bg-muted/50 py-4 sm:py-5 rounded-lg">
                 <ReviewsSection productId={product.id} initialReviews={reviews} />
               </div>
             </div>

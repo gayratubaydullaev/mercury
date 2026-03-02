@@ -27,14 +27,14 @@ export default function MyOrdersPage() {
       .catch(() => setData({ data: [] }));
   }, [token]);
 
-  if (!token) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8"><p className="text-muted-foreground">Kirish kerak.</p><Button asChild><Link href="/auth/login?next=/orders">Kirish</Link></Button></div>;
-  if (forbidden) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8"><p className="text-muted-foreground mb-4">Buyurtmalar faqat xaridorlar uchun. Sotuvchi boʻlsangiz, doʻkon buyurtmalari Sotuvchi kabinetida.</p><Button asChild variant="outline"><Link href="/account">← Profil</Link></Button></div>;
-  if (!data) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6"><Skeleton className="h-48 w-full rounded-xl" /></div>;
+  if (!token) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 py-8"><p className="text-muted-foreground">Kirish kerak.</p><Button asChild><Link href="/auth/login?next=/orders">Kirish</Link></Button></div>;
+  if (forbidden) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 py-8"><p className="text-muted-foreground mb-4">Buyurtmalar faqat xaridorlar uchun. Sotuvchi boʻlsangiz, doʻkon buyurtmalari Sotuvchi kabinetida.</p><Button asChild variant="outline"><Link href="/account">← Profil</Link></Button></div>;
+  if (!data) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6"><Skeleton className="h-48 w-full rounded-xl" /></div>;
 
   const orders = data.data ?? [];
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 pb-8">
       <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-6">
         <Button variant="ghost" size="sm" asChild><Link href="/account"><ArrowLeft className="h-4 w-4 mr-1" />Profil</Link></Button>
       </div>

@@ -25,7 +25,7 @@ type ApplicationStatus = {
 
 export default function BecomeSellerPage() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, isReady } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<ApplicationStatus | null>(null);
@@ -36,6 +36,7 @@ export default function BecomeSellerPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isReady) return;
     if (!token) {
       router.replace('/auth/login?next=/become-seller');
       return;
@@ -53,7 +54,7 @@ export default function BecomeSellerPage() {
       })
       .catch(() => setApplication(null))
       .finally(() => setLoading(false));
-  }, [token, router]);
+  }, [isReady, token, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +85,7 @@ export default function BecomeSellerPage() {
   if (!token) return null;
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8">
+      <div className="max-w-lg mx-auto px-0 sm:px-4 md:px-6 py-8">
         <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
@@ -95,7 +96,7 @@ export default function BecomeSellerPage() {
   const isRejected = application?.status === 'REJECTED';
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-lg mx-auto px-0 sm:px-4 md:px-6 py-8">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Sotuvchi bo‘lish</h1>
       <p className="text-muted-foreground text-sm mb-6">
         Do‘koningizni ochish uchun ariza yuboring. Admin tasdiqlagach, siz sotuvchi bo‘lasiz va tovarlar qo‘sha olasiz.

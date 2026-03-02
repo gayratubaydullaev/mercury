@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function CookiesPage() {
   return (
-    <div className="w-full container max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+    <div className="w-full container max-w-3xl mx-auto px-0 sm:px-4 md:px-6 py-8 md:py-12">
       <h1 className="text-2xl md:text-3xl font-bold mb-6">Cookie (kuki) siyosati</h1>
       <p className="text-muted-foreground text-sm mb-8">
         Oxirgi yangilanish: {new Date().toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' })}

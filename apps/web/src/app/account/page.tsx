@@ -40,9 +40,10 @@ export default function AccountPage() {
   const [tgLinkWaiting, setTgLinkWaiting] = useState(false);
   const [tgLinkError, setTgLinkError] = useState<string | null>(null);
   const tgLinkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { token, logout: authLogout } = useAuth();
+  const { token, isReady, logout: authLogout } = useAuth();
 
   useEffect(() => {
+    if (!isReady) return;
     if (!token) {
       router.replace('/auth/login?next=/account');
       return;
@@ -56,7 +57,7 @@ export default function AccountPage() {
         setPhone(data?.phone ?? '');
       })
       .catch(() => router.replace('/auth/login'));
-  }, [token, router]);
+  }, [isReady, token, router]);
 
   const saveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,14 +134,14 @@ export default function AccountPage() {
     };
   }, []);
 
-  if (!user) return <div className="w-full max-w-2xl mx-auto px-4 sm:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
+  if (!user) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
 
   const roleLabel = user.role === 'ADMIN' ? 'Admin' : user.role === 'SELLER' ? 'Sotuvchi' : 'Xaridor';
   const initials = [user.firstName, user.lastName].map((s) => s?.charAt(0) ?? '').join('').toUpperCase() || '?';
   const joinedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' }) : '';
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6 pb-8">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Shaxsiy kabinet</h1>
       <p className="text-muted-foreground text-sm mb-6">Profil va buyurtmalar</p>
 

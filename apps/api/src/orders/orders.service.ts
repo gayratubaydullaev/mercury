@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { CreateOrderDto, DeliveryType } from './dto/create-order.dto';
@@ -79,11 +80,12 @@ export class OrdersService {
         const price = i.variant?.priceOverride != null ? Number(i.variant.priceOverride) : Number(i.product.price);
         return sum + price * i.quantity;
       }, 0);
+      const guestViewToken = isGuest ? randomBytes(24).toString('hex') : undefined;
       const order = await this.prisma.order.create({
         data: {
           orderNumber,
           ...(buyerId != null ? { buyerId } : {}),
-          ...(isGuest ? { guestEmail: dto.guestEmail?.trim(), guestPhone: dto.guestPhone?.trim() } : {}),
+          ...(isGuest ? { guestEmail: dto.guestEmail?.trim(), guestPhone: dto.guestPhone?.trim(), guestViewToken } : {}),
           sellerId,
           paymentMethod: dto.paymentMethod,
           deliveryType,
@@ -158,6 +160,20 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
     const canAccess = order.buyerId === userId || order.sellerId === userId || role === 'ADMIN';
     if (!canAccess) throw new ForbiddenException();
+    return order;
+  }
+
+  /** Get order by id + guest view token (public, for guests to view their order after checkout). */
+  async findOneByGuestToken(id: string, token: string) {
+    if (!token?.trim()) throw new NotFoundException('Order not found');
+    const order = await this.prisma.order.findFirst({
+      where: { id, guestViewToken: token.trim() },
+      include: {
+        items: { include: { product: { include: { images: true, shop: true } }, variant: true } },
+        seller: { include: { shop: true } },
+      },
+    });
+    if (!order) throw new NotFoundException('Order not found');
     return order;
   }
 

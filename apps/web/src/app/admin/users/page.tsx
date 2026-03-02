@@ -18,8 +18,10 @@ const ROLE_LABELS: Record<string, string> = { BUYER: 'Xaridor', SELLER: 'Sotuvch
 interface AdminUser {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
   role: string;
   isBlocked: boolean;
 }
@@ -34,6 +36,13 @@ interface AdminUsersResponse {
 }
 
 const PAGE_SIZE = 20;
+
+function displayName(u: AdminUser): string {
+  const first = (u.firstName ?? u.first_name ?? '').trim();
+  const last = (u.lastName ?? u.last_name ?? '').trim();
+  const name = `${first} ${last}`.trim();
+  return name || u.email || '—';
+}
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<AdminUsersResponse | null>(null);
@@ -119,10 +128,11 @@ export default function AdminUsersPage() {
           <Card key={u.id}>
             <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row flex-wrap justify-between items-stretch sm:items-center gap-3">
               <Link href={`/admin/users/${u.id}`} className="hover:opacity-80 transition-opacity min-w-0 flex-1">
-                <p className="font-medium">{u.firstName} {u.lastName}</p>
-                <p className="text-sm text-muted-foreground truncate">{u.email}</p>
+                <p className="font-medium">{displayName(u)}</p>
+                <p className="text-sm text-muted-foreground truncate">{u.email || '—'}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   <Badge variant="secondary">{ROLE_LABELS[u.role] ?? u.role}</Badge>
+                  {u.email?.startsWith('telegram_') && <Badge variant="outline">Telegram</Badge>}
                   {u.isBlocked && <Badge variant="destructive">Bloklangan</Badge>}
                 </div>
               </Link>

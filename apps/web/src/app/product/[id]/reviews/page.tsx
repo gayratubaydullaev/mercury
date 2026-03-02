@@ -23,7 +23,7 @@ export default async function ProductReviewsPage(props: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen bg-muted/50">
-      <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12 min-w-0">
+      <main className="w-full max-w-4xl mx-auto px-0 sm:px-4 md:px-6 py-6 pb-24 md:pb-12 min-w-0">
         <Link
           href={`/product/${id}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"

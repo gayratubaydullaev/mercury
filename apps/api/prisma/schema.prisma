@@ -276,6 +276,7 @@ model Order {
   buyer           User?         @relation("OrderBuyer", fields: [buyerId], references: [id])
   guestEmail     String?        @map("guest_email")
   guestPhone     String?        @map("guest_phone")
+  guestViewToken String?        @unique @map("guest_view_token")
   sellerId        String        @map("seller_id")
   seller          User          @relation("OrderSeller", fields: [sellerId], references: [id])
   status          OrderStatus   @default(PENDING)

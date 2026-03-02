@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatPrice } from '@/lib/utils';
+import { API_URL, formatPrice } from '@/lib/utils';
+import { apiFetch } from '@/lib/api';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
@@ -44,23 +46,66 @@ interface StoredOrder {
   } | null;
 }
 
+function toStoredOrder(o: {
+  id: string;
+  orderNumber: string;
+  deliveryType: string;
+  totalAmount: string;
+  items: { id: string; quantity: number; price: string; product: { id: string; title: string; images?: { url: string }[]; shop?: { pickupAddress?: PickupAddress } } }[];
+  seller?: { shop?: { id: string; name: string; pickupAddress?: PickupAddress } } | null;
+}): StoredOrder {
+  return {
+    id: o.id,
+    orderNumber: o.orderNumber,
+    deliveryType: o.deliveryType,
+    totalAmount: o.totalAmount,
+    items: o.items?.map((i) => ({
+      id: i.id,
+      quantity: i.quantity,
+      price: i.price,
+      product: {
+        id: i.product?.id ?? '',
+        title: i.product?.title ?? 'Mahsulot',
+        images: i.product?.images,
+        shop: i.product?.shop ?? null,
+      },
+    })) ?? [],
+    seller: o.seller ?? null,
+  };
+}
+
 export function CheckoutSuccessContent() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<StoredOrder[] | null>(null);
+  const orderIdFromUrl = searchParams.get('orderId');
+  const tokenFromUrl = searchParams.get('token');
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('checkout_orders');
-      if (raw) {
-        const data = JSON.parse(raw) as StoredOrder[];
-        setOrders(Array.isArray(data) ? data : [data]);
-        sessionStorage.removeItem('checkout_orders');
-      } else {
+    (async () => {
+      try {
+        const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('checkout_orders') : null;
+        if (raw) {
+          const data = JSON.parse(raw) as StoredOrder[];
+          setOrders(Array.isArray(data) ? data : [data]);
+          sessionStorage.removeItem('checkout_orders');
+          return;
+        }
+        if (orderIdFromUrl && tokenFromUrl) {
+          const r = await apiFetch(`${API_URL}/orders/${orderIdFromUrl}/guest-view?token=${encodeURIComponent(tokenFromUrl)}`);
+          if (r.ok) {
+            const order = await r.json();
+            setOrders([toStoredOrder(order)]);
+          } else {
+            setOrders([]);
+          }
+          return;
+        }
+        setOrders([]);
+      } catch {
         setOrders([]);
       }
-    } catch {
-      setOrders([]);
-    }
-  }, []);
+    })();
+  }, [orderIdFromUrl, tokenFromUrl]);
 
   if (orders === null) return <div className="animate-pulse h-24 bg-muted rounded-lg" />;
 
@@ -135,6 +180,13 @@ export function CheckoutSuccessContent() {
       )}
 
       <div className="flex flex-wrap gap-3 justify-center pt-4">
+        {orderIdFromUrl && tokenFromUrl && orders.length > 0 && (
+          <Button variant="outline" asChild>
+            <Link href={`/order/${orderIdFromUrl}/view?token=${encodeURIComponent(tokenFromUrl)}`}>
+              Buyurtmani keyinroq koʻrish (havola)
+            </Link>
+          </Button>
+        )}
         <Button asChild><Link href="/orders">Buyurtmalarim</Link></Button>
         <Button asChild variant="outline"><Link href="/catalog">Katalog</Link></Button>
       </div>

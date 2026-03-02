@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingCart, User, Sun, Moon, Heart, LayoutGrid, Search, Loader2, Store } from 'lucide-react';
+import { ShoppingCart, User, Sun, Moon, Heart, LayoutGrid, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTheme } from 'next-themes';
@@ -268,7 +268,7 @@ export function Header() {
         pathname.startsWith('/product/') && 'hidden md:block'
       )}
     >
-      <div className="w-full px-4 md:px-6">
+      <div className="w-full px-0 sm:px-3 md:px-6">
         <div className="rounded-3xl border border-border bg-card/80 backdrop-blur-xl shadow-sm px-3 md:px-6">
           {/* Одна строка: логотип + каталог + поиск; на десктопе ещё иконки */}
           <div className="flex items-center gap-2 md:gap-6 md:h-20 py-2 md:py-0">
@@ -490,14 +490,6 @@ export function Header() {
                   )}
                 </Link>
               </Button>
-              {hasUser && (
-                <Button variant="ghost" size="sm" className="h-11 rounded-full gap-1.5 px-4 font-medium text-muted-foreground hover:text-foreground" asChild>
-                  <Link href="/become-seller" title="Sotuvchi bo'lish">
-                    <Store className="h-5 w-5 shrink-0" />
-                    <span className="hidden lg:inline">Sotuvchi bo'lish</span>
-                  </Link>
-                </Button>
-              )}
               {hasUser ? (
                 <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full hover:bg-muted/60" asChild>
                   <Link href="/account" title="Profil">

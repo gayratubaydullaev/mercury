@@ -77,7 +77,7 @@ function ChatListContent() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto px-4 sm:px-6 py-4 pb-24">
+    <div className="w-full max-w-lg mx-auto px-0 sm:px-4 md:px-6 py-4 pb-24">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">Xabarlar</h1>
       <div className="flex flex-wrap gap-2 mb-4">
         <Button

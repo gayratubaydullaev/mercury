@@ -35,14 +35,13 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [resetDone, setResetDone] = useState('');
   const [mounted, setMounted] = useState(false);
   const [tgLoading, setTgLoading] = useState(false);
   const [tgWaiting, setTgWaiting] = useState(false);
   const [tgError, setTgError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginInput>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
@@ -108,11 +107,6 @@ function LoginForm() {
     };
   }, []);
 
-  const isDev =
-    mounted &&
-    process.env.NODE_ENV !== 'production' &&
-    (API_URL.includes('localhost') || API_URL.includes('127.0.0.1') || API_URL === '/api-proxy');
-
   const submit = handleSubmit((data) => {
     setLoading(true);
     setSubmitError('');
@@ -136,7 +130,7 @@ function LoginForm() {
       })
       .catch((err) => {
         const msg = err?.message ?? err?.error ?? 'Email yoki parol notoʻgʻri';
-        setSubmitError(msg === 'Invalid credentials' ? 'Email yoki parol notoʻgʻri. (Admin: admin@myshop.uz / Admin123!)' : msg);
+        setSubmitError(msg === 'Invalid credentials' ? 'Email yoki parol notoʻgʻri.' : msg);
       })
       .finally(() => setLoading(false));
   });
@@ -149,7 +143,7 @@ function LoginForm() {
         : null;
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="w-full max-w-md mx-auto px-0 sm:px-4 md:px-6 py-8 sm:py-12">
       <Card className="border-border/80 shadow-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
@@ -254,44 +248,13 @@ function LoginForm() {
           </CardFooter>
         </form>
       </Card>
-      {isDev && (
-        <Card className="mt-6 border-dashed">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Development</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              disabled={loading}
-              onClick={() => {
-                setSubmitError('');
-                setResetDone('');
-                apiFetch(API_URL + '/auth/dev-reset-seed-users', { method: 'POST' })
-                  .then((r) => r.json())
-                  .then((data) => {
-                    setResetDone(data?.message ?? 'Tayyor. admin@myshop.uz / Admin123! bilan kiring.');
-                    setValue('email', 'admin@myshop.uz');
-                    setValue('password', 'Admin123!');
-                  })
-                  .catch(() => setSubmitError('API ga ulanishda xatolik'));
-              }}
-            >
-              Test akkountlarni tiklash
-            </Button>
-            {resetDone && <p className="text-xs text-green-600 dark:text-green-400">{resetDone}</p>}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
 
 function LoginFallback() {
   return (
-    <div className="w-full max-w-md mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="w-full max-w-md mx-auto px-0 sm:px-4 md:px-6 py-8 sm:py-12">
       <div className="rounded-xl border bg-card p-6 shadow-md animate-pulse">
         <div className="h-7 w-40 bg-muted rounded mb-2" />
         <div className="h-4 w-56 bg-muted rounded mb-6" />
