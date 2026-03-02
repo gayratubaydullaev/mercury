@@ -17,8 +17,8 @@ import { TelegramWebAppAuth } from '@/components/telegram-webapp-auth';
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
 export const metadata: Metadata = {
-  title: { default: "MyShopUZ – Do'kon", template: '%s | MyShopUZ' },
-  description: "O'zbekiston bo'ylab xaridlar – MyShopUZ markazida.",
+  title: { default: 'MyShopUZ – Doʻkon', template: '%s | MyShopUZ' },
+  description: 'Oʻzbekiston boʻylab xaridlar – MyShopUZ markazida.',
   openGraph: { type: 'website', locale: 'uz_Latn' },
   robots: { index: true, follow: true },
   manifest: '/manifest.json',

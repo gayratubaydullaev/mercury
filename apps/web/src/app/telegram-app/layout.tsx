@@ -2,7 +2,7 @@ import { TelegramWebAppInit } from '@/components/telegram-webapp-init';
 
 export const metadata = {
   title: 'MyShopUZ — Telegram',
-  description: "Do'kon Telegram orqali",
+  description: 'Doʻkon Telegram orqali',
   robots: 'noindex, nofollow',
 };
 
