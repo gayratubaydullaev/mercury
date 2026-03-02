@@ -23,6 +23,9 @@ function formatPickupAddress(addr: PickupAddress): string {
   return parts.join(', ');
 }
 
+/** Shop can be full (id, name, pickupAddress) or partial from API (e.g. only pickupAddress). */
+type ShopLike = { id?: string; name?: string; pickupAddress?: PickupAddress } | null;
+
 interface OrderItem {
   id: string;
   quantity: number;
@@ -31,7 +34,7 @@ interface OrderItem {
     id: string;
     title: string;
     images?: { url: string }[];
-    shop?: { id: string; name: string; pickupAddress: PickupAddress } | null;
+    shop?: ShopLike;
   };
 }
 
@@ -41,9 +44,7 @@ interface StoredOrder {
   deliveryType: string;
   totalAmount: string;
   items: OrderItem[];
-  seller?: {
-    shop?: { id: string; name: string; pickupAddress: PickupAddress } | null;
-  } | null;
+  seller?: { shop?: ShopLike } | null;
 }
 
 function toStoredOrder(o: {
@@ -51,15 +52,15 @@ function toStoredOrder(o: {
   orderNumber: string;
   deliveryType: string;
   totalAmount: string;
-  items: { id: string; quantity: number; price: string; product: { id: string; title: string; images?: { url: string }[]; shop?: { pickupAddress?: PickupAddress } } }[];
-  seller?: { shop?: { id: string; name: string; pickupAddress?: PickupAddress } } | null;
+  items?: { id: string; quantity: number; price: string; product: { id: string; title: string; images?: { url: string }[]; shop?: ShopLike } }[];
+  seller?: { shop?: ShopLike } | null;
 }): StoredOrder {
   return {
     id: o.id,
     orderNumber: o.orderNumber,
     deliveryType: o.deliveryType,
     totalAmount: o.totalAmount,
-    items: o.items?.map((i) => ({
+    items: (o.items ?? []).map((i) => ({
       id: i.id,
       quantity: i.quantity,
       price: i.price,
@@ -69,7 +70,7 @@ function toStoredOrder(o: {
         images: i.product?.images,
         shop: i.product?.shop ?? null,
       },
-    })) ?? [],
+    })),
     seller: o.seller ?? null,
   };
 }
