@@ -387,6 +387,33 @@ export class TelegramService {
     await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
+  /** Admin: yangi ariza — sotuvchi bo'lish (tasdiqlash/rad etish tugmalari orqali). */
+  async sendAdminNewSellerApplicationNotification(data: {
+    applicationId: string;
+    shopName: string;
+    userName: string;
+    message?: string | null;
+  }): Promise<void> {
+    const settings = await this.prisma.platformSettings.findFirst({ select: { adminTelegramChatId: true } });
+    if (!settings?.adminTelegramChatId) return;
+    const text =
+      '📝 <b>Yangi ariza: Sotuvchi bo\'lish</b>\n\n' +
+      `🏪 Doʻkon nomi: ${escapeHtml(data.shopName)}\n` +
+      `👤 Ariza: ${escapeHtml(data.userName)}\n` +
+      (data.message ? `\n💬 Xabar: ${escapeHtml(data.message.slice(0, 300))}${data.message.length > 300 ? '…' : ''}` : '');
+    const baseUrl = this.getBaseUrl();
+    const rows: { text: string; callback_data?: string; url?: string }[][] = [
+      [
+        { text: '✅ Tasdiqlash', callback_data: `seller_app:approve:${data.applicationId}` },
+        { text: '❌ Rad etish', callback_data: `seller_app:reject:${data.applicationId}` },
+      ],
+    ];
+    if (baseUrl) {
+      rows.push([{ text: '📋 Arizalar roʻyxati', url: `${baseUrl}/admin/seller-applications` }]);
+    }
+    await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+  }
+
   /** Admin: yangi sharh moderatsiya kutilmoqda */
   async sendAdminPendingReviewNotification(data: {
     id: string;

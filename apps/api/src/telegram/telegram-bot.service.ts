@@ -841,6 +841,94 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    if (data.startsWith('seller_app:approve:') || data.startsWith('seller_app:reject:')) {
+      const adminChatId = await this.getAdminTelegramChatId();
+      if (adminChatId !== String(chatId)) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Ruxsat yoʻq.' });
+        return;
+      }
+      const applicationId = data.startsWith('seller_app:approve:')
+        ? data.slice('seller_app:approve:'.length)
+        : data.slice('seller_app:reject:'.length);
+      const adminUser = await this.prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } });
+      if (!adminUser) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Admin topilmadi.' });
+        return;
+      }
+      const app = await this.prisma.sellerApplication.findUnique({
+        where: { id: applicationId },
+        include: { user: true },
+      });
+      if (!app) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Ariza topilmadi.' });
+        return;
+      }
+      if (app.status !== 'PENDING') {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Ariza allaqachon koʻrib chiqilgan.' });
+        return;
+      }
+      if (data.startsWith('seller_app:approve:')) {
+        let slug = app.shopName
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '') || 'shop';
+        const existingSlug = await this.prisma.shop.findUnique({ where: { slug } });
+        if (existingSlug) {
+          let suffix = 1;
+          while (await this.prisma.shop.findUnique({ where: { slug: `${slug}-${suffix}` } })) suffix += 1;
+          slug = `${slug}-${suffix}`;
+        }
+        await this.prisma.$transaction(async (tx) => {
+          await tx.shop.create({
+            data: {
+              userId: app.userId,
+              name: app.shopName,
+              slug,
+              description: app.description ?? null,
+            },
+          });
+          await tx.user.update({
+            where: { id: app.userId },
+            data: { role: 'SELLER' },
+          });
+          await tx.sellerApplication.update({
+            where: { id: applicationId },
+            data: { status: 'APPROVED', reviewedAt: new Date(), reviewedById: adminUser.id },
+          });
+        });
+        await this.bot.answerCallbackQuery(query.id, { text: '✅ Ariza tasdiqlandi.' });
+        const newText = (query.message as TelegramBotModule.Message)?.text + '\n\n✅ <b>Tasdiqlandi</b>';
+        await this.bot.editMessageText(newText, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'HTML',
+        }).catch(() => {});
+        await this.bot.editMessageReplyMarkup(
+          { inline_keyboard: [] },
+          { chat_id: chatId, message_id: messageId },
+        ).catch(() => {});
+      } else {
+        await this.prisma.sellerApplication.update({
+          where: { id: applicationId },
+          data: { status: 'REJECTED', rejectReason: null, reviewedAt: new Date(), reviewedById: adminUser.id },
+        });
+        await this.bot.answerCallbackQuery(query.id, { text: '❌ Ariza rad etildi.' });
+        const newText = (query.message as TelegramBotModule.Message)?.text + '\n\n❌ <b>Rad etildi</b>';
+        await this.bot.editMessageText(newText, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'HTML',
+        }).catch(() => {});
+        await this.bot.editMessageReplyMarkup(
+          { inline_keyboard: [] },
+          { chat_id: chatId, message_id: messageId },
+        ).catch(() => {});
+      }
+      return;
+    }
+
     if (!data.startsWith('order:') || !messageId) return;
     const parts = data.split(':');
     if (parts.length !== 3) return;

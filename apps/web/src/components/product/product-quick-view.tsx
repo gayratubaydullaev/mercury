@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ProductOptions } from '@/app/product/[id]/product-options';
+import { ProductOptions, type SelectedOptions } from '@/app/product/[id]/product-options';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
@@ -24,6 +24,7 @@ interface QuickViewProduct {
   images: { url: string; alt?: string | null }[];
   shop?: { name?: string; slug: string };
   options?: Record<string, string[]> | null;
+  variants?: { id: string; options: Record<string, string> }[];
   avgRating?: number | null;
   reviewsCount?: number;
 }
@@ -41,6 +42,7 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
   const [product, setProduct] = useState<QuickViewProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
@@ -57,12 +59,27 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
       setAdded(false);
       apiFetch(`${API_URL}/products/${productId}`)
         .then((r) => r.json())
-        .then(setProduct)
+        .then((p: QuickViewProduct) => {
+          setProduct(p);
+          // Initial selection: first variant or first value per option
+          if (p?.options && Object.keys(p.options).length > 0) {
+            if (p.variants?.length) {
+              setSelectedOptions((p.variants[0].options as Record<string, string>) ?? {});
+            } else {
+              setSelectedOptions(
+                Object.fromEntries(Object.entries(p.options).map(([k, v]) => [k, v[0] ?? '']))
+              );
+            }
+          } else {
+            setSelectedOptions({});
+          }
+        })
         .catch(() => setProduct(null))
         .finally(() => setLoading(false));
     } else {
       setProduct(null);
       setVariantModalOpen(false);
+      setSelectedOptions({});
       setImageIndex(0);
     }
   }, [open, productId]);
@@ -98,29 +115,46 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
   const stock = product?.stock ?? 0;
   const hasOptions = product?.options != null && Object.keys(product.options).length > 0;
 
-  // Когда открыли из кнопки «Savatchaga» для товара с вариантами — показываем только Quick View
-  // (в нём уже есть выбор вариантов), не открываем второй модал.
+  // Когда открыли из кнопки «Savatchaga» для товара с вариантами — один модал с выбором в теле.
   useEffect(() => {
     if (open && product && hasOptions && openVariantModalWhenReady) {
       onVariantModalOpened?.();
     }
   }, [open, product, hasOptions, openVariantModalWhenReady, onVariantModalOpened]);
 
+  const findVariantIdByOptions = (opts: SelectedOptions): string | null => {
+    if (!product?.variants?.length) return null;
+    const v = product.variants.find((variant) =>
+      Object.keys(opts).every((k) => (variant.options as Record<string, string>)[k] === opts[k])
+    );
+    return v?.id ?? null;
+  };
+
   const handleAddToCartClick = () => {
     if (hasOptions) {
-      setVariantModalOpen(true);
+      const variantId = findVariantIdByOptions(selectedOptions);
+      if (!variantId) {
+        toast.error('Variantni tanlang');
+        return;
+      }
+      doAddToCart(variantId);
     } else {
       doAddToCart();
     }
   };
 
-  const doAddToCart = () => {
+  const doAddToCart = (variantId?: string) => {
     if (!product) return;
     setAdding(true);
+    const body: { productId: string; quantity: number; variantId?: string } = {
+      productId: String(product.id),
+      quantity: 1,
+    };
+    if (variantId) body.variantId = variantId;
     apiFetch(`${API_URL}/cart/items`, {
       method: 'POST',
       headers: getCartHeaders(),
-      body: JSON.stringify({ productId: String(product.id), quantity: 1 }),
+      body: JSON.stringify(body),
     })
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));
@@ -282,7 +316,12 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
                   {hasOptions && (
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Variantni tanlang</h3>
-                      <ProductOptions options={product.options ?? {}} />
+                      <ProductOptions
+                        key={product.id}
+                        options={product.options ?? {}}
+                        selected={selectedOptions}
+                        onChange={setSelectedOptions}
+                      />
                     </div>
                   )}
 
@@ -326,7 +365,7 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
         </DialogContent>
       </Dialog>
 
-      {/* Модал выбора варианта — когда у товара есть варианты */}
+      {/* Резервный модал выбора варианта (например, при открытии только вариантов без полного Quick View) */}
       <Dialog open={variantModalOpen} onOpenChange={setVariantModalOpen}>
         <DialogContent className="sm:max-w-md w-[90%] rounded-2xl" aria-describedby={undefined}>
           <DialogHeader>
@@ -334,11 +373,22 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
             <DialogDescription className="sr-only">Mahsulot variantini tanlang va savatchaga qoʻshing</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {product?.options && <ProductOptions options={product.options} />}
+            {product?.options && (
+              <ProductOptions
+                key={`modal-${product.id}`}
+                options={product.options}
+                selected={selectedOptions}
+                onChange={setSelectedOptions}
+              />
+            )}
           </div>
           <DialogFooter>
             <Button
-              onClick={doAddToCart}
+              onClick={() => {
+                const variantId = findVariantIdByOptions(selectedOptions);
+                if (variantId) doAddToCart(variantId);
+                else toast.error('Variantni tanlang');
+              }}
               disabled={adding}
               className="w-full h-12 text-base gap-2"
             >

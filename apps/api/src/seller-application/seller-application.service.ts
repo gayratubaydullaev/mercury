@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import type { ApplySellerDto } from './dto/apply-seller.dto';
 
 @Injectable()
 export class SellerApplicationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegram: TelegramService,
+  ) {}
 
   /** Подать заявку на продавца (только BUYER, одна активная заявка). */
   async apply(userId: string, dto: ApplySellerDto) {
@@ -39,10 +43,11 @@ export class SellerApplicationService {
           reviewedById: null,
         },
       });
+      this.notifyAdminNewApplication(existing.id).catch(() => {});
       return this.getMyStatus(userId);
     }
 
-    await this.prisma.sellerApplication.create({
+    const created = await this.prisma.sellerApplication.create({
       data: {
         userId,
         shopName: dto.shopName.trim(),
@@ -51,7 +56,24 @@ export class SellerApplicationService {
         status: 'PENDING',
       },
     });
+    this.notifyAdminNewApplication(created.id).catch(() => {});
     return this.getMyStatus(userId);
+  }
+
+  /** Отправить админу уведомление в Telegram о новой заявке (с кнопками Tasdiqlash / Rad etish). */
+  private async notifyAdminNewApplication(applicationId: string): Promise<void> {
+    const app = await this.prisma.sellerApplication.findUnique({
+      where: { id: applicationId },
+      include: { user: { select: { firstName: true, lastName: true } } },
+    });
+    if (!app || app.status !== 'PENDING') return;
+    const userName = app.user ? `${app.user.firstName} ${app.user.lastName}`.trim() || '—' : '—';
+    await this.telegram.sendAdminNewSellerApplicationNotification({
+      applicationId: app.id,
+      shopName: app.shopName,
+      userName,
+      message: app.message ?? undefined,
+    });
   }
 
   /** Статус заявки текущего пользователя. */

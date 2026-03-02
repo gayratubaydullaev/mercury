@@ -72,9 +72,15 @@ export class CartService {
       }
 
       const variantId = dto.variantId ?? null;
-      const existing = await tx.cartItem.findUnique({
-        where: { cartId_productId_variantId: { cartId: cart.id, productId: dto.productId, variantId: variantId as string } },
-      });
+      // Prisma findUnique does not accept null in compound unique (cartId_productId_variantId)
+      const existing =
+        variantId != null
+          ? await tx.cartItem.findUnique({
+              where: { cartId_productId_variantId: { cartId: cart.id, productId: dto.productId, variantId } },
+            })
+          : await tx.cartItem.findFirst({
+              where: { cartId: cart.id, productId: dto.productId, variantId: null },
+            });
       if (existing) {
         await tx.cartItem.update({
           where: { id: existing.id },
@@ -114,11 +120,17 @@ export class CartService {
       if (quantity <= 0) {
         await tx.cartItem.deleteMany({ where: { cartId, productId, variantId: vid } });
       } else {
-        await tx.cartItem.upsert({
-          where: { cartId_productId_variantId: { cartId, productId, variantId: vid as string } },
-          create: { cartId, productId, variantId: vid, quantity },
-          update: { quantity },
-        });
+        const existing =
+          vid != null
+            ? await tx.cartItem.findUnique({
+                where: { cartId_productId_variantId: { cartId, productId, variantId: vid } },
+              })
+            : await tx.cartItem.findFirst({ where: { cartId, productId, variantId: null } });
+        if (existing) {
+          await tx.cartItem.update({ where: { id: existing.id }, data: { quantity } });
+        } else {
+          await tx.cartItem.create({ data: { cartId, productId, variantId: vid, quantity } });
+        }
       }
       return tx.cart.findUniqueOrThrow({ where: { id: cartId }, include: cartInclude });
     });
@@ -151,11 +163,24 @@ export class CartService {
 
       for (const item of guestCart.items) {
         const variantId = item.variantId ?? null;
-        await tx.cartItem.upsert({
-          where: { cartId_productId_variantId: { cartId: userCart.id, productId: item.productId, variantId: variantId as string } },
-          create: { cartId: userCart.id, productId: item.productId, variantId, quantity: item.quantity },
-          update: { quantity: { increment: item.quantity } },
-        });
+        const existing =
+          variantId != null
+            ? await tx.cartItem.findUnique({
+                where: { cartId_productId_variantId: { cartId: userCart.id, productId: item.productId, variantId } },
+              })
+            : await tx.cartItem.findFirst({
+                where: { cartId: userCart.id, productId: item.productId, variantId: null },
+              });
+        if (existing) {
+          await tx.cartItem.update({
+            where: { id: existing.id },
+            data: { quantity: { increment: item.quantity } },
+          });
+        } else {
+          await tx.cartItem.create({
+            data: { cartId: userCart.id, productId: item.productId, variantId, quantity: item.quantity },
+          });
+        }
       }
       await tx.cart.delete({ where: { id: guestCart.id } });
       return tx.cart.findUniqueOrThrow({ where: { id: userCart.id }, include: cartInclude });

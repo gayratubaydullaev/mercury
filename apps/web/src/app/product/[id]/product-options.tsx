@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export type SelectedOptions = Record<string, string>;
@@ -13,6 +13,9 @@ interface ProductOptionsProps {
 
 export function ProductOptions({ options, selected = {}, onChange }: ProductOptionsProps) {
   const [local, setLocal] = useState<SelectedOptions>(() => selected);
+  useEffect(() => {
+    setLocal(selected);
+  }, [selected]);
 
   const update = (name: string, value: string) => {
     const next = { ...local, [name]: value };
