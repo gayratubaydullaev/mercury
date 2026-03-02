@@ -2,57 +2,29 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { API_URL } from '@/lib/utils';
-
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp: {
-        ready: () => void;
-        expand: () => void;
-        close: () => void;
-        enableClosingConfirmation?: () => void;
-        disableVerticalSwipes?: () => void;
-        MainButton: {
-          show: () => void;
-          hide: () => void;
-          setText: (text: string) => void;
-          onClick: (cb: () => void) => void;
-          offClick: (cb: () => void) => void;
-        };
-        BackButton: {
-          show: () => void;
-          hide: () => void;
-          onClick: (cb: () => void) => void;
-        };
-        themeParams: { bg_color?: string; text_color?: string };
-        setHeaderColor: (color: string) => void;
-        showConfirm?: (message: string, callback?: (ok: boolean) => void) => void;
-        initData: string;
-        initDataUnsafe: { user?: { first_name?: string; username?: string } };
-      };
-    };
-  }
-}
+import { getTelegramWebApp } from '@/lib/telegram-webapp';
 
 export default function TelegramAppPage() {
   const [mounted, setMounted] = useState(false);
   const [tgReady, setTgReady] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const authRequested = useRef(false);
+  const pathname = usePathname();
+  const router = useRouter();
   const { setToken, isLoggedIn } = useAuth();
-  const twa = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+  const twa = typeof window !== 'undefined' ? getTelegramWebApp() : undefined;
 
-  // Ждём загрузки скрипта Telegram (он может появиться после первого рендера)
   useEffect(() => {
     setMounted(true);
-    if (window.Telegram?.WebApp) {
+    if (getTelegramWebApp()) {
       setTgReady(true);
       return;
     }
     const interval = setInterval(() => {
-      if (window.Telegram?.WebApp) {
+      if (getTelegramWebApp()) {
         setTgReady(true);
         clearInterval(interval);
       }
@@ -60,22 +32,10 @@ export default function TelegramAppPage() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!mounted || !tgReady) return;
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand();
-      tg.setHeaderColor?.('#000000');
-      if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
-      if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
-    }
-  }, [mounted, tgReady]);
-
   // Авторизация по initData — запрос один раз после появления Telegram
   useEffect(() => {
     if (!mounted || !tgReady || authChecked || authRequested.current) return;
-    const tg = window.Telegram?.WebApp;
+    const tg = getTelegramWebApp();
     const initData = tg?.initData?.trim();
     if (!initData) {
       setAuthChecked(true);
@@ -113,22 +73,26 @@ export default function TelegramAppPage() {
     };
   }, [mounted, tgReady, twa]);
 
-  // Кнопка "назад" в шапке — показываем подтверждение, чтобы случайный свайп не закрыл приложение
+  // Кнопка "назад": на подстраницах — переход в приложении; на главной /telegram-app — подтверждение и закрытие
   useEffect(() => {
     if (!mounted || !tgReady || !twa?.BackButton) return;
     twa.BackButton.show();
     const onBack = () => {
-      if (twa.showConfirm) {
-        twa.showConfirm('Chiqish?', (ok: boolean) => {
-          if (ok) twa.close();
-        });
+      if (pathname && pathname !== '/telegram-app') {
+        router.back();
       } else {
-        twa.close();
+        if (twa.showConfirm) {
+          twa.showConfirm('Chiqish?', (ok: boolean) => {
+            if (ok) twa.close();
+          });
+        } else {
+          twa.close();
+        }
       }
     };
     twa.BackButton.onClick(onBack);
     return () => twa.BackButton.hide();
-  }, [mounted, tgReady, twa]);
+  }, [mounted, tgReady, twa, pathname, router]);
 
   const userName =
     mounted && twa?.initDataUnsafe?.user?.first_name

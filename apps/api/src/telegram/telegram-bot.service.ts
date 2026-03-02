@@ -22,7 +22,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Bekor qilindi',
 };
 
-const MAIN_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
+/** Кнопки «назад» в главное меню (общие для продавца и админа). */
+const MENU_BACK_ROW: TelegramBotModule.InlineKeyboardButton[][] = [
+  [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
+];
+
+/** Меню продавца: заказы, статистика, сегодня, ожидание, помощь. */
+const SELLER_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
   [
     { text: '📋 Buyurtmalar', callback_data: 'cmd:orders', style: 'primary' },
     { text: '📊 Statistika', callback_data: 'cmd:stats', style: 'primary' },
@@ -32,19 +38,45 @@ const MAIN_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
     { text: '⏳ Kutilmoqda', callback_data: 'cmd:pending', style: 'success' },
   ],
   [{ text: '❓ Yordam', callback_data: 'cmd:help' }],
-  [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
+  ...MENU_BACK_ROW,
 ];
-const MAIN_MENU: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: MAIN_MENU_ROWS };
 
-/** Меню для обычных пользователей (покупателей): каталог, мои заказы, помощь. */
+/** Меню админа: то же + строка «Модерация» (ссылки на товары/отзывы). */
+function getAdminMenuRows(baseUrl: string | null): TelegramBotModule.InlineKeyboardButton[][] {
+  const rows: TelegramBotModule.InlineKeyboardButton[][] = [
+    [
+      { text: '📋 Buyurtmalar', callback_data: 'cmd:orders', style: 'primary' },
+      { text: '📊 Statistika', callback_data: 'cmd:stats', style: 'primary' },
+    ],
+    [
+      { text: '📅 Bugun', callback_data: 'cmd:today', style: 'primary' },
+      { text: '⏳ Kutilmoqda', callback_data: 'cmd:pending', style: 'success' },
+    ],
+  ];
+  if (baseUrl) {
+    rows.push([
+      { text: '📦 Moderatsiya (tovarlar)', url: `${baseUrl}/admin/products?filter=pending`, style: 'primary' },
+      { text: '💬 Sharhlar', url: `${baseUrl}/admin/reviews?filter=pending`, style: 'primary' },
+    ]);
+  }
+  rows.push([{ text: '❓ Yordam', callback_data: 'cmd:help' }]);
+  rows.push(...MENU_BACK_ROW);
+  return rows;
+}
+
+
+/** Меню покупателя: только каталог, мои заказы, помощь. */
 function getBuyerMenuRows(webAppUrl: string | null): TelegramBotModule.InlineKeyboardButton[][] {
   const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
   if (webAppUrl) {
     rows.push([{ text: "🛒 Do'kon (katalog, savatcha)", web_app: { url: webAppUrl }, style: 'primary' }]);
   }
   rows.push(
-    [{ text: '📋 Mening buyurtmalarim', callback_data: 'buyer_orders', style: 'primary' }, { text: '❓ Yordam', callback_data: 'cmd:help' }],
-    [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
+    [
+      { text: '📋 Mening buyurtmalarim', callback_data: 'buyer_orders', style: 'primary' },
+      { text: '❓ Yordam', callback_data: 'cmd:help' },
+    ],
+    ...MENU_BACK_ROW,
   );
   return rows;
 }
@@ -76,13 +108,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     this.bot = new TelegramBot(token, { polling: true });
     this.bot.on('message', (msg: TelegramBotModule.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
     this.bot.on('callback_query', (query: TelegramBotModule.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
+    // Umumiy buyruqlar ro'yxati — barcha rollar uchun bir xil; menyu tugmalari roldan qat'iy nazar boshqacha.
     this.bot.setMyCommands([
       { command: 'start', description: 'Botni ishga tushirish' },
       { command: 'shop', description: "Do'konni ochish (veb-ilova)" },
       { command: 'orders', description: "Mening buyurtmalarim / Sotuvchi: buyurtmalar" },
-      { command: 'stats', description: 'Statistika (sotuvchi)' },
-      { command: 'pending', description: 'Kutilmoqda (sotuvchi)' },
-      { command: 'today', description: 'Bugun (sotuvchi)' },
       { command: 'help', description: 'Yordam' },
     ]).catch(() => {});
 
@@ -144,20 +174,32 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Menu: для админа/продавца — полное меню; для покупателя — каталог, мои заказы, помощь. */
+  /** Строки «назад в меню» для ответов (заказы, статистика): для админа — с модерацией, для продавца — без. */
+  private async getBackMenuRows(chatId: string): Promise<TelegramBotModule.InlineKeyboardButton[][]> {
+    const adminChatId = await this.getAdminTelegramChatId();
+    if (adminChatId === chatId) return getAdminMenuRows(this.telegram.getBaseUrl());
+    return SELLER_MENU_ROWS;
+  }
+
+  /** Меню по ролям: покупатель — каталог и заказы; продавец — заказы, статистика, панель; админ — то же + модерация и админ-панель. */
   private async getMenuWithPanel(chatId: string): Promise<TelegramBotModule.InlineKeyboardMarkup> {
     const baseUrl = this.telegram.getBaseUrl();
     const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
     const adminChatId = await this.getAdminTelegramChatId();
     const isAdmin = adminChatId === chatId;
     const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
-    if (isAdmin || shop) {
-      const rows = [...MAIN_MENU_ROWS];
-      if (webAppUrl) rows.unshift([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
-      if (baseUrl) {
-        if (isAdmin) rows.push([{ text: '🌐 Veb panel (admin)', url: `${baseUrl}/admin`, style: 'primary' }]);
-        else if (shop) rows.push([{ text: '🌐 Veb panel (sotuvchi)', url: `${baseUrl}/seller`, style: 'primary' }]);
-      }
+    if (isAdmin) {
+      const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
+      if (webAppUrl) rows.push([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
+      rows.push(...getAdminMenuRows(baseUrl));
+      if (baseUrl) rows.push([{ text: '🌐 Admin panel', url: `${baseUrl}/admin`, style: 'primary' }]);
+      return { inline_keyboard: rows };
+    }
+    if (shop) {
+      const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
+      if (webAppUrl) rows.push([{ text: "🛒 Do'kon (veb-ilova)", web_app: { url: webAppUrl }, style: 'primary' }]);
+      rows.push(...SELLER_MENU_ROWS);
+      if (baseUrl) rows.push([{ text: '🌐 Sotuvchi panel', url: `${baseUrl}/seller`, style: 'primary' }]);
       return { inline_keyboard: rows };
     }
     return { inline_keyboard: getBuyerMenuRows(webAppUrl) };
@@ -256,20 +298,30 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
     if (text === '/start' || text === '/link') {
       const menuMarkup = await this.getMenuWithPanel(chatId);
-      if (isAdmin || shop) {
+      if (isAdmin) {
         const code = await this.telegram.createLinkCode(chatId);
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>MyShopUZ</b> boti.\n\n` +
-            `Doʻkoningizni yoki admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> boʻlimida kiriting:\n\n` +
+          `Assalomu alaykum! <b>MyShopUZ</b> — <b>Admin</b>.\n\n` +
+            `Admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
             `<code>${code}</code>\n\n` +
-            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalardan foydalaning:`,
+            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel.`,
+          { parse_mode: 'HTML', reply_markup: menuMarkup },
+        );
+      } else if (shop) {
+        const code = await this.telegram.createLinkCode(chatId);
+        await this.bot!.sendMessage(
+          chatId,
+          `Assalomu alaykum! <b>MyShopUZ</b> — <b>Sotuvchi</b>.\n\n` +
+            `Doʻkoningizni ulash uchun kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
+            `<code>${code}</code>\n\n` +
+            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalar: buyurtmalar, statistika, veb panel.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else {
         const welcome =
           buyer
-            ? `Salom, ${esc(buyer.firstName)}! <b>MyShopUZ</b> doʻkoni.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
+            ? `Salom, ${esc(buyer.firstName)}! <b>MyShopUZ</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
             : `Assalomu alaykum! <b>MyShopUZ</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
         await this.bot!.sendMessage(chatId, welcome, { parse_mode: 'HTML', reply_markup: menuMarkup });
       }
@@ -314,7 +366,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         include: { buyer: { select: { firstName: true, lastName: true } }, seller: { select: { shop: { select: { name: true } } } } },
       });
       if (orders.length === 0) {
-        await this.sendOrEdit(chatId, '📋 <b>Admin: Buyurtmalar</b>\n\nHali buyurtmalar yoʻq.', { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+        await this.sendOrEdit(chatId, '📋 <b>Admin: Buyurtmalar</b>\n\nHali buyurtmalar yoʻq.', { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
         return;
       }
       const lines = orders.map(
@@ -329,7 +381,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         if (forButtons[i + 1]) row.push({ text: `📄 ${forButtons[i + 1].orderNumber}`, callback_data: `admin_order_detail:${forButtons[i + 1].id}`, style: 'primary' });
         orderButtons.push(row);
       }
-      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+      const backRows = await this.getBackMenuRows(chatId);
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...backRows] };
       await this.sendOrEdit(chatId, '📋 <b>Admin: Soʻnggi buyurtmalar</b>\n\nQuyidagi tugmalardan batafsil oling:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
       return;
     }
@@ -338,7 +391,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       select: { userId: true },
     });
     if (!shop) {
-      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const orders = await this.prisma.order.findMany({
@@ -348,7 +401,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       include: { items: { include: { product: { select: { title: true } } } }, buyer: { select: { firstName: true, lastName: true } } },
     });
     if (orders.length === 0) {
-      await this.sendOrEdit(chatId, 'Aktiv buyurtmalar yoʻq.', { reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, 'Aktiv buyurtmalar yoʻq.', { reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const lines = orders.map(
@@ -362,7 +415,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       if (orders[i + 1]) row.push({ text: `📄 ${orders[i + 1].orderNumber}`, callback_data: `order_detail:${orders[i + 1].id}`, style: 'primary' });
       orderButtons.push(row);
     }
-    const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...MAIN_MENU_ROWS] };
+    const backRows = await this.getBackMenuRows(chatId);
+    const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: [...orderButtons, ...backRows] };
     await this.sendOrEdit(chatId, '<b>Aktiv buyurtmalar</b>\n\nBatafsil uchun tugmani bosing:\n\n' + lines.join('\n'), { parse_mode: 'HTML', reply_markup }, messageId);
   }
 
@@ -385,7 +439,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         `📋 Buyurtmalar: ${ordersCount}\n` +
         `💰 Daromad (toʻlangan): ${Number(revenue).toLocaleString('uz-UZ')} soʻm\n\n` +
         `⏳ Moderatsiya kutilmoqda:\n  • Tovarlar: ${pendingProducts}\n  • Sharhlar: ${pendingReviews}`;
-      await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const shop = await this.prisma.shop.findFirst({
@@ -393,7 +447,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       select: { userId: true },
     });
     if (!shop) {
-      await this.sendOrEdit(chatId, 'Avval hisobingizni ulang: Sozlamalar da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, 'Avval hisobingizni ulang: Sozlamalar da kodni kiriting.', { reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const [ordersCount, pendingCount, paidSum, productsCount] = await Promise.all([
@@ -409,7 +463,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       `⏳ Kutilmoqda: ${pendingCount}\n` +
       `📦 Tovarlar: ${productsCount}\n` +
       `💰 Daromad (toʻlangan): ${Number(revenue).toLocaleString('uz-UZ')} soʻm`;
-    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+    await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
   }
 
   private async sendPendingResponse(chatId: string, messageId?: number) {
@@ -419,18 +473,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
         this.prisma.review.count({ where: { isModerated: false } }),
       ]);
-      const baseUrl = this.telegram.getBaseUrl();
-      const rows = [...MAIN_MENU_ROWS];
-      if (baseUrl) {
-        rows.unshift([
-          { text: '📦 Tovarlar (moderatsiya)', url: `${baseUrl}/admin/products`, style: 'primary' },
-          { text: '💬 Sharhlar', url: `${baseUrl}/admin/reviews`, style: 'primary' },
-        ]);
-      }
-      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: rows };
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: await this.getBackMenuRows(chatId) };
       await this.sendOrEdit(
         chatId,
-        '⏳ <b>Moderatsiya kutilmoqda</b>\n\n📦 Tovarlar: ' + pendingProducts + '\n💬 Sharhlar: ' + pendingReviews + (baseUrl ? '\n\nTugmalar orqali veb panelda oching.' : ''),
+        '⏳ <b>Moderatsiya kutilmoqda</b>\n\n📦 Tovarlar: ' + pendingProducts + '\n💬 Sharhlar: ' + pendingReviews + (this.telegram.getBaseUrl() ? '\n\nTugmalar orqali veb panelda oching.' : ''),
         { parse_mode: 'HTML', reply_markup },
         messageId,
       );
@@ -441,7 +487,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       select: { userId: true },
     });
     if (!shop) {
-      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const pendingCount = await this.prisma.order.count({
@@ -450,7 +496,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     await this.sendOrEdit(
       chatId,
       pendingCount > 0 ? `⏳ Kutilmoqda buyurtmalar: <b>${pendingCount}</b> ta` : '⏳ Kutilmoqda buyurtmalar yoʻq.',
-      { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+      { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) },
       messageId,
     );
   }
@@ -476,7 +522,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           '\n💰 Toʻlangan summa: ' +
           Number(total).toLocaleString('uz-UZ') +
           ' soʻm',
-        { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+        { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) },
         messageId,
       );
       return;
@@ -486,7 +532,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       select: { userId: true },
     });
     if (!shop) {
-      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(chatId, 'Avval doʻkoningizni ulang: Sozlamalar → Telegram da kodni kiriting.', { reply_markup: await this.getMenuWithPanel(chatId) }, messageId);
       return;
     }
     const [count, sum] = await Promise.all([
@@ -504,7 +550,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         '\n💰 Toʻlangan summa: ' +
         Number(total).toLocaleString('uz-UZ') +
         ' soʻm',
-      { parse_mode: 'HTML', reply_markup: MAIN_MENU },
+      { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) },
       messageId,
     );
   }
@@ -746,7 +792,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         (o.notes ? `📝 Izoh: ${esc(o.notes)}\n` : '') +
         '\n<b>Mahsulotlar:</b>\n' +
         itemsLines.split('\n').map((l: string) => esc(l)).join('\n');
-      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: await this.getBackMenuRows(String(chatId)) } }, messageId);
       return;
     }
 
@@ -791,7 +837,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         `📅 Sana: ${new Date(so.createdAt).toLocaleString('uz-UZ')}\n\n` +
         '<b>Mahsulotlar:</b>\n' +
         itemsText;
-      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: MAIN_MENU }, messageId);
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: await this.getBackMenuRows(String(chatId)) } }, messageId);
       return;
     }
 

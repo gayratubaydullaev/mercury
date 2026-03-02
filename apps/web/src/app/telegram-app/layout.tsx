@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import { TelegramWebAppInit } from '@/components/telegram-webapp-init';
 
 export const metadata = {
   title: 'MyShopUZ — Telegram',
@@ -10,7 +11,7 @@ export default function TelegramAppLayout({ children }: { children: React.ReactN
   return (
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-      {children}
+      <TelegramWebAppInit>{children}</TelegramWebAppInit>
     </>
   );
 }
