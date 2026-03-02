@@ -1,8 +1,16 @@
-# Telegram Web App — используемые части API
+# Telegram Web App — интеграция (сайт + PWA + TWA)
 
 Официальная документация: **[core.telegram.org/bots/webapps](https://core.telegram.org/bots/webapps)**
 
-## Что используем в MyShopUZ
+Один и тот же фронт работает как **обычный сайт**, **PWA** и **Telegram Mini App (TWA)**. Скрипт подключается глобально через `TelegramWebAppProvider`; при открытии в Telegram на `body` ставится `data-telegram-webapp="true"`, доступны `useTelegramWebApp()` и тема.
+
+## Архитектура
+
+- **Корень приложения:** `TelegramWebAppProvider` загружает скрипт `telegram-web-app.js?60` (если ещё нет), инициализирует Web App и отдаёт контекст. `TelegramThemeApplicator` выставляет атрибут на `body` при `isTWA`.
+- **Хук `useTelegramWebApp()`:** возвращает `{ isTWA, webApp, themeParams, isReady, platform, colorScheme, reinit }`. Любая страница может проверять `isTWA` и подстраивать UI (кнопки, тема, BackButton).
+- **Маршрут `/telegram-app`:** точка входа Mini App: свой layout с `TelegramWebAppInit` (жесты, повторный init при фокусе/навигации). Если открыть эту страницу в обычном браузере (`!isTWA`), показывается подсказка «Откройте в Telegram».
+
+## Что используем из API
 
 - **Инициализация:** скрипт `telegram-web-app.js?60`, вызовы `ready()`, `expand()`, `setHeaderColor()`.
 - **Жесты:**
@@ -18,3 +26,7 @@
 1. Перехватить **системный** жест «назад» (или закрытие по свайпу по шапке) через Web App API нельзя — только кнопка в шапке и её событие `backButtonClicked`.
 2. Вертикальные свайпы отключены только по контенту; свайп по шапке мини-приложения по-прежнему закрывает/сворачивает.
 3. Рекомендуется вызывать `ready()` как можно раньше; настройки жестов мы повторно применяем при `visibilitychange`, `focus`, `pageshow` и смене маршрута, чтобы клиент не сбрасывал их.
+
+## SDK
+
+Используется только официальный скрипт `telegram-web-app.js` и свой контекст `TelegramWebAppProvider` + хук `useTelegramWebApp()`. Пакет `@telegram-apps/sdk-react` не подключается, чтобы не плодить зависимости; при необходимости его можно добавить и заменить вызовы в layout/страницах TWA на хуки SDK.

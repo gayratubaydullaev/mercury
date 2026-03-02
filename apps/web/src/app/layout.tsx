@@ -8,6 +8,8 @@ import { CookieNotice } from '@/components/layout/cookie-notice';
 import { PwaRegister } from '@/components/pwa-register';
 import { CsrfPrefetch } from '@/components/csrf-prefetch';
 import { AuthProvider } from '@/contexts/auth-context';
+import { TelegramWebAppProvider } from '@/contexts/telegram-webapp-context';
+import { TelegramThemeApplicator } from '@/components/telegram-theme-applicator';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
@@ -32,6 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="uz" suppressHydrationWarning>
       <body className={inter.variable + ' font-sans antialiased min-h-screen bg-background text-foreground overflow-x-hidden'}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <TelegramWebAppProvider>
+            <TelegramThemeApplicator />
           <AuthProvider>
             <CsrfPrefetch />
             <PwaRegister />
@@ -39,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <CookieNotice />
           <Toaster />
           </AuthProvider>
+          </TelegramWebAppProvider>
         </ThemeProvider>
       </body>
     </html>

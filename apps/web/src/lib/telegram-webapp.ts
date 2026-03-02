@@ -1,7 +1,18 @@
 /**
  * Telegram Web App API types and helpers.
  * Script: https://telegram.org/js/telegram-web-app.js
+ * Docs: https://core.telegram.org/bots/webapps
  */
+
+export type TelegramThemeParams = {
+  bg_color?: string;
+  text_color?: string;
+  hint_color?: string;
+  link_color?: string;
+  button_color?: string;
+  button_text_color?: string;
+  secondary_bg_color?: string;
+};
 
 export type TelegramWebApp = {
   ready: () => void;
@@ -21,11 +32,16 @@ export type TelegramWebApp = {
     hide: () => void;
     onClick: (cb: () => void) => void;
   };
-  themeParams: { bg_color?: string; text_color?: string; button_color?: string };
+  themeParams: TelegramThemeParams;
   setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
   showConfirm?: (message: string, callback?: (ok: boolean) => void) => void;
   initData: string;
   initDataUnsafe: { user?: { first_name?: string; username?: string } };
+  platform?: string;
+  colorScheme?: 'light' | 'dark';
+  viewportStableHeight?: number;
+  isExpanded?: boolean;
 };
 
 declare global {

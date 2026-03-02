@@ -1,4 +1,3 @@
-import Script from 'next/script';
 import { TelegramWebAppInit } from '@/components/telegram-webapp-init';
 
 export const metadata = {
@@ -8,10 +7,5 @@ export const metadata = {
 };
 
 export default function TelegramAppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Script src="https://telegram.org/js/telegram-web-app.js?60" strategy="beforeInteractive" />
-      <TelegramWebAppInit>{children}</TelegramWebAppInit>
-    </>
-  );
+  return <TelegramWebAppInit>{children}</TelegramWebAppInit>;
 }

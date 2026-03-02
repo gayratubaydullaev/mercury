@@ -59,6 +59,10 @@
     background-image: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(var(--primary) / 0.08), transparent 60%);
     background-attachment: scroll;
   }
+  /* Telegram Web App: при открытии в Telegram на body ставится data-telegram-webapp; при необходимости можно использовать --tg-theme-* */
+  body[data-telegram-webapp="true"] {
+    /* Фон и текст можно переопределить из Telegram: var(--tg-theme-bg-color), var(--tg-theme-text-color) */
+  }
   @media (min-width: 768px) {
     body { background-attachment: fixed; }
   }
