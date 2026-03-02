@@ -2,7 +2,7 @@
   "name": "@myshopuz/api",
   "version": "1.0.0",
   "scripts": {
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "dev": "nest start --watch",
     "start": "node dist/src/main",
     "start:prod": "node dist/src/main",
