@@ -19,7 +19,7 @@
 - **Жесты:**
   - `disableVerticalSwipes()` (Bot API 7.7+) — отключает закрытие/сворачивание по вертикальному свайпу по **контенту**. По документации: *«In any case, the user will still be able to minimize and close the Mini App by swiping the Mini App's header»* — свайп по **шапке** всё равно закрывает.
   - `enableClosingConfirmation()` (Bot API 6.2+) — диалог подтверждения при попытке закрыть приложение.
-- **BackButton** (Bot API 6.1+): `show()`, `hide()`, `onClick(callback)`. Событие `backButtonClicked` срабатывает только при нажатии на **кнопку «Назад» в шапке** Mini App. Системный жест «назад» (кнопка Android / свайп от левого края) в документации не описан и может закрывать WebView без вызова этого события.
+- **BackButton** (Bot API 6.1+): `show()`, `hide()`, `onClick(callback)`. В шапке Mini App при вызове `BackButton.show()` отображается **стрелка «назад»** вместо только крестика; по нажатию вызывается наш обработчик. Компонент `TelegramBackButton` в корне приложения всегда показывает BackButton при `isTWA`: на подстраницах — переход по истории (`router.back()`), на главной `/telegram-app` — подтверждение и закрытие. Модальные окна регистрируют свой обработчик через `useTelegramBackHandler(open, onClose)` — тогда стрелка сначала закрывает модал. Системный жест «назад» (кнопка Android / свайп от левого края) в документации не описан и может закрывать WebView без вызова этого события.
 - **MainButton** (в доке с 7.10 именуется BottomButton): `setText()`, `show()`, `hide()`, `onClick()`, `offClick()`.
 - **Тема:** `themeParams` (bg_color, text_color, button_color и др.), CSS-переменные `var(--tg-theme-*)`.
 - **Данные:** `initData`, `initDataUnsafe` — для авторизации на бэкенде (проверка подписи через бот-токен).

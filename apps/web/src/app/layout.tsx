@@ -10,6 +10,8 @@ import { CsrfPrefetch } from '@/components/csrf-prefetch';
 import { AuthProvider } from '@/contexts/auth-context';
 import { TelegramWebAppProvider } from '@/contexts/telegram-webapp-context';
 import { TelegramThemeApplicator } from '@/components/telegram-theme-applicator';
+import { TelegramBackButton } from '@/components/telegram-back-button';
+import { TelegramBackHandlerProvider } from '@/contexts/telegram-back-handler-context';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
@@ -36,6 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <TelegramWebAppProvider>
             <TelegramThemeApplicator />
+            <TelegramBackHandlerProvider>
+              <TelegramBackButton />
           <AuthProvider>
             <CsrfPrefetch />
             <PwaRegister />
@@ -43,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <CookieNotice />
           <Toaster />
           </AuthProvider>
+            </TelegramBackHandlerProvider>
           </TelegramWebAppProvider>
         </ThemeProvider>
       </body>

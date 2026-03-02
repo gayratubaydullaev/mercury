@@ -11,6 +11,7 @@ import { ProductOptions } from '@/app/product/[id]/product-options';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
+import { useTelegramBackHandler } from '@/contexts/telegram-back-handler-context';
 import { X, ExternalLink, ShoppingCart, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,11 @@ export function ProductQuickView({ open, onOpenChange, productId, openVariantMod
   const [added, setAdded] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const quickViewScrollRef = useRef<HTMLDivElement>(null);
+
+  useTelegramBackHandler(open, () => {
+    if (variantModalOpen) setVariantModalOpen(false);
+    else onOpenChange(false);
+  });
 
   useEffect(() => {
     if (open && productId) {

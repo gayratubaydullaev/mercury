@@ -12,6 +12,7 @@ import { useProductSelectionOptional } from './product-selection-context';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
+import { useTelegramBackHandler } from '@/contexts/telegram-back-handler-context';
 import { ShoppingCart, Loader2, X, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -95,6 +96,11 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
     setPendingVariantAction(action);
     setVariantModalOpen(true);
   }, []);
+
+  useTelegramBackHandler(variantModalOpen, () => {
+    setVariantModalOpen(false);
+    setPendingVariantAction(null);
+  });
 
   if (!ctx) return null;
 

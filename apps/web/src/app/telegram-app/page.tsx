@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useTelegramWebApp } from '@/contexts/telegram-webapp-context';
 import { API_URL } from '@/lib/utils';
@@ -10,8 +9,6 @@ import { API_URL } from '@/lib/utils';
 export default function TelegramAppPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const authRequested = useRef(false);
-  const pathname = usePathname();
-  const router = useRouter();
   const { setToken, isLoggedIn } = useAuth();
   const { isTWA, webApp: twa, isReady: tgReady } = useTelegramWebApp();
   const mounted = tgReady;
@@ -57,26 +54,7 @@ export default function TelegramAppPage() {
     };
   }, [mounted, tgReady, twa]);
 
-  // Кнопка "назад": на подстраницах — переход в приложении; на главной /telegram-app — подтверждение и закрытие
-  useEffect(() => {
-    if (!mounted || !tgReady || !twa?.BackButton) return;
-    twa.BackButton.show();
-    const onBack = () => {
-      if (pathname && pathname !== '/telegram-app') {
-        router.back();
-      } else {
-        if (twa.showConfirm) {
-          twa.showConfirm('Chiqish?', (ok: boolean) => {
-            if (ok) twa.close();
-          });
-        } else {
-          twa.close();
-        }
-      }
-    };
-    twa.BackButton.onClick(onBack);
-    return () => twa.BackButton.hide();
-  }, [mounted, tgReady, twa, pathname, router]);
+  // BackButton (стрелка в шапке) управляется глобально в TelegramBackButton
 
   const userName =
     mounted && twa?.initDataUnsafe?.user?.first_name

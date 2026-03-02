@@ -49,7 +49,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
   return (
     <div className="min-h-screen flex flex-col bg-muted/50 overflow-x-hidden">
       <main className="flex-1 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-12">
-        <div className="w-full max-w-full min-w-0 px-0 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+        <div className="w-full max-w-full min-w-0 px-4 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
           {/* Breadcrumb — только desktop (lg и выше) */}
           <div className="hidden lg:block">
             <ProductBreadcrumbs category={product.category} productTitle={product.title} />
@@ -142,7 +142,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
           </div>
 
           {/* Мобильный и планшет: вертикальный layout, адаптивные отступы и safe area */}
-          <div className="lg:hidden flex flex-col -mx-4 sm:mx-0">
+          <div className="lg:hidden flex flex-col -mx-4 sm:mx-0 min-w-0">
             <div className="relative w-full">
               <Link
                 href="/catalog"

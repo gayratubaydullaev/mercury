@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { useTelegramBackHandler } from '@/contexts/telegram-back-handler-context';
 import { ChevronRight, Store } from 'lucide-react';
 import {
   Dialog,
@@ -32,6 +33,8 @@ export function CatalogTitle() {
       .then((s: ShopInfo) => setShop(s))
       .catch(() => setShop(null));
   }, [shopSlug]);
+
+  useTelegramBackHandler(modalOpen, () => setModalOpen(false));
 
   if (!shopSlug) {
     return null;
