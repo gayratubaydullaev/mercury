@@ -1,44 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useTelegramWebApp } from '@/contexts/telegram-webapp-context';
-import { API_URL } from '@/lib/utils';
 
 export default function TelegramAppPage() {
-  const [authChecked, setAuthChecked] = useState(false);
-  const authRequested = useRef(false);
-  const { setToken, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const { isTWA, webApp: twa, isReady: tgReady } = useTelegramWebApp();
   const mounted = tgReady;
 
-  // Авторизация по initData — запрос один раз после появления Telegram
-  useEffect(() => {
-    if (!mounted || !tgReady || authChecked || authRequested.current) return;
-    const tg = twa;
-    const initData = tg?.initData?.trim();
-    if (!initData) {
-      setAuthChecked(true);
-      return;
-    }
-    authRequested.current = true;
-    fetch(`${API_URL}/auth/telegram`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ initData }),
-    })
-      .then((res) => {
-        if (!res.ok) return res.json().then((e: { message?: string }) => Promise.reject(new Error(e?.message || res.statusText)));
-        return res.json();
-      })
-      .then((data: { accessToken?: string }) => {
-        if (data.accessToken) setToken(data.accessToken);
-      })
-      .catch(() => {})
-      .finally(() => setAuthChecked(true));
-  }, [mounted, tgReady, authChecked, setToken, twa]);
+  // Авторизация по initData выполняется глобально в TelegramWebAppAuth при любом входе в TWA
 
   useEffect(() => {
     if (!mounted || !tgReady || !twa) return;

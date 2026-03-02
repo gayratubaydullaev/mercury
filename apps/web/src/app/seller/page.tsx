@@ -15,6 +15,9 @@ type Stats = {
   totalRevenue: string;
   productsCount?: number;
   shopSlug?: string | null;
+  commission?: number;
+  totalPaidToPlatform?: number;
+  balance?: number;
 };
 
 type Order = {
@@ -120,7 +123,10 @@ export default function SellerDashboardPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xl font-bold truncate" title={formatPrice(Number(stats.totalRevenue))}>{formatPrice(Number(stats.totalRevenue))} soʻm</p>
-                  <p className="text-sm text-muted-foreground">Daromad</p>
+                  <p className="text-sm text-muted-foreground">Savdolar / Statistika</p>
+                  {typeof stats.balance === 'number' && stats.balance > 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Komissiya qoldigʻi: {formatPrice(stats.balance)} soʻm</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

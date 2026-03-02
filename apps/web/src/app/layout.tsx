@@ -12,6 +12,7 @@ import { TelegramWebAppProvider } from '@/contexts/telegram-webapp-context';
 import { TelegramThemeApplicator } from '@/components/telegram-theme-applicator';
 import { TelegramBackButton } from '@/components/telegram-back-button';
 import { TelegramBackHandlerProvider } from '@/contexts/telegram-back-handler-context';
+import { TelegramWebAppAuth } from '@/components/telegram-webapp-auth';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TelegramBackHandlerProvider>
               <TelegramBackButton />
           <AuthProvider>
+            <TelegramWebAppAuth />
             <CsrfPrefetch />
             <PwaRegister />
             <ShellWrapper>{children}</ShellWrapper>

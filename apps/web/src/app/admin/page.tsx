@@ -40,7 +40,7 @@ const mainTiles = [
   { href: '/admin/reviews', label: 'Sharhlar', desc: 'Sharhlar moderatsiyasi', icon: MessageSquare, badgeKey: 'pendingReviewsCount' as keyof Stats },
   { href: '/admin/pending-shop-updates', label: 'Do‘kon o‘zgarishlari', desc: 'Nomi/tavsif — tasdiqlash', icon: FileEdit },
   { href: '/admin/stats', label: 'Analitika', desc: 'Statistika va hisobotlar', icon: BarChart3 },
-  { href: '/admin/payouts', label: "To'lovlar", desc: "Sotuvchilarga to'lovlar", icon: Banknote },
+  { href: '/admin/payouts', label: "Komissiya hisobi", desc: "Savdolar, komissiya, sotuvchidan qabul qilingan", icon: Banknote },
 ];
 const settingsTiles = [
   { href: '/admin/settings', label: 'Platforma sozlamalari', desc: 'Komissiya, toʻlovlar', icon: Settings },

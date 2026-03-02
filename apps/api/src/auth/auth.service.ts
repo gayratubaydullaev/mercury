@@ -169,8 +169,9 @@ export class AuthService {
    */
 
   /**
-   * Login or register via Telegram Web App initData.
-   * Verifies initData with TELEGRAM_BOT_TOKEN, then finds or creates user by telegramId.
+   * Login or register via Telegram Web App initData (Menu Button, /telegram-app, etc.).
+   * Verifies initData, then finds user by telegramId or creates one. No duplicate users:
+   * same telegramId always returns the same user (only firstName/lastName updated).
    */
   async loginOrRegisterByTelegram(initData: string): Promise<{ accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }> {
     const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');

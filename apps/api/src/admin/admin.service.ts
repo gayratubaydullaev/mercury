@@ -171,6 +171,7 @@ export class AdminService {
       usersCount,
       productsCount,
       ordersCount,
+      paidOrdersCount,
       totalRevenue,
       pendingProductsCount,
       pendingReviewsCount,
@@ -178,6 +179,7 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.product.count({ where: { isActive: true } }),
       this.prisma.order.count(),
+      this.prisma.order.count({ where: { paymentStatus: 'PAID' } }),
       this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'PAID' } }),
       this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
       this.prisma.review.count({ where: { isModerated: false } }),
@@ -186,10 +188,42 @@ export class AdminService {
       usersCount,
       productsCount,
       ordersCount,
+      paidOrdersCount,
       totalRevenue: totalRevenue._sum.totalAmount?.toString() ?? '0',
       pendingProductsCount,
       pendingReviewsCount,
     };
+  }
+
+  /** Sales by day (PAID orders) for chart. Last N days; returns all days in range (zeros for no sales). */
+  async getSalesChart(days = 30): Promise<{ date: string; total: number; ordersCount: number }[]> {
+    const n = Math.min(90, Math.max(1, Number(days) || 30));
+    const to = new Date();
+    to.setUTCHours(23, 59, 59, 999);
+    const from = new Date(to);
+    from.setDate(from.getDate() - n);
+    from.setUTCHours(0, 0, 0, 0);
+    const orders = await this.prisma.order.findMany({
+      where: { paymentStatus: 'PAID', createdAt: { gte: from, lte: to } },
+      select: { totalAmount: true, createdAt: true },
+    });
+    const byDay = new Map<string, { total: number; ordersCount: number }>();
+    for (const o of orders) {
+      const d = o.createdAt.toISOString().slice(0, 10);
+      const cur = byDay.get(d) ?? { total: 0, ordersCount: 0 };
+      cur.total += Number(o.totalAmount);
+      cur.ordersCount += 1;
+      byDay.set(d, cur);
+    }
+    const result: { date: string; total: number; ordersCount: number }[] = [];
+    const cursor = new Date(from);
+    while (cursor <= to) {
+      const d = cursor.toISOString().slice(0, 10);
+      const v = byDay.get(d) ?? { total: 0, ordersCount: 0 };
+      result.push({ date: d, total: v.total, ordersCount: v.ordersCount });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
   }
 
   async getPlatformSettings() {
@@ -356,7 +390,10 @@ export class AdminService {
     });
   }
 
-  /** Payouts by seller (PAID orders). Commission uses seller's shop.commissionRate if set, else platform default. Includes totalPaid and balance. */
+  /**
+   * Commission accounting by seller. Buyer pays seller directly (cash/card on receipt).
+   * We track: sales (order total), our commission (platform %), amount seller has paid to us (cash/card), balance = commission - paid.
+   */
   async getPayouts(req: Request, page = 1, limit = 20) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
@@ -412,11 +449,12 @@ export class AdminService {
         for (const r of records) {
           totalPaidBySeller.set(r.sellerId, (totalPaidBySeller.get(r.sellerId) ?? 0) + Number(r.amount));
         }
-        const list = Array.from(bySeller.entries()).map(([sid, row]) => ({
-          ...row,
-          totalPaid: totalPaidBySeller.get(sid) ?? 0,
-          balance: row.commission - (totalPaidBySeller.get(sid) ?? 0),
-        }));
+        // balance = commission - totalPaid. If seller paid in cash/card more than commission, balance < 0 (seller credit).
+        const list = Array.from(bySeller.entries()).map(([sid, row]) => {
+          const totalPaid = totalPaidBySeller.get(sid) ?? 0;
+          const balance = row.commission - totalPaid;
+          return { ...row, totalPaid, balance };
+        });
         return {
           data: list.slice(skip, skip + take),
           total: list.length,
@@ -441,7 +479,7 @@ export class AdminService {
     }
   }
 
-  /** Admin records payment received from seller (e.g. cash). */
+  /** Admin records payment received from seller (cash/card). Reduces commission balance. If amount > commission, balance becomes negative (seller credit for next period). */
   async recordPayout(sellerId: string, amount: number, method: string, paidAt?: Date, note?: string) {
     return this.prisma.payoutRecord.create({
       data: {

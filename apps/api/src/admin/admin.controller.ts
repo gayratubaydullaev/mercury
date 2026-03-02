@@ -129,6 +129,12 @@ export class AdminController {
     return this.admin.getStats();
   }
 
+  @Get('stats/sales-chart')
+  @ApiOperation({ summary: 'Sales by day for chart (PAID orders, last N days)' })
+  getSalesChart(@Query('days') days?: number) {
+    return this.admin.getSalesChart(days ?? 30);
+  }
+
   @Get('settings')
   @ApiOperation({ summary: 'Get platform settings' })
   getPlatformSettings() {

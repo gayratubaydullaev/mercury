@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SellerService } from './seller.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,9 +44,15 @@ export class SellerController {
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Seller stats' })
+  @ApiOperation({ summary: 'Seller stats (orders, revenue, commission, balance)' })
   getStats(@CurrentUser('id') userId: string) {
     return this.seller.getStats(userId);
+  }
+
+  @Get('stats/sales-chart')
+  @ApiOperation({ summary: 'Sales by day for chart (PAID orders, last N days)' })
+  getSalesChart(@CurrentUser('id') userId: string, @Query('days') days?: number) {
+    return this.seller.getSalesChart(userId, days ?? 30);
   }
 
   @Get('reviews')

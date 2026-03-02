@@ -118,20 +118,29 @@ export default function AdminPayoutsPage() {
     <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
         <Banknote className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Toʻlovlar
+        Komissiya hisobi
       </h1>
-      <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Sotuvchilar boʻyicha toʻlangan buyurtmalar, komissiya va qoldiq</p>
+      <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4 sm:mb-6 max-w-2xl">
+        <p className="text-sm font-medium mb-1">Qanday ishlaydi</p>
+        <ul className="text-xs sm:text-sm text-muted-foreground space-y-1 list-disc list-inside">
+          <li><strong className="text-foreground">Savdolar</strong> — toʻlangan buyurtmalar boʻyicha jami summa (sotuvchi oladi).</li>
+          <li><strong className="text-foreground">Bizning komissiyamiz</strong> — platforma ulushi (foiz savdolardan).</li>
+          <li>Sotuvchi komissiyani bizga naqd yoki karta orqali toʻlaydi. Siz «Qayd etish» tugmasi orqali sotuvchidan qabul qilingan summani (naqd/karta) kiritasiz.</li>
+          <li><strong className="text-foreground">Qoldiq</strong> — sotuvchi qancha toʻlashi kerak (yoki ortiqcha toʻlangan boʻlsa — uning hisobida).</li>
+        </ul>
+      </div>
       {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
       <div className="overflow-x-auto -mx-0 rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm border-collapse min-w-[560px]">
           <thead>
-            <tr className="border-b">
+            <tr className="border-b bg-muted/30">
               <th className="text-left py-2 px-2 font-medium">Sotuvchi</th>
-              <th className="text-right py-2 px-2 font-medium">Buyurtmalar</th>
-              <th className="text-right py-2 px-2 font-medium">Jami</th>
-              <th className="text-right py-2 px-2 font-medium">Komissiya</th>
-              <th className="text-right py-2 px-2 font-medium">Toʻlangan</th>
-              <th className="text-right py-2 px-2 font-medium">Qoldiq</th>
+              <th className="text-right py-2 px-2 font-medium" title="Toʻlangan buyurtmalar soni">Buyurtmalar</th>
+              <th className="text-right py-2 px-2 font-medium" title="Savdolar jami">Savdolar</th>
+              <th className="text-right py-2 px-2 font-medium" title="Sotuvchiga tegishli (savdo − komissiya)">Sotuvchi oladi</th>
+              <th className="text-right py-2 px-2 font-medium" title="Platforma ulushi">Bizning komissiya</th>
+              <th className="text-right py-2 px-2 font-medium" title="Sotuvchi bizga allaqachon toʻlagan">Bizga toʻlangan</th>
+              <th className="text-right py-2 px-2 font-medium" title="Qolgan qarz yoki sotuvchi hisobida">Qoldiq</th>
               <th className="text-right py-2 px-2 font-medium w-32" />
             </tr>
           </thead>
@@ -144,29 +153,58 @@ export default function AdminPayoutsPage() {
                 </td>
                 <td className="py-3 px-2 text-right">{row.ordersCount}</td>
                 <td className="py-3 px-2 text-right">{formatPrice(row.total)} soʻm</td>
+                <td className="py-3 px-2 text-right">{formatPrice(row.total - row.commission)} soʻm</td>
                 <td className="py-3 px-2 text-right">{formatPrice(row.commission)} soʻm</td>
                 <td className="py-3 px-2 text-right">{formatPrice(row.totalPaid)} soʻm</td>
-                <td className="py-3 px-2 text-right font-medium">{formatPrice(row.balance)} soʻm</td>
+                <td className="py-3 px-2 text-right font-medium">
+                  {row.balance === 0 ? (
+                    <span className="text-muted-foreground">Toʻlandi</span>
+                  ) : row.balance < 0 ? (
+                    <span className="text-green-600 dark:text-green-400" title="Sotuvchi hisobida (ortiqcha toʻlov)">
+                      +{formatPrice(-row.balance)} soʻm
+                    </span>
+                  ) : (
+                    <span>{formatPrice(row.balance)} soʻm</span>
+                  )}
+                </td>
                 <td className="py-3 px-2 text-right">
                   <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" onClick={() => openRecordModal(row)}>
                     <PlusCircle className="h-4 w-4" />
-                    Toʻlov
+                    Qayd etish
                   </Button>
                 </td>
               </tr>
             ))}
           </tbody>
+          {rows.length > 0 && (
+            <tfoot className="border-t-2 bg-muted/40 font-medium">
+              <tr>
+                <td className="py-3 px-2" colSpan={2}>Jami</td>
+                <td className="py-3 px-2 text-right">{formatPrice(rows.reduce((s, r) => s + r.total, 0))} soʻm</td>
+                <td className="py-3 px-2 text-right">{formatPrice(rows.reduce((s, r) => s + (r.total - r.commission), 0))} soʻm</td>
+                <td className="py-3 px-2 text-right">{formatPrice(rows.reduce((s, r) => s + r.commission, 0))} soʻm</td>
+                <td className="py-3 px-2 text-right">{formatPrice(rows.reduce((s, r) => s + r.totalPaid, 0))} soʻm</td>
+                <td className="py-3 px-2 text-right">{formatPrice(rows.reduce((s, r) => s + r.balance, 0))} soʻm</td>
+                <td className="py-3 px-2" />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
+      {rows.length > 0 && (
+        <p className="text-muted-foreground text-xs sm:text-sm mt-3">
+          <strong>Qoldiq</strong> — sotuvchilar platformaga qancha toʻlashi kerak (yoki manfiy boʻlsa, sotuvchilar hisobida ortiqcha).
+        </p>
+      )}
       {rows.length === 0 && !loadError && <p className="text-muted-foreground py-8">Maʼlumot yoʻq</p>}
 
       <Dialog open={recordModal.open} onOpenChange={(open) => !open && closeRecordModal()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Toʻlov qabul qilindi</DialogTitle>
+            <DialogTitle>Komissiya qabul qilindi</DialogTitle>
             <DialogDescription>
               {recordModal.row && (
-                <>Sotuvchidan olingan toʻlovni kiriting: {recordModal.row.seller.firstName} {recordModal.row.seller.lastName}</>
+                <>Sotuvchi sizga naqd yoki karta orqali komissiya toʻladi — shu summani kiriting. Qoldiq shuncha kamayadi. Ortiqcha toʻlsa, sotuvchi hisobiga yoziladi. {recordModal.row.seller.firstName} {recordModal.row.seller.lastName}</>
               )}
             </DialogDescription>
           </DialogHeader>

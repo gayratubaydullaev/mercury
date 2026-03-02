@@ -14,7 +14,7 @@ const mainItems = [
   { href: '/admin/products', label: 'Tovarlar (moderatsiya)', icon: Package },
   { href: '/admin/reviews', label: 'Sharhlar', icon: MessageSquare },
   { href: '/admin/stats', label: 'Analitika', icon: BarChart3 },
-  { href: '/admin/payouts', label: "To'lovlar", icon: Banknote },
+  { href: '/admin/payouts', label: "Komissiya hisobi", icon: Banknote },
 ];
 const secondaryItems = [
   { href: '/admin/categories', label: 'Toifalar', icon: FolderTree },

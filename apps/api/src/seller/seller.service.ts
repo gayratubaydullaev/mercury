@@ -96,23 +96,80 @@ export class SellerService {
   }
 
   async getStats(userId: string) {
-    const shop = await this.prisma.shop.findFirst({ where: { userId } });
+    const shop = await this.prisma.shop.findFirst({ where: { userId }, select: { id: true, slug: true, commissionRate: true } });
     if (!shop) {
-      return { ordersCount: 0, pendingOrdersCount: 0, totalRevenue: '0', productsCount: 0, shopSlug: null };
+      return {
+        ordersCount: 0,
+        pendingOrdersCount: 0,
+        totalRevenue: '0',
+        productsCount: 0,
+        shopSlug: null,
+        commissionRate: null,
+        commission: 0,
+        totalPaidToPlatform: 0,
+        balance: 0,
+      };
     }
-    const [ordersCount, pendingOrdersCount, sum, productsCount] = await Promise.all([
+    const [ordersCount, pendingOrdersCount, paidOrders, productsCount, settings, payoutRecords] = await Promise.all([
       this.prisma.order.count({ where: { sellerId: userId } }),
       this.prisma.order.count({ where: { sellerId: userId, status: 'PENDING' } }),
-      this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { sellerId: userId, paymentStatus: 'PAID' } }),
+      this.prisma.order.findMany({
+        where: { sellerId: userId, paymentStatus: 'PAID' },
+        select: { totalAmount: true },
+      }),
       this.prisma.product.count({ where: { shopId: shop.id, isActive: true } }),
+      this.prisma.platformSettings.findFirst({ select: { commissionRate: true } }),
+      this.prisma.payoutRecord.findMany({ where: { sellerId: userId }, select: { amount: true } }),
     ]);
+    const totalRevenue = paidOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+    const platformRate = settings ? Number(settings.commissionRate) / 100 : 0.05;
+    const sellerRate = shop.commissionRate != null ? Number(shop.commissionRate) / 100 : platformRate;
+    const commission = paidOrders.reduce((s, o) => s + Number(o.totalAmount) * sellerRate, 0);
+    const totalPaidToPlatform = payoutRecords.reduce((s, r) => s + Number(r.amount), 0);
+    const balance = commission - totalPaidToPlatform;
+
     return {
       ordersCount,
       pendingOrdersCount,
-      totalRevenue: sum._sum.totalAmount?.toString() ?? '0',
+      totalRevenue: String(totalRevenue),
       productsCount,
       shopSlug: shop.slug,
+      commissionRate: shop.commissionRate != null ? Number(shop.commissionRate) : (settings ? Number(settings.commissionRate) : null),
+      commission,
+      totalPaidToPlatform,
+      balance,
     };
+  }
+
+  /** Sales by day (PAID orders) for seller chart. Last N days; returns all days in range (zeros for no sales). */
+  async getSalesChart(userId: string, days = 30): Promise<{ date: string; total: number; ordersCount: number }[]> {
+    const n = Math.min(90, Math.max(1, Number(days) || 30));
+    const to = new Date();
+    to.setUTCHours(23, 59, 59, 999);
+    const from = new Date(to);
+    from.setDate(from.getDate() - n);
+    from.setUTCHours(0, 0, 0, 0);
+    const orders = await this.prisma.order.findMany({
+      where: { sellerId: userId, paymentStatus: 'PAID', createdAt: { gte: from, lte: to } },
+      select: { totalAmount: true, createdAt: true },
+    });
+    const byDay = new Map<string, { total: number; ordersCount: number }>();
+    for (const o of orders) {
+      const d = o.createdAt.toISOString().slice(0, 10);
+      const cur = byDay.get(d) ?? { total: 0, ordersCount: 0 };
+      cur.total += Number(o.totalAmount);
+      cur.ordersCount += 1;
+      byDay.set(d, cur);
+    }
+    const result: { date: string; total: number; ordersCount: number }[] = [];
+    const cursor = new Date(from);
+    while (cursor <= to) {
+      const d = cursor.toISOString().slice(0, 10);
+      const v = byDay.get(d) ?? { total: 0, ordersCount: 0 };
+      result.push({ date: d, total: v.total, ordersCount: v.ordersCount });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
   }
 
   async linkTelegram(userId: string, code: string): Promise<{ ok: boolean }> {
