@@ -60,11 +60,11 @@ pnpm run prisma:migrate
 
 RLS: migrations dan keyin ixtiyoriy — `apps/api/prisma/rls-policies.sql` ni PostgreSQL da ishga tushiring.
 
-Admin yaratish (ixtiyoriy):
+Admin yaratish (seed siz):
 
-```bash
-pnpm --filter @myshopuz/api exec prisma db seed
-```
+- **Variant 1 (tavsiya):** `.env` da `ADMIN_EMAIL` va `ADMIN_PASSWORD` ni belgilang. API ishga tushganda bu foydalanuvchi avtomatik yaratiladi yoki paroli yangilanadi, roli `ADMIN` boʻladi. Ixtiyoriy: `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`.
+- **Variant 2:** Seed orqali (admin + seller + maʼlumotlar): `pnpm --filter @myshopuz/api exec prisma db seed`
+- **Variant 3 (dev):** Backend ishlaganda `NODE_ENV !== production` da `POST /auth/dev-reset-seed-users` chaqiring — `admin@myshop.uz` / `Admin123!` yaratiladi yoki paroli qayta oʻrnatiladi.
 
 Backend ishga tushirish:
 

@@ -13,6 +13,14 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Вариант опцияларини o'qilishi oson matnga aylantiradi (JSON o'rniga). */
+function formatVariantOptions(options: Record<string, string> | unknown): string {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) return '';
+  const entries = Object.entries(options as Record<string, string>).filter(([, v]) => v != null && String(v).trim() !== '');
+  if (entries.length === 0) return '';
+  return entries.map(([k, v]) => `${k}: ${v}`).join(', ');
+}
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Kutilmoqda',
   CONFIRMED: 'Tasdiqlandi',
@@ -715,7 +723,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const itemsLines = o.items
         .map(
           (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
-            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(JSON.stringify(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(formatVariantOptions(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
         )
         .join('\n');
       const text =
@@ -777,7 +785,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const itemsLines = o.items
         .map(
           (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
-            `  • ${i.product.title}${i.variant?.options ? ` (${JSON.stringify(i.variant.options)})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+            `  • ${i.product.title}${i.variant?.options ? ` (${formatVariantOptions(i.variant.options)})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
         )
         .join('\n');
       const text =
@@ -825,7 +833,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const itemsText = so.items
         .map(
           (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
-            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(JSON.stringify(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+            `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(formatVariantOptions(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
         )
         .join('\n');
       const text =

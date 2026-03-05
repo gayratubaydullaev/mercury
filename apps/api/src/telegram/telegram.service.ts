@@ -34,6 +34,14 @@ function escapeHtml(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Вариант опцияларини o'qilishi oson matnga aylantiradi (JSON o'rniga). */
+function formatVariantOptions(options: Record<string, string> | unknown): string {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) return '';
+  const entries = Object.entries(options as Record<string, string>).filter(([, v]) => v != null && String(v).trim() !== '');
+  if (entries.length === 0) return '';
+  return entries.map(([k, v]) => `${k}: ${v}`).join(', ');
+}
+
 function canChangeStatus(current: string): boolean {
   return !['DELIVERED', 'CANCELLED'].includes(current);
 }
@@ -314,7 +322,7 @@ export class TelegramService {
       order.items
         ?.map(
           (i) =>
-            `  • ${i.product.title}${i.variant?.options ? ` (${JSON.stringify(i.variant.options)})` : ''} x ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} so'm`,
+            `  • ${i.product.title}${i.variant?.options ? ` (${formatVariantOptions(i.variant.options)})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
         )
         .join('\n') ?? '—';
 

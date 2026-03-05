@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger, ForbiddenException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -13,7 +13,7 @@ const REFRESH_EXPIRES_DAYS = 7;
 const TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN = 5;
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
@@ -22,6 +22,36 @@ export class AuthService {
     private config: ConfigService,
     private mailer: MailerService,
   ) {}
+
+  async onModuleInit() {
+    await this.ensureAdminFromEnv();
+  }
+
+  /**
+   * Если в .env заданы ADMIN_EMAIL и ADMIN_PASSWORD — создаёт или обновляет пользователя с ролью ADMIN.
+   * Удобно для первого входа без запуска seed.
+   */
+  async ensureAdminFromEnv() {
+    const email = this.config.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
+    const password = this.config.get<string>('ADMIN_PASSWORD');
+    if (!email || !password) return;
+    const passwordHash = await bcrypt.hash(password, 10);
+    const firstName = this.config.get<string>('ADMIN_FIRST_NAME') ?? 'Admin';
+    const lastName = this.config.get<string>('ADMIN_LAST_NAME') ?? 'MyShop';
+    await this.prisma.user.upsert({
+      where: { email },
+      update: { passwordHash, role: 'ADMIN', firstName, lastName, emailVerified: true },
+      create: {
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        role: 'ADMIN',
+        emailVerified: true,
+      },
+    });
+    this.logger.log(`Admin ensured from env: ${email}`);
+  }
 
   async validateUser(email: string, password: string) {
     const normalizedEmail = email?.trim().toLowerCase();

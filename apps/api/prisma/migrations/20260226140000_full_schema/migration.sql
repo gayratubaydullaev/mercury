@@ -1,4 +1,4 @@
--- Consolidated migration: full schema (init, options, variants, specs, chat_enabled, unit, multiple reviews per product)
+-- Full schema: single consolidated migration (users, shops, products, orders, telegram, seller applications, guest order view)
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('BUYER', 'SELLER', 'ADMIN');
@@ -27,6 +27,7 @@ CREATE TABLE "users" (
     "avatar_url" TEXT,
     "is_blocked" BOOLEAN NOT NULL DEFAULT false,
     "email_verified" BOOLEAN NOT NULL DEFAULT false,
+    "telegram_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -82,6 +83,8 @@ CREATE TABLE "shops" (
     "commission_rate" DECIMAL(5,2),
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "chat_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "telegram_chat_id" TEXT,
+    "telegram_type" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -144,6 +147,7 @@ CREATE TABLE "Order" (
     "buyer_id" TEXT,
     "guest_email" TEXT,
     "guest_phone" TEXT,
+    "guest_view_token" TEXT,
     "seller_id" TEXT NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
     "payment_method" "PaymentMethod" NOT NULL,
@@ -264,6 +268,7 @@ CREATE TABLE "platform_settings" (
     "payment_card_on_delivery_enabled" BOOLEAN NOT NULL DEFAULT true,
     "delivery_enabled" BOOLEAN NOT NULL DEFAULT true,
     "pickup_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "admin_telegram_chat_id" TEXT,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "platform_settings_pkey" PRIMARY KEY ("id")
@@ -297,11 +302,69 @@ CREATE TABLE "payout_records" (
     CONSTRAINT "payout_records_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "telegram_link_codes" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "chat_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "telegram_link_codes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "telegram_login_tokens" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "telegram_chat_id" TEXT,
+    "link_user_id" TEXT,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "telegram_login_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "seller_applications" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "shop_name" TEXT NOT NULL,
+    "description" TEXT,
+    "message" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "reject_reason" TEXT,
+    "reviewed_at" TIMESTAMP(3),
+    "reviewed_by_id" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "seller_applications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "pending_shop_updates" (
+    "id" TEXT NOT NULL,
+    "shop_id" TEXT NOT NULL,
+    "requested_name" TEXT NOT NULL,
+    "requested_slug" TEXT NOT NULL,
+    "requested_description" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "reject_reason" TEXT,
+    "reviewed_at" TIMESTAMP(3),
+    "reviewed_by_id" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pending_shop_updates_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_telegram_id_key" ON "users"("telegram_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "refresh_tokens_token_key" ON "refresh_tokens"("token");
@@ -328,6 +391,9 @@ CREATE UNIQUE INDEX "product_variants_sku_key" ON "product_variants"("sku");
 CREATE UNIQUE INDEX "Order_order_number_key" ON "Order"("order_number");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Order_guest_view_token_key" ON "Order"("guest_view_token");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "carts_user_id_key" ON "carts"("user_id");
 
 -- CreateIndex
@@ -336,9 +402,6 @@ CREATE UNIQUE INDEX "carts_session_id_key" ON "carts"("session_id");
 -- CreateIndex
 CREATE UNIQUE INDEX "cart_items_cart_id_product_id_variant_id_key" ON "cart_items"("cart_id", "product_id", "variant_id");
 
--- CreateIndex (multiple reviews per user per product allowed)
-CREATE INDEX "reviews_product_id_user_id_idx" ON "reviews"("product_id", "user_id");
-
 -- CreateIndex
 CREATE UNIQUE INDEX "favorites_user_id_product_id_key" ON "favorites"("user_id", "product_id");
 
@@ -346,7 +409,16 @@ CREATE UNIQUE INDEX "favorites_user_id_product_id_key" ON "favorites"("user_id",
 CREATE UNIQUE INDEX "chat_sessions_buyer_id_seller_id_product_id_key" ON "chat_sessions"("buyer_id", "seller_id", "product_id");
 
 -- CreateIndex
-CREATE INDEX "payout_records_seller_id_idx" ON "payout_records"("seller_id");
+CREATE UNIQUE INDEX "telegram_link_codes_code_key" ON "telegram_link_codes"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "telegram_login_tokens_token_key" ON "telegram_login_tokens"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "seller_applications_user_id_key" ON "seller_applications"("user_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pending_shop_updates_shop_id_key" ON "pending_shop_updates"("shop_id");
 
 -- AddForeignKey
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -431,3 +503,18 @@ ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_sender_id_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "payout_records" ADD CONSTRAINT "payout_records_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "telegram_login_tokens" ADD CONSTRAINT "telegram_login_tokens_link_user_id_fkey" FOREIGN KEY ("link_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "seller_applications" ADD CONSTRAINT "seller_applications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "seller_applications" ADD CONSTRAINT "seller_applications_reviewed_by_id_fkey" FOREIGN KEY ("reviewed_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "pending_shop_updates" ADD CONSTRAINT "pending_shop_updates_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "shops"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "pending_shop_updates" ADD CONSTRAINT "pending_shop_updates_reviewed_by_id_fkey" FOREIGN KEY ("reviewed_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
