@@ -222,8 +222,7 @@ export class AuthService implements OnModuleInit {
     const lastName = (tgUser.last_name ?? '').trim() || '';
     const email = `telegram_${tgUser.id}@t.me`;
 
-    /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma schema has telegramId; generated types may lag */
-    let user = await this.prisma.user.findFirst({ where: { telegramId } as any });
+    let user = await this.prisma.user.findFirst({ where: { telegramId } });
     if (user) {
       if (user.isBlocked) throw new ForbiddenException('Account blocked');
       user = await this.prisma.user.update({
@@ -235,7 +234,7 @@ export class AuthService implements OnModuleInit {
       if (existingByEmail) {
         user = await this.prisma.user.update({
           where: { id: existingByEmail.id },
-          data: { telegramId, firstName, lastName } as any,
+          data: { telegramId, firstName, lastName },
         });
       } else {
         user = await this.prisma.user.create({
@@ -246,11 +245,10 @@ export class AuthService implements OnModuleInit {
             lastName,
             role: 'BUYER',
             emailVerified: false,
-          } as any,
+          },
         });
       }
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
     return this.login(user);
   }
 
@@ -265,9 +263,8 @@ export class AuthService implements OnModuleInit {
     const first = (firstName ?? '').trim() || 'User';
     const last = (lastName ?? '').trim() || '';
     const email = `telegram_${telegramId}@t.me`;
-    /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma schema has telegramId; generated types may lag */
     const existingUser = await this.prisma.user.findFirst({
-      where: { telegramId } as any,
+      where: { telegramId },
       select: { id: true, email: true, role: true, isBlocked: true },
     });
     if (existingUser) {
@@ -282,7 +279,7 @@ export class AuthService implements OnModuleInit {
     if (existingByEmail) {
       await this.prisma.user.update({
         where: { id: existingByEmail.id },
-        data: { telegramId, firstName: first, lastName: last } as any,
+        data: { telegramId, firstName: first, lastName: last },
       });
       return { id: existingByEmail.id, email: existingByEmail.email, role: existingByEmail.role };
     }
@@ -294,9 +291,8 @@ export class AuthService implements OnModuleInit {
         lastName: last,
         role: 'BUYER',
         emailVerified: false,
-      } as any,
+      },
     });
-    /* eslint-enable @typescript-eslint/no-explicit-any */
     return { id: created.id, email: created.email, role: created.role };
   }
 
@@ -312,7 +308,7 @@ export class AuthService implements OnModuleInit {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date } }) => Promise<unknown> } }).telegramLoginToken.create({
+    await this.prisma.telegramLoginToken.create({
       data: { token, expiresAt },
     });
     const loginUrl = `https://t.me/${botUsername.trim()}?start=login_${token}`;
@@ -331,7 +327,7 @@ export class AuthService implements OnModuleInit {
     const token = uuidv4().replace(/-/g, '').slice(0, 32);
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + TELEGRAM_LOGIN_TOKEN_EXPIRES_MIN);
-    await (this.prisma as unknown as { telegramLoginToken: { create: (args: { data: { token: string; expiresAt: Date; linkUserId: string } }) => Promise<unknown> } }).telegramLoginToken.create({
+    await this.prisma.telegramLoginToken.create({
       data: { token, expiresAt, linkUserId: userId },
     });
     const linkUrl = `https://t.me/${botUsername.trim()}?start=link_${token}`;
@@ -392,8 +388,7 @@ export class AuthService implements OnModuleInit {
     | { status: 'linked' }
     | { accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }
   > {
-    /* eslint-disable @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma client */
-    const loginTokens = (this.prisma as any).telegramLoginToken;
+    const loginTokens = this.prisma.telegramLoginToken;
     const row = await loginTokens.findUnique({ where: { token } });
     if (!row || row.expiresAt < new Date()) {
       if (row) await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
@@ -402,10 +397,10 @@ export class AuthService implements OnModuleInit {
     if (!row.telegramChatId) {
       return { status: 'pending' };
     }
-    const linkUserId = (row as { linkUserId?: string | null }).linkUserId;
-    if (linkUserId) {
+    const linkUserId = row.linkUserId;
+    if (linkUserId && row.telegramChatId) {
       const other = await this.prisma.user.findFirst({
-        where: { telegramId: row.telegramChatId } as { telegramId: string },
+        where: { telegramId: row.telegramChatId },
       });
       if (other && other.id !== linkUserId) {
         await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
@@ -413,13 +408,18 @@ export class AuthService implements OnModuleInit {
       }
       await this.prisma.user.update({
         where: { id: linkUserId },
-        data: { telegramId: row.telegramChatId, isGuest: false } as { telegramId: string; isGuest: boolean },
+        data: { telegramId: row.telegramChatId, isGuest: false },
       });
       await loginTokens.delete({ where: { id: row.id } });
       return { status: 'linked' };
     }
+    const telegramChatId = row.telegramChatId;
+    if (!telegramChatId) {
+      await loginTokens.delete({ where: { id: row.id } }).catch(() => {});
+      throw new UnauthorizedException('User not found');
+    }
     const user = await this.prisma.user.findFirst({
-      where: { telegramId: row.telegramChatId } as { telegramId: string },
+      where: { telegramId: telegramChatId },
     });
     if (!user) {
       await loginTokens.delete({ where: { id: row.id } }).catch(() => {});

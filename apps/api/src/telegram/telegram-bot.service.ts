@@ -230,8 +230,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (linkStartMatch) {
       const token = linkStartMatch[1].trim();
       if (token) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
-        const linkRow = await (this.prisma as any).telegramLoginToken.findUnique({
+        const linkRow = await this.prisma.telegramLoginToken.findUnique({
           where: { token },
         });
         if (!linkRow || linkRow.expiresAt < new Date()) {
@@ -241,12 +240,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           );
           return;
         }
-        if (!(linkRow as { linkUserId?: string | null }).linkUserId) {
+        if (!linkRow?.linkUserId) {
           await this.bot!.sendMessage(chatId, 'Bu link kirish uchun. Saytda "Telegram orqali kirish" tugmasidan foydalaning.');
           return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
-        await (this.prisma as any).telegramLoginToken.update({
+        await this.prisma.telegramLoginToken.update({
           where: { id: linkRow.id },
           data: { telegramChatId: chatId },
         });
@@ -263,8 +261,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (loginStartMatch) {
       const token = loginStartMatch[1].trim();
       if (token) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
-        const loginRow = await (this.prisma as any).telegramLoginToken.findUnique({
+        const loginRow = await this.prisma.telegramLoginToken.findUnique({
           where: { token },
         });
         if (!loginRow || loginRow.expiresAt < new Date()) {
@@ -274,8 +271,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           );
           return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- telegramLoginToken on Prisma
-        await (this.prisma as any).telegramLoginToken.update({
+        await this.prisma.telegramLoginToken.update({
           where: { id: loginRow.id },
           data: { telegramChatId: chatId },
         });

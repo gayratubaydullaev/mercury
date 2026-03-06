@@ -10,8 +10,7 @@ export class SellerService {
   ) {}
 
   async getShop(userId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shop include pendingUpdates
-    const shop = await (this.prisma as any).shop.findFirst({
+    const shop = await this.prisma.shop.findFirst({
       where: { userId },
       include: {
         pendingUpdates: { where: { status: 'PENDING' }, take: 1, orderBy: { createdAt: 'desc' } },
@@ -20,7 +19,7 @@ export class SellerService {
     if (!shop) return null;
     const { pendingUpdates, ...rest } = shop;
     const pending = pendingUpdates?.[0];
-    const pendingAny = pending as { requestedLegalType?: string; requestedLegalName?: string; requestedOgrn?: string; requestedInn?: string; requestedDocumentUrls?: string[] } | undefined;
+    const docUrls = pending?.requestedDocumentUrls;
     return {
       ...rest,
       pendingUpdate: pending
@@ -28,11 +27,11 @@ export class SellerService {
             requestedName: pending.requestedName,
             requestedSlug: pending.requestedSlug,
             requestedDescription: pending.requestedDescription,
-            requestedLegalType: pendingAny?.requestedLegalType ?? null,
-            requestedLegalName: pendingAny?.requestedLegalName ?? null,
-            requestedOgrn: pendingAny?.requestedOgrn ?? null,
-            requestedInn: pendingAny?.requestedInn ?? null,
-            requestedDocumentUrls: pendingAny?.requestedDocumentUrls ?? null,
+            requestedLegalType: pending.requestedLegalType ?? null,
+            requestedLegalName: pending.requestedLegalName ?? null,
+            requestedOgrn: pending.requestedOgrn ?? null,
+            requestedInn: pending.requestedInn ?? null,
+            requestedDocumentUrls: Array.isArray(docUrls) ? docUrls : null,
             createdAt: pending.createdAt,
           }
         : null,
@@ -70,22 +69,24 @@ export class SellerService {
       data.documentUrls !== undefined;
 
     if (hasMain || hasLegal) {
-      const shopAny = shop as { name: string; slug: string; description?: string | null; legalType?: string | null; legalName?: string | null; ogrn?: string | null; inn?: string | null; documentUrls?: unknown };
-      const pending = await (this.prisma as any).pendingShopUpdate.findUnique({ where: { shopId: shop.id } });
+      const pending = await this.prisma.pendingShopUpdate.findUnique({ where: { shopId: shop.id } });
 
-      const baseSlug = (data.name ?? shopAny.name ?? '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      const slug = (data.slug ?? (baseSlug || shopAny.slug || 'shop')).slice(0, 100);
+      const baseSlug = (data.name ?? shop.name ?? '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const slug = (data.slug ?? (baseSlug || shop.slug || 'shop')).slice(0, 100);
 
-      const requestedName = (data.name ?? (pending as { requestedName?: string } | null)?.requestedName ?? shopAny.name).trim();
-      const requestedDescription = data.description !== undefined ? (data.description?.trim() || null) : (pending as { requestedDescription?: string | null } | null)?.requestedDescription ?? shopAny.description ?? null;
-      const requestedLegalType = data.legalType !== undefined ? (data.legalType?.trim() || null) : (pending as { requestedLegalType?: string | null } | null)?.requestedLegalType ?? shopAny.legalType ?? null;
-      const requestedLegalName = data.legalName !== undefined ? (data.legalName?.trim() || null) : (pending as { requestedLegalName?: string | null } | null)?.requestedLegalName ?? shopAny.legalName ?? null;
-      const requestedOgrn = data.ogrn !== undefined ? (data.ogrn?.trim() || null) : (pending as { requestedOgrn?: string | null } | null)?.requestedOgrn ?? shopAny.ogrn ?? null;
-      const requestedInn = data.inn !== undefined ? (data.inn?.trim() || null) : (pending as { requestedInn?: string | null } | null)?.requestedInn ?? shopAny.inn ?? null;
-      const requestedDocumentUrls = data.documentUrls !== undefined ? (Array.isArray(data.documentUrls) ? data.documentUrls : null) : (pending as { requestedDocumentUrls?: string[] | null } | null)?.requestedDocumentUrls ?? (Array.isArray(shopAny.documentUrls) ? shopAny.documentUrls : null);
+      const requestedName = (data.name ?? pending?.requestedName ?? shop.name).trim();
+      const requestedDescription = data.description !== undefined ? (data.description?.trim() || null) : pending?.requestedDescription ?? shop.description ?? null;
+      const requestedLegalType = data.legalType !== undefined ? (data.legalType?.trim() || null) : pending?.requestedLegalType ?? shop.legalType ?? null;
+      const requestedLegalName = data.legalName !== undefined ? (data.legalName?.trim() || null) : pending?.requestedLegalName ?? shop.legalName ?? null;
+      const requestedOgrn = data.ogrn !== undefined ? (data.ogrn?.trim() || null) : pending?.requestedOgrn ?? shop.ogrn ?? null;
+      const requestedInn = data.inn !== undefined ? (data.inn?.trim() || null) : pending?.requestedInn ?? shop.inn ?? null;
+      const requestedDocumentUrls =
+        data.documentUrls !== undefined
+          ? (Array.isArray(data.documentUrls) ? data.documentUrls : null)
+          : pending?.requestedDocumentUrls ?? (Array.isArray(shop.documentUrls) ? shop.documentUrls : null);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PendingShopUpdate on Prisma client
-      await (this.prisma as any).pendingShopUpdate.upsert({
+      const docUrlsJson = Array.isArray(requestedDocumentUrls) ? requestedDocumentUrls : undefined;
+      await this.prisma.pendingShopUpdate.upsert({
         where: { shopId: shop.id },
         create: {
           shopId: shop.id,
@@ -96,7 +97,7 @@ export class SellerService {
           requestedLegalName,
           requestedOgrn,
           requestedInn,
-          requestedDocumentUrls,
+          requestedDocumentUrls: docUrlsJson,
           status: 'PENDING',
         },
         update: {
@@ -107,7 +108,7 @@ export class SellerService {
           requestedLegalName,
           requestedOgrn,
           requestedInn,
-          requestedDocumentUrls,
+          requestedDocumentUrls: docUrlsJson,
           status: 'PENDING',
         },
       });

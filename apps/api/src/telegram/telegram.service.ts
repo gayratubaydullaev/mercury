@@ -193,10 +193,9 @@ export class TelegramService {
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: buyerId },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- User.telegramId in schema
-      select: { telegramId: true } as any,
+      select: { telegramId: true },
     });
-    const telegramChatId = (user as { telegramId?: string | null } | null)?.telegramId;
+    const telegramChatId = user?.telegramId;
     if (!telegramChatId) return;
 
     const baseUrl = this.getBaseUrl();
