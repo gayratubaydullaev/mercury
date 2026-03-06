@@ -3,6 +3,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as cookieParser from 'cookie-parser';
+import * as express from 'express';
+import * as path from 'path';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -18,6 +20,10 @@ async function bootstrap() {
   });
 
   const app = await NestFactory.create(AppModule);
+
+  // Local uploads (when Cloudinary is not configured): serve files from uploads/
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
 
   app.use(cookieParser());
   const isProd = process.env.NODE_ENV === 'production';

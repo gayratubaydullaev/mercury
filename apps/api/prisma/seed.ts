@@ -155,8 +155,8 @@ async function main() {
   }
   console.log('Products seeded:', productData.length);
 
-  // Тестовые товары с 4–5 фото и вариантами
-  const richProductSlugs = ['samsung-a54', 'airpods', 'futbolka-erkak', 'hp-15', 'lampa-stol'];
+  // Тестовые товары с 4–5 фото и вариантами; товары с опциями без вариантов — по 1 фото и варианты по всем комбинациям
+  const richProductSlugs = ['samsung-a54', 'airpods', 'futbolka-erkak', 'hp-15', 'lampa-stol', 'shim-yengil', 'koylak-ofis', 'choy-qora', 'soat-qol'];
   const richImages: Record<string, { url: string; alt?: string }[]> = {
     'samsung-a54': [
       { url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop' },
@@ -191,6 +191,10 @@ async function main() {
       { url: 'https://images.unsplash.com/photo-1524484485831-a92ffc0de03f?w=800&fit=crop' },
       { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&fit=crop' },
     ],
+    'shim-yengil': [{ url: PLACEHOLDER_IMAGE }],
+    'koylak-ofis': [{ url: PLACEHOLDER_IMAGE }],
+    'choy-qora': [{ url: PLACEHOLDER_IMAGE }],
+    'soat-qol': [{ url: PLACEHOLDER_IMAGE }],
   };
   const richProductOptions: Record<string, Record<string, string[]>> = {
     'samsung-a54': { Rang: ['Qora', 'Binafsha', 'Yashil'], Xotira: ['128GB', '256GB'] },
@@ -198,14 +202,18 @@ async function main() {
     'futbolka-erkak': { "O'lcham": ['M', 'L', 'XL'], Rang: ['Oq', 'Qora', "Ko'k"] },
     'hp-15': { Rang: ['Kumush', 'Qora'] },
     'lampa-stol': { Rang: ['Oq', 'Qora', 'Kumush'] },
+    'shim-yengil': { "O'lcham": ['28', '30', '32', '34'], Rang: ["Ko'k", 'Qora'] },
+    'koylak-ofis': { "O'lcham": ['M', 'L', 'XL'] },
+    'choy-qora': { Hajm: ['100g', '200g'] },
+    'soat-qol': { Rang: ['Qora', 'Kumush', 'Oltin'] },
   };
   const richVariants: Record<string, { options: Record<string, string>; stock: number; imageUrl?: string; sku: string; priceOverride?: number }[]> = {
     'samsung-a54': [
-      { options: { Rang: 'Qora', Xotira: '128GB' }, stock: 8, sku: 'SAM-A54-128-BLK' },
-      { options: { Rang: 'Qora', Xotira: '256GB' }, stock: 6, sku: 'SAM-A54-256-BLK', priceOverride: 4990000 },
-      { options: { Rang: 'Binafsha', Xotira: '128GB' }, stock: 5, sku: 'SAM-A54-128-VIO', imageUrl: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&fit=crop' },
-      { options: { Rang: 'Binafsha', Xotira: '256GB' }, stock: 4, sku: 'SAM-A54-256-VIO', priceOverride: 4990000 },
-      { options: { Rang: 'Yashil', Xotira: '128GB' }, stock: 7, sku: 'SAM-A54-128-GRN' },
+      { options: { Rang: 'Qora', Xotira: '128GB' }, stock: 3, sku: 'SAM-A54-128-BLK' },
+      { options: { Rang: 'Qora', Xotira: '256GB' }, stock: 2, sku: 'SAM-A54-256-BLK', priceOverride: 4990000 },
+      { options: { Rang: 'Binafsha', Xotira: '128GB' }, stock: 2, sku: 'SAM-A54-128-VIO', imageUrl: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&fit=crop' },
+      { options: { Rang: 'Binafsha', Xotira: '256GB' }, stock: 2, sku: 'SAM-A54-256-VIO', priceOverride: 4990000 },
+      { options: { Rang: 'Yashil', Xotira: '128GB' }, stock: 3, sku: 'SAM-A54-128-GRN' },
       { options: { Rang: 'Yashil', Xotira: '256GB' }, stock: 3, sku: 'SAM-A54-256-GRN', priceOverride: 4990000 },
     ],
     airpods: [
@@ -231,6 +239,30 @@ async function main() {
       { options: { Rang: 'Oq' }, stock: 12, sku: 'LAMP-WHT' },
       { options: { Rang: 'Qora' }, stock: 10, sku: 'LAMP-BLK' },
       { options: { Rang: 'Kumush' }, stock: 8, sku: 'LAMP-SLV' },
+    ],
+    'shim-yengil': [
+      { options: { "O'lcham": '28', Rang: "Ko'k" }, stock: 5, sku: 'SHIM-28-BLU' },
+      { options: { "O'lcham": '28', Rang: 'Qora' }, stock: 5, sku: 'SHIM-28-BLK' },
+      { options: { "O'lcham": '30', Rang: "Ko'k" }, stock: 10, sku: 'SHIM-30-BLU' },
+      { options: { "O'lcham": '30', Rang: 'Qora' }, stock: 10, sku: 'SHIM-30-BLK' },
+      { options: { "O'lcham": '32', Rang: "Ko'k" }, stock: 5, sku: 'SHIM-32-BLU' },
+      { options: { "O'lcham": '32', Rang: 'Qora' }, stock: 5, sku: 'SHIM-32-BLK' },
+      { options: { "O'lcham": '34', Rang: "Ko'k" }, stock: 5, sku: 'SHIM-34-BLU' },
+      { options: { "O'lcham": '34', Rang: 'Qora' }, stock: 5, sku: 'SHIM-34-BLK' },
+    ],
+    'koylak-ofis': [
+      { options: { "O'lcham": 'M' }, stock: 10, sku: 'KOYL-M' },
+      { options: { "O'lcham": 'L' }, stock: 8, sku: 'KOYL-L' },
+      { options: { "O'lcham": 'XL' }, stock: 7, sku: 'KOYL-XL' },
+    ],
+    'choy-qora': [
+      { options: { Hajm: '100g' }, stock: 50, sku: 'CHOY-100' },
+      { options: { Hajm: '200g' }, stock: 30, sku: 'CHOY-200' },
+    ],
+    'soat-qol': [
+      { options: { Rang: 'Qora' }, stock: 6, sku: 'SOAT-BLK' },
+      { options: { Rang: 'Kumush' }, stock: 5, sku: 'SOAT-SLV' },
+      { options: { Rang: 'Oltin' }, stock: 4, sku: 'SOAT-GLD' },
     ],
   };
 

@@ -15,13 +15,25 @@ type Product = {
 
 type SelectedOptions = Record<string, string>;
 
+/** Нормализация для сравнения опций (пробелы, регистр) — как в product-selection-context */
+function norm(s: string): string {
+  return String(s ?? '').replace(/\s+/g, '').trim();
+}
+
+function getVariantOptionValue(o: Record<string, string>, key: string): string {
+  if (o[key] !== undefined) return o[key];
+  const lower = key.trim().toLowerCase();
+  const entry = Object.entries(o).find(([k]) => k.trim().toLowerCase() === lower);
+  return entry?.[1] ?? '';
+}
+
 function findVariant(variants: Variant[] | null | undefined, selected: SelectedOptions): Variant | null {
   if (!variants?.length) return null;
-  const sel = Object.entries(selected).filter(([, v]) => v != null && v !== '');
+  const sel = Object.entries(selected).filter(([, v]) => v != null && norm(v) !== '');
   if (sel.length === 0) return null;
   return variants.find((v) => {
-    const o = v.options as Record<string, string>;
-    return sel.every(([k, val]) => o[k] === val);
+    const o = (v.options ?? {}) as Record<string, string>;
+    return sel.every(([k, val]) => norm(getVariantOptionValue(o, k)) === norm(val));
   }) ?? null;
 }
 

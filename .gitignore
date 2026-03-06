@@ -35,5 +35,8 @@ apps/api/prisma/*.db-journal
 coverage
 .nyc_output
 
+# Local uploads (when Cloudinary is not configured)
+uploads/
+
 # Misc
 *.pem
