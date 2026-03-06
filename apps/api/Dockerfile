@@ -12,7 +12,8 @@ FROM base AS builder
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules
 WORKDIR /app
-RUN npx prisma generate --schema=apps/api/prisma/schema.prisma && pnpm --filter @myshopuz/api run build
+# Use project's Prisma (5.x from lockfile), not npx which can pull Prisma 7
+RUN pnpm --filter @myshopuz/api exec prisma generate --schema=apps/api/prisma/schema.prisma && pnpm --filter @myshopuz/api run build
 
 FROM base AS runner
 ENV NODE_ENV=production
