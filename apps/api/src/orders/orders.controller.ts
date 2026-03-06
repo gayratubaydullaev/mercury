@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { OrdersService } from './orders.service';
+import { OrdersControllerCreateResponse } from './orders.controller.types';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,8 +12,12 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { UserRole, OrderStatus } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
+import { CartService } from '../cart/cart.service';
 
 const CART_SESSION_HEADER = 'x-cart-session';
+const REFRESH_COOKIE = 'refreshToken';
+const COOKIE_OPTIONS = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' };
 
 @ApiTags('orders')
 @Controller('orders')
@@ -22,12 +27,14 @@ export class OrdersController {
   constructor(
     private orders: OrdersService,
     private jwtService: JwtService,
+    private authService: AuthService,
+    private cartService: CartService,
   ) {}
 
   @Post()
   @Public()
-  @ApiOperation({ summary: 'Create order from cart (auth or guest)' })
-  create(@Req() req: Request, @Body() dto: CreateOrderDto) {
+  @ApiOperation({ summary: 'Create order from cart (auth or guest); guest gets auto-registered and guestAuth in response' })
+  async create(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: CreateOrderDto): Promise<OrdersControllerCreateResponse> {
     const sessionId = (req.headers[CART_SESSION_HEADER] as string) ?? req.cookies?.cartSessionId ?? null;
     let userId: string | null = null;
     const authHeader = req.headers.authorization;
@@ -39,7 +46,25 @@ export class OrdersController {
         // ignore invalid token
       }
     }
-    return this.orders.create(userId, sessionId, dto);
+
+    if (!userId && dto.guestPhone?.trim()) {
+      const guestAuth = await this.authService.registerOrLoginGuest({
+        phone: dto.guestPhone.trim(),
+        firstName: dto.guestFirstName?.trim(),
+        lastName: dto.guestLastName?.trim(),
+        email: dto.guestEmail?.trim(),
+      });
+      userId = guestAuth.user.id;
+      if (sessionId) {
+        await this.cartService.mergeCart(sessionId, userId);
+      }
+      const orders = await this.orders.create(userId, null, dto);
+      res.cookie(REFRESH_COOKIE, guestAuth.refreshToken, COOKIE_OPTIONS);
+      return { orders, guestAuth: { accessToken: guestAuth.accessToken, expiresAt: guestAuth.expiresAt, user: guestAuth.user } };
+    }
+
+    const orders = await this.orders.create(userId, sessionId, dto);
+    return { orders };
   }
 
   @Get('my')

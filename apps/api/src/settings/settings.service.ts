@@ -5,6 +5,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SettingsService {
   constructor(private prisma: PrismaService) {}
 
+  /** Public: название маркетплейса и прочие публичные настройки (для шапки, футера, title). */
+  async getPublicSettings(): Promise<{ siteName: string }> {
+    const settings = await this.prisma.platformSettings.findFirst({ select: { siteName: true } });
+    const siteName = settings?.siteName?.trim() || 'JomboyShop';
+    return { siteName };
+  }
+
   /** Public: enabled payment methods and delivery types for checkout. */
   async getCheckoutOptions(): Promise<{ paymentMethods: string[]; deliveryTypes: string[] }> {
     const settings = await this.prisma.platformSettings.findFirst();

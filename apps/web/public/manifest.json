@@ -1,6 +1,6 @@
 {
-  "name": "MyShopUZ",
-  "short_name": "MyShopUZ",
+  "name": "JomboyShop",
+  "short_name": "JomboyShop",
   "description": "O'zbekiston bo'ylab xaridlar markazi",
   "start_url": "/",
   "display": "standalone",

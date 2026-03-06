@@ -17,6 +17,11 @@ type Application = {
   shopName: string;
   description: string | null;
   message: string | null;
+  legalType?: string | null;
+  legalName?: string | null;
+  ogrn?: string | null;
+  inn?: string | null;
+  documentUrls?: string[] | null;
   status: string;
   rejectReason: string | null;
   createdAt: string;
@@ -116,6 +121,18 @@ export default function AdminSellerApplicationsPage() {
                     </p>
                     {app.description && <p className="text-sm mt-1">{app.description}</p>}
                     {app.message && <p className="text-sm mt-1 italic">Xabar: {app.message}</p>}
+                    {(app.legalType || app.legalName || app.ogrn || app.inn) && (
+                      <div className="mt-2 rounded bg-muted/60 p-2 text-sm">
+                        <p className="font-medium text-foreground">Yuridik maʼlumotlar</p>
+                        {app.legalType && <p>Shakl: {app.legalType === 'IP' ? 'ИП' : app.legalType === 'OOO' ? 'ООО' : app.legalType}</p>}
+                        {app.legalName && <p>Toʻliq nomi: {app.legalName}</p>}
+                        {app.ogrn && <p>OGRN: {app.ogrn}</p>}
+                        {app.inn && <p>INN: {app.inn}</p>}
+                        {Array.isArray(app.documentUrls) && app.documentUrls.length > 0 && (
+                          <p>Hujjatlar: {app.documentUrls.length} ta</p>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">{new Date(app.createdAt).toLocaleString('uz-UZ')}</p>
                     <Badge variant={app.status === 'PENDING' ? 'secondary' : app.status === 'APPROVED' ? 'default' : 'destructive'} className="mt-2">
                       {STATUS_LABELS[app.status] ?? app.status}

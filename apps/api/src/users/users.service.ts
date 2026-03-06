@@ -20,6 +20,7 @@ export class UsersService {
         createdAt: true,
         emailVerified: true,
         telegramId: true,
+        isGuest: true,
         shop: { select: { id: true, name: true, slug: true } },
       },
     });

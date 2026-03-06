@@ -35,6 +35,16 @@ export class CreateOrderDto {
   @IsString()
   guestPhone?: string;
 
+  @ApiPropertyOptional({ description: 'Guest first name (for auto-created guest account)' })
+  @IsOptional()
+  @IsString()
+  guestFirstName?: string;
+
+  @ApiPropertyOptional({ description: 'Guest last name (for auto-created guest account)' })
+  @IsOptional()
+  @IsString()
+  guestLastName?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

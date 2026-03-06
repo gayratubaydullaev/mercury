@@ -283,10 +283,21 @@ export class ProductsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  /** Публичная информация о магазине для покупателей: реквизиты ИП/ООО показываем, документы — только админу. */
   async findShopBySlug(slug: string) {
     const shop = await this.prisma.shop.findFirst({
       where: { slug, isActive: true },
-      select: { id: true, name: true, slug: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        legalType: true,
+        legalName: true,
+        ogrn: true,
+        inn: true,
+        // documentUrls не отдаём — полная информация только для админа
+      },
     });
     if (!shop) throw new NotFoundException('Shop not found');
     return shop;

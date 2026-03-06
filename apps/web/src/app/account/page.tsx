@@ -25,6 +25,7 @@ type UserProfile = {
   createdAt: string;
   emailVerified?: boolean;
   telegramId?: string | null;
+  isGuest?: boolean;
   shop?: { id: string; name: string; slug: string } | null;
 };
 
@@ -136,7 +137,7 @@ export default function AccountPage() {
 
   if (!user) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
 
-  const roleLabel = user.role === 'ADMIN' ? 'Admin' : user.role === 'SELLER' ? 'Sotuvchi' : 'Xaridor';
+  const roleLabel = user.role === 'ADMIN' ? 'Admin' : user.role === 'SELLER' ? 'Sotuvchi' : user.isGuest ? 'Mehmon' : 'Xaridor';
   const initials = [user.firstName, user.lastName].map((s) => s?.charAt(0) ?? '').join('').toUpperCase() || '?';
   const joinedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' }) : '';
 
@@ -165,6 +166,9 @@ export default function AccountPage() {
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h2 className="text-xl font-semibold">{user.firstName} {user.lastName}</h2>
                     <Badge variant="secondary">{roleLabel}</Badge>
+                    {user.isGuest && (
+                      <Badge variant="outline" className="text-muted-foreground">Gost hisob — toʻliq profil uchun Telegram ulang</Badge>
+                    )}
                   </div>
                   <p className="text-muted-foreground text-sm">{user.email}</p>
                   {user.phone && <p className="text-muted-foreground text-sm mt-0.5">Tel: {user.phone}</p>}
@@ -207,7 +211,11 @@ export default function AccountPage() {
               <div>
                 <p className="font-medium">Telegram</p>
                 <p className="text-xs text-muted-foreground">
-                  {user.telegramId ? 'Hisobingiz Telegramga ulangan — buyurtmalar haqida xabar olasiz' : 'Telegramni ulang va buyurtmalar haqida xabar oling'}
+                  {user.telegramId
+                    ? 'Hisobingiz Telegramga ulangan — buyurtmalar haqida xabar olasiz'
+                    : user.isGuest
+                      ? 'Telegramni ulang — toʻliq profil va buyurtmalar haqida xabar olish'
+                      : 'Telegramni ulang va buyurtmalar haqida xabar oling'}
                 </p>
               </div>
             </div>

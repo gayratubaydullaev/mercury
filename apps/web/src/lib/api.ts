@@ -21,10 +21,25 @@ export function clearCsrfCache(): void {
 }
 
 const MUTATION_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const ACCESS_TOKEN_KEY = 'accessToken';
+
+/**
+ * Try to refresh access token using httpOnly refresh cookie. Updates localStorage and dispatches auth-change.
+ */
+async function tryRefreshToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { accessToken?: string };
+  if (!data?.accessToken) return null;
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+  window.dispatchEvent(new Event('auth-change'));
+  return data.accessToken;
+}
 
 /**
  * Fetch wrapper: adds credentials, cart session headers, and for POST/PUT/PATCH/DELETE
- * adds x-csrf-token. On 403, clears CSRF cache and retries once.
+ * adds x-csrf-token. On 403, clears CSRF cache and retries once. On 401, tries refresh and retries once.
  */
 export async function apiFetch(
   url: string,
@@ -50,6 +65,15 @@ export async function apiFetch(
     credentials: 'include',
     headers,
   });
+
+  if (res.status === 401 && !retried && typeof window !== 'undefined') {
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      const newHeaders = new Headers(init?.headers);
+      newHeaders.set('Authorization', `Bearer ${newToken}`);
+      return apiFetch(url, { ...init, headers: newHeaders }, true);
+    }
+  }
 
   if (res.status === 403 && !retried && MUTATION_METHODS.includes(method) && typeof window !== 'undefined') {
     clearCsrfCache();

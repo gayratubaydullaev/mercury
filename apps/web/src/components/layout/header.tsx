@@ -13,6 +13,7 @@ import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session'
 import { apiFetch } from '@/lib/api';
 import { getGuestFavoriteIds } from '@/lib/guest-favorites';
 import { useAuth } from '@/contexts/auth-context';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 
 const RECENT_SEARCHES_KEY = 'myshop-recent-searches';
 const MAX_RECENT = 5;
@@ -272,6 +273,7 @@ export function Header() {
     [searchOpen, highlightedIndex, totalOptions, suggestionCount, searchSuggestions, searchQuery, router],
   );
 
+  const { siteName } = usePublicSettings();
   return (
     <header
       className={cn(
@@ -284,8 +286,8 @@ export function Header() {
           {/* Одна строка: логотип + каталог + поиск; на десктопе ещё иконки */}
           <div className="flex items-center gap-2 md:gap-6 md:h-20 py-2 md:py-0">
             {/* Logo — только десктоп */}
-            <Link href="/" className="hidden md:flex shrink-0 font-bold text-xl text-primary" aria-label="MyShopUZ — bosh sahifa">
-              MyShopUZ
+            <Link href="/" className="hidden md:flex shrink-0 font-bold text-xl text-primary" aria-label={`${siteName} — bosh sahifa`}>
+              {siteName}
             </Link>
 
             {/* Catalog — только десктоп */}

@@ -15,7 +15,16 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-type ShopInfo = { id: string; name: string; slug: string; description: string | null };
+type ShopInfo = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  legalType?: string | null;
+  legalName?: string | null;
+  ogrn?: string | null;
+  inn?: string | null;
+};
 
 export function CatalogTitle() {
   const searchParams = useSearchParams();
@@ -69,6 +78,15 @@ export function CatalogTitle() {
                   <p className="text-foreground/90 whitespace-pre-wrap">{shop.description}</p>
                 ) : (
                   <p className="text-muted-foreground">Maʼlumot kiritilmagan.</p>
+                )}
+                {(shop?.legalType || shop?.legalName || shop?.ogrn || shop?.inn) && (
+                  <div className="rounded-lg bg-muted/60 p-3 text-sm space-y-1">
+                    <p className="font-medium text-foreground">Yuridik maʼlumotlar</p>
+                    {shop.legalType && <p className="text-muted-foreground">Shakl: {shop.legalType === 'IP' ? 'ИП (Yakka tadbirkor)' : shop.legalType === 'OOO' ? 'ООО (MChJ)' : shop.legalType}</p>}
+                    {shop.legalName && <p className="text-muted-foreground">Toʻliq nomi: {shop.legalName}</p>}
+                    {shop.ogrn && <p className="text-muted-foreground">OGRN: {shop.ogrn}</p>}
+                    {shop.inn && <p className="text-muted-foreground">INN: {shop.inn}</p>}
+                  </div>
                 )}
                 <p className="text-sm text-muted-foreground pt-2">
                   Siz ushbu doʻkon tovarlarini koʻrib chiqyapsiz. Barcha tovarlar uchun katalogda filterni tozalang.

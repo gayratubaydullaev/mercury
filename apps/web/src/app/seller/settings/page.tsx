@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { MessageCircle, Send, Unplug } from 'lucide-react';
+import { MessageCircle, Send, Unplug, FileText, X } from 'lucide-react';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
@@ -20,10 +20,20 @@ export default function SellerSettingsPage() {
     description: string | null;
     pickupAddress: PickupAddress;
     chatEnabled?: boolean;
+    legalType?: string | null;
+    legalName?: string | null;
+    ogrn?: string | null;
+    inn?: string | null;
+    documentUrls?: string[] | null;
     pendingUpdate?: {
       requestedName: string;
       requestedSlug: string;
       requestedDescription: string | null;
+      requestedLegalType?: string | null;
+      requestedLegalName?: string | null;
+      requestedOgrn?: string | null;
+      requestedInn?: string | null;
+      requestedDocumentUrls?: string[] | null;
       createdAt: string;
     } | null;
   } | null>(null);
@@ -32,6 +42,12 @@ export default function SellerSettingsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [pickup, setPickup] = useState<PickupAddress>({ city: '', district: '', street: '', house: '', phone: '' });
+  const [legalType, setLegalType] = useState('');
+  const [legalName, setLegalName] = useState('');
+  const [ogrn, setOgrn] = useState('');
+  const [inn, setInn] = useState('');
+  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
+  const [docUploading, setDocUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean; telegramType?: string } | null>(null);
   const [telegramCode, setTelegramCode] = useState('');
@@ -65,6 +81,11 @@ export default function SellerSettingsPage() {
             house: pa.house ?? '',
             phone: pa.phone ?? '',
           });
+          setLegalType(s.pendingUpdate?.requestedLegalType ?? s.legalType ?? '');
+          setLegalName(s.pendingUpdate?.requestedLegalName ?? s.legalName ?? '');
+          setOgrn(s.pendingUpdate?.requestedOgrn ?? s.ogrn ?? '');
+          setInn(s.pendingUpdate?.requestedInn ?? s.inn ?? '');
+          setDocumentUrls(Array.isArray(s.pendingUpdate?.requestedDocumentUrls) ? s.pendingUpdate.requestedDocumentUrls : Array.isArray(s.documentUrls) ? s.documentUrls : []);
         }
       })
       .catch(() => setShop(null));
@@ -110,6 +131,35 @@ export default function SellerSettingsPage() {
       .finally(() => setTelegramDisconnecting(false));
   };
 
+  const uploadDocuments = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length || !token) return;
+    e.target.value = '';
+    setDocUploading(true);
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    let added = 0;
+    for (const file of Array.from(files).slice(0, 10)) {
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const r = await fetch(`${API_URL}/upload/image`, { method: 'POST', headers, body: form, credentials: 'include' });
+        const data = await r.json();
+        if (data?.url) {
+          setDocumentUrls((prev) => [...prev, data.url]);
+          added++;
+        }
+      } catch {
+        // skip
+      }
+    }
+    if (added > 0) toast.success(`${added} ta hujjat yuklandi`);
+    setDocUploading(false);
+  };
+
+  const removeDocument = (index: number) => {
+    setDocumentUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const toggleChat = (enabled: boolean) => {
     if (!token) return;
     setChatSaving(true);
@@ -145,7 +195,16 @@ export default function SellerSettingsPage() {
     apiFetch(`${API_URL}/seller/shop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name, description, pickupAddress }),
+      body: JSON.stringify({
+        name,
+        description,
+        pickupAddress,
+        legalType: legalType.trim() || null,
+        legalName: legalName.trim() || null,
+        ogrn: ogrn.trim() || null,
+        inn: inn.trim() || null,
+        documentUrls: documentUrls.length ? documentUrls : null,
+      }),
     })
       .then((r) => r.json())
       .then((s) => {
@@ -173,7 +232,7 @@ export default function SellerSettingsPage() {
           </p>
           {shop?.pendingUpdate && (
             <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
-              O‘zgarishlar admin tasdiqini kutyapti: «{shop.pendingUpdate.requestedName}» (slug: {shop.pendingUpdate.requestedSlug})
+              O‘zgarishlar (nomi, tavsif, yuridik maʼlumotlar) admin tasdiqini kutyapti: «{shop.pendingUpdate.requestedName}» (slug: {shop.pendingUpdate.requestedSlug})
             </p>
           )}
         </CardHeader>
@@ -182,6 +241,86 @@ export default function SellerSettingsPage() {
             <Input placeholder="Doʻkon nomi" value={name} onChange={(e) => setName(e.target.value)} required />
             <textarea placeholder="Tavsif" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]" />
             <Button type="submit" disabled={loading}>{loading ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
+          </form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Yuridik maʼlumotlar (ИП / ООО)
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toʻliq nomi, OGRN, INN va hujjatlar fotosuratlari (masalan, roʻyxatdan oʻtish guvohnomasi)
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={save} className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Shakl</Label>
+              <select
+                value={legalType}
+                onChange={(e) => setLegalType(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background h-10 px-3 text-sm"
+              >
+                <option value="">Tanlang</option>
+                <option value="IP">ИП (Yakka tadbirkor)</option>
+                <option value="OOO">ООО (MChJ)</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Toʻliq nomi (ИП yoki OOO)</Label>
+              <Input
+                placeholder="Masalan: IP Ivanov Ivan Ivanovich"
+                value={legalName}
+                onChange={(e) => setLegalName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">OGRN</Label>
+                <Input placeholder="OGRN raqami" value={ogrn} onChange={(e) => setOgrn(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">INN (ИНН)</Label>
+                <Input placeholder="INN raqami" value={inn} onChange={(e) => setInn(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Hujjatlar (fotosuratlar)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">Roʻyxatdan oʻtish, litsenziya va boshqa hujjatlar</p>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-primary file:text-primary-foreground file:text-sm"
+                onChange={uploadDocuments}
+                disabled={docUploading}
+              />
+              {documentUrls.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {documentUrls.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-lg border bg-muted overflow-hidden">
+                        <img src={url} alt="" className="object-cover w-full h-full" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(i)}
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-90 hover:opacity-100"
+                        aria-label="Oʻchirish"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saqlanmoqda...' : 'Yuridik maʼlumotlarni saqlash'}
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -217,7 +356,7 @@ export default function SellerSettingsPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                1) Telegramda MyShopUZ sotuvchi botini qidiring va <b>/start</b> yoki <b>/link</b> yuboring.<br />
+                1) Telegramda JomboyShop sotuvchi botini qidiring va <b>/start</b> yoki <b>/link</b> yuboring.<br />
                 2) Bot sizga 6 ta belgili kod beradi. Uni quyida kiriting.
               </p>
               <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">

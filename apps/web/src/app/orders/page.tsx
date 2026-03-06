@@ -11,8 +11,37 @@ import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
 
+function formatPickupAddress(addr: Record<string, unknown> | null | undefined): string {
+  if (!addr || typeof addr !== 'object') return '';
+  const parts = [
+    addr.city,
+    addr.district,
+    addr.street,
+    addr.house,
+    addr.phone,
+    typeof addr.fullAddress === 'string' ? addr.fullAddress : null,
+  ].filter((x) => x != null && String(x).trim() !== '');
+  return parts.map(String).join(', ').trim();
+}
+
+type OrderItem = {
+  quantity: number;
+  product: { id: string; title: string; images: { url: string }[] };
+};
+type Order = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  totalAmount: string;
+  createdAt: string;
+  deliveryType?: 'DELIVERY' | 'PICKUP';
+  shippingAddress?: Record<string, unknown> | null;
+  items: OrderItem[];
+  seller?: { firstName: string; lastName: string; shop?: { name: string; pickupAddress?: Record<string, unknown> | null } | null } | null;
+};
+
 export default function MyOrdersPage() {
-  const [data, setData] = useState<{ data: { id: string; orderNumber: string; status: string; totalAmount: string; createdAt: string; items: { quantity: number; product: { title: string; images: { url: string }[] } }[] }[] } | null>(null);
+  const [data, setData] = useState<{ data: Order[] } | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
@@ -62,12 +91,45 @@ export default function MyOrdersPage() {
                   <span className="font-semibold">{formatPrice(Number(o.totalAmount))} soʻm</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">{new Date(o.createdAt).toLocaleString('uz-UZ')}</p>
+                {o.deliveryType === 'PICKUP' && (
+                  <div className="rounded-lg bg-muted/60 p-3 mb-3 text-sm">
+                    <p className="font-medium text-foreground mb-0.5">Oʻzim olib ketaman</p>
+                    {o.seller?.shop?.name && (
+                      <p className="text-muted-foreground">
+                        <span className="text-foreground/90">Doʻkon: </span>{o.seller.shop.name}
+                      </p>
+                    )}
+                    {formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress) && (
+                      <p className="text-muted-foreground mt-0.5">
+                        <span className="text-foreground/90">Manzil (qayerdan olib ketish): </span>
+                        {formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress)}
+                      </p>
+                    )}
+                    {!formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress) && o.seller?.shop && (
+                      <p className="text-muted-foreground text-xs mt-0.5">Sotuvchi siz bilan bogʻlanadi</p>
+                    )}
+                  </div>
+                )}
+                {o.deliveryType === 'DELIVERY' && (
+                  <p className="text-xs text-muted-foreground mb-2">Yetkazib berish</p>
+                )}
+                {o.seller && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Sotuvchi: {o.seller.firstName} {o.seller.lastName}
+                  </p>
+                )}
                 <ul className="space-y-1">
                   {o.items?.slice(0, 3).map((item, i) => (
-                    <li key={i} className="flex gap-2 text-sm">
-                      {item.product?.images?.[0] && <div className="relative w-8 h-8 rounded bg-muted shrink-0"><Image src={item.product.images[0].url} alt="" fill className="object-cover rounded" sizes="32px" /></div>}
-                      <span>{item.product?.title ?? 'Mahsulot'}</span>
-                      <span className="text-muted-foreground">× {item.quantity}</span>
+                    <li key={item.product?.id ?? i} className="flex gap-2 text-sm items-center">
+                      <Link href={`/product/${item.product?.id ?? '#'}`} className="flex gap-2 items-center min-w-0 flex-1 hover:opacity-90">
+                        {item.product?.images?.[0] && (
+                          <div className="relative w-8 h-8 rounded bg-muted shrink-0 overflow-hidden">
+                            <Image src={item.product.images[0].url} alt="" fill className="object-cover rounded" sizes="32px" />
+                          </div>
+                        )}
+                        <span className="truncate text-primary underline underline-offset-2 decoration-primary/50">{item.product?.title ?? 'Mahsulot'}</span>
+                      </Link>
+                      <span className="text-muted-foreground shrink-0">× {item.quantity}</span>
                     </li>
                   ))}
                   {(o.items?.length ?? 0) > 3 && <li className="text-xs text-muted-foreground">+{(o.items?.length ?? 0) - 3} boshqa</li>}

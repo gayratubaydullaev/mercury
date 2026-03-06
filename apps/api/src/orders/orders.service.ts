@@ -129,7 +129,10 @@ export class OrdersService {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { items: { include: { product: { include: { images: true } } } }, seller: { select: { firstName: true, lastName: true } } },
+        include: {
+          items: { include: { product: { include: { images: true } } } },
+          seller: { select: { firstName: true, lastName: true, shop: { select: { name: true, pickupAddress: true } } } },
+        },
       }),
       this.prisma.order.count({ where: { buyerId } }),
     ]);

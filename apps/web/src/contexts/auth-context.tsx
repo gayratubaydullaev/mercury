@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 const STORAGE_KEY = 'accessToken';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
+
 type AuthContextValue = {
   token: string | null;
   isLoggedIn: boolean;
@@ -28,6 +30,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(readStoredToken());
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || typeof window === 'undefined' || !API_URL) return;
+    const stored = readStoredToken();
+    if (stored) return;
+    fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
+      .then((r) => {
+        if (!r.ok) return;
+        return r.json() as Promise<{ accessToken?: string }>;
+      })
+      .then((data) => {
+        if (data?.accessToken) {
+          localStorage.setItem(STORAGE_KEY, data.accessToken);
+          setTokenState(data.accessToken);
+          window.dispatchEvent(new Event('auth-change'));
+        }
+      })
+      .catch(() => {});
+  }, [mounted]);
 
   useEffect(() => {
     if (!mounted) return;

@@ -16,6 +16,11 @@ type PendingUpdate = {
   requestedName: string;
   requestedSlug: string;
   requestedDescription: string | null;
+  requestedLegalType?: string | null;
+  requestedLegalName?: string | null;
+  requestedOgrn?: string | null;
+  requestedInn?: string | null;
+  requestedDocumentUrls?: string[] | null;
   status: string;
   createdAt: string;
   shop: {
@@ -85,7 +90,7 @@ export default function AdminPendingShopUpdatesPage() {
         <Link href="/admin"><Button variant="outline" size="sm">← Bosh sahifa</Button></Link>
       </div>
       <p className="text-muted-foreground text-sm">
-        Sotuvchilar do‘kon nomi, slug yoki tavsifni o‘zgartirganda o‘zgarishlar shu yerda ko‘rinadi. Tasdiqlang yoki rad eting.
+        Sotuvchilar do‘kon nomi, slug, tavsif yoki yuridik maʼlumotlarni o‘zgartirganda o‘zgarishlar shu yerda ko‘rinadi. Tasdiqlang yoki rad eting.
       </p>
       <div className="space-y-3">
         {data.data.length === 0 ? (
@@ -103,6 +108,18 @@ export default function AdminPendingShopUpdatesPage() {
                     <p className="text-sm mt-1 text-primary">So‘ralgan: «{row.requestedName}» (slug: {row.requestedSlug})</p>
                     {row.requestedDescription != null && (
                       <p className="text-sm mt-1">Tavsif: {row.requestedDescription}</p>
+                    )}
+                    {(row.requestedLegalType || row.requestedLegalName || row.requestedOgrn || row.requestedInn) && (
+                      <div className="mt-2 rounded bg-muted/60 p-2 text-sm">
+                        <p className="font-medium text-foreground">Yuridik maʼlumotlar</p>
+                        {row.requestedLegalType && <p>Shakl: {row.requestedLegalType === 'IP' ? 'ИП' : row.requestedLegalType === 'OOO' ? 'ООО' : row.requestedLegalType}</p>}
+                        {row.requestedLegalName && <p>Toʻliq nomi: {row.requestedLegalName}</p>}
+                        {row.requestedOgrn && <p>OGRN: {row.requestedOgrn}</p>}
+                        {row.requestedInn && <p>INN: {row.requestedInn}</p>}
+                        {Array.isArray(row.requestedDocumentUrls) && row.requestedDocumentUrls.length > 0 && (
+                          <p>Hujjatlar: {row.requestedDocumentUrls.length} ta</p>
+                        )}
+                      </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">{new Date(row.createdAt).toLocaleString('uz-UZ')}</p>
                   </div>

@@ -40,6 +40,8 @@ export type TelegramWebApp = {
   initDataUnsafe: { user?: { first_name?: string; username?: string } };
   platform?: string;
   colorScheme?: 'light' | 'dark';
+  /** API version (e.g. "6.0"); setHeaderColor, enableClosingConfirmation, disableVerticalSwipes требуют > 6.0 */
+  version?: string;
   viewportStableHeight?: number;
   isExpanded?: boolean;
 };
@@ -55,11 +57,22 @@ export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp;
 }
 
+/** Поддерживает ли клиент опциональные методы (header color, closing confirmation, vertical swipes). В 6.0 они недоступны. */
+function supportsOptionalWebAppMethods(twa: TelegramWebApp): boolean {
+  const v = (twa as { version?: string }).version;
+  if (v == null) return false;
+  const num = parseFloat(v);
+  return !Number.isNaN(num) && num > 6;
+}
+
 /** Инициализация Web App: развернуть, отключить вертикальные свайпы (закрытие), подтверждение выхода. */
 export function initTelegramWebApp(twa: TelegramWebApp): void {
   twa.ready();
   twa.expand();
-  if (twa.setHeaderColor) twa.setHeaderColor('#000000');
-  if (twa.enableClosingConfirmation) twa.enableClosingConfirmation();
-  if (twa.disableVerticalSwipes) twa.disableVerticalSwipes();
+  // setHeaderColor, enableClosingConfirmation, disableVerticalSwipes не поддерживаются в API 6.0 — вызываем только если version > 6
+  if (supportsOptionalWebAppMethods(twa)) {
+    if (twa.setHeaderColor) twa.setHeaderColor('#000000');
+    if (twa.enableClosingConfirmation) twa.enableClosingConfirmation();
+    if (twa.disableVerticalSwipes) twa.disableVerticalSwipes();
+  }
 }

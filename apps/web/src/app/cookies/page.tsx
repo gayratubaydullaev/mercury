@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: "Cookie (kuki) siyosati",
-  description: "MyShopUZ saytida cookie foydalanishi haqida ma\u2019lumot.",
+  description: "JomboyShop saytida cookie foydalanishi haqida ma\u2019lumot.",
 };
 
 export default function CookiesPage() {
@@ -24,7 +24,7 @@ export default function CookiesPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-foreground mb-2">MyShopUZ qanday cookie ishlatadi?</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-2">JomboyShop qanday cookie ishlatadi?</h2>
           <ul className="list-disc pl-6 space-y-2">
             <li>
               <strong>Savatcha (cart)</strong> — siz saytda qo\u2019shgan mahsulotlar savatchada saqlanadi (anonim

@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { Banknote, Truck, CreditCard, Send, Unplug } from 'lucide-react';
+import { Banknote, Truck, CreditCard, Send, Unplug, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Settings = {
+  siteName?: string | null;
   commissionRate: string;
   minPayoutAmount: string;
   paymentClickEnabled?: boolean;
@@ -34,6 +35,7 @@ const defaultPaymentDelivery = {
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [siteName, setSiteName] = useState('');
   const [commission, setCommission] = useState('');
   const [minPayout, setMinPayout] = useState('');
   const [paymentDelivery, setPaymentDelivery] = useState(defaultPaymentDelivery);
@@ -60,6 +62,7 @@ export default function AdminSettingsPage() {
       .then((r) => r.json())
       .then((s: Settings) => {
         setSettings(s);
+        setSiteName(s.siteName ?? '');
         setCommission(String(s.commissionRate ?? ''));
         setMinPayout(String(s.minPayoutAmount ?? ''));
         setPaymentDelivery({
@@ -73,7 +76,7 @@ export default function AdminSettingsPage() {
       })
       .catch(() => {
         setError('API ga ulanishda xatolik. Serverni ishga tushiring (pnpm run dev).');
-        setSettings({ commissionRate: '5', minPayoutAmount: '100000' });
+        setSettings({ siteName: null, commissionRate: '5', minPayoutAmount: '100000' });
       });
     loadTelegramStatus();
   }, [token]);
@@ -126,6 +129,7 @@ export default function AdminSettingsPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
+        siteName: siteName.trim() || null,
         commissionRate: Number(commission),
         minPayoutAmount: Number(minPayout),
         ...paymentDelivery,
@@ -134,6 +138,7 @@ export default function AdminSettingsPage() {
       .then((r) => r.json())
       .then((s: Settings) => {
         setSettings(s);
+        setSiteName(s.siteName ?? '');
         setError('');
         setPaymentDelivery({
           paymentClickEnabled: s.paymentClickEnabled ?? true,
@@ -196,7 +201,7 @@ export default function AdminSettingsPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                1) Telegramda MyShopUZ botini oching va <b>/start</b> yoki <b>/link</b> yuboring.<br />
+                1) Telegramda JomboyShop botini oching va <b>/start</b> yoki <b>/link</b> yuboring.<br />
                 2) Bot bergan 6 belgili kodni quyida kiriting.
               </p>
               <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">
@@ -221,6 +226,19 @@ export default function AdminSettingsPage() {
       </Card>
 
       <form onSubmit={save} className="space-y-6 max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Store className="h-5 w-5" /> Markaz nomi</CardTitle>
+            <p className="text-sm text-muted-foreground font-normal mt-1">Sayt sarlavhasi, shapka va futerdagi nom. Boʻsh qoldirsangiz — JomboyShop koʻrsatiladi.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="siteName">Nomi</Label>
+              <Input id="siteName" type="text" placeholder="JomboyShop" maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5" /> Komissiya va minimal toʻlov</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -254,7 +272,7 @@ export default function AdminSettingsPage() {
               </label>
               <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.paymentCardOnDeliveryEnabled && 'border-primary bg-primary/5')}>
                 <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.paymentCardOnDeliveryEnabled} onChange={() => toggle('paymentCardOnDeliveryEnabled')} />
-                <span className="font-medium">Karta (yetkazib berishda)</span>
+                <span className="font-medium">Karta (qabul qilishda)</span>
               </label>
             </div>
           </CardContent>

@@ -32,6 +32,11 @@ export class SellerController {
       description?: string;
       pickupAddress?: { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
       chatEnabled?: boolean;
+      legalType?: string | null;
+      legalName?: string | null;
+      ogrn?: string | null;
+      inn?: string | null;
+      documentUrls?: string[] | null;
     },
   ) {
     return this.seller.createOrUpdateShop(userId, body);

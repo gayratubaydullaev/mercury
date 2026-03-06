@@ -20,6 +20,7 @@ export class SellerService {
     if (!shop) return null;
     const { pendingUpdates, ...rest } = shop;
     const pending = pendingUpdates?.[0];
+    const pendingAny = pending as { requestedLegalType?: string; requestedLegalName?: string; requestedOgrn?: string; requestedInn?: string; requestedDocumentUrls?: string[] } | undefined;
     return {
       ...rest,
       pendingUpdate: pending
@@ -27,6 +28,11 @@ export class SellerService {
             requestedName: pending.requestedName,
             requestedSlug: pending.requestedSlug,
             requestedDescription: pending.requestedDescription,
+            requestedLegalType: pendingAny?.requestedLegalType ?? null,
+            requestedLegalName: pendingAny?.requestedLegalName ?? null,
+            requestedOgrn: pendingAny?.requestedOgrn ?? null,
+            requestedInn: pendingAny?.requestedInn ?? null,
+            requestedDocumentUrls: pendingAny?.requestedDocumentUrls ?? null,
             createdAt: pending.createdAt,
           }
         : null,
@@ -34,8 +40,8 @@ export class SellerService {
   }
 
   /**
-   * Изменения имени, slug и описания магазина попадают в PendingShopUpdate и вступают в силу после одобрения админа.
-   * pickupAddress и chatEnabled обновляются сразу.
+   * Изменения имени, slug, описания и реквизитов (ИП/ООО, ОГРН, ИНН, документы) попадают в PendingShopUpdate
+   * и вступают в силу только после одобрения админа. pickupAddress и chatEnabled обновляются сразу.
    */
   async createOrUpdateShop(
     userId: string,
@@ -45,29 +51,63 @@ export class SellerService {
       description?: string;
       pickupAddress?: { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
       chatEnabled?: boolean;
+      legalType?: string | null;
+      legalName?: string | null;
+      ogrn?: string | null;
+      inn?: string | null;
+      documentUrls?: string[] | null;
     },
   ) {
     const shop = await this.prisma.shop.findFirst({ where: { userId } });
     if (!shop) throw new BadRequestException('Doʻkon topilmadi. Avval ariza topshiring va admin tasdiqlashini kuting.');
 
-    const baseSlug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    const slug = (data.slug ?? (baseSlug || 'shop')).slice(0, 100);
+    const hasMain = data.name !== undefined || data.description !== undefined || data.slug !== undefined;
+    const hasLegal =
+      data.legalType !== undefined ||
+      data.legalName !== undefined ||
+      data.ogrn !== undefined ||
+      data.inn !== undefined ||
+      data.documentUrls !== undefined;
 
-    if (data.name !== undefined || data.description !== undefined || data.slug !== undefined) {
+    if (hasMain || hasLegal) {
+      const shopAny = shop as { name: string; slug: string; description?: string | null; legalType?: string | null; legalName?: string | null; ogrn?: string | null; inn?: string | null; documentUrls?: unknown };
+      const pending = await (this.prisma as any).pendingShopUpdate.findUnique({ where: { shopId: shop.id } });
+
+      const baseSlug = (data.name ?? shopAny.name ?? '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const slug = (data.slug ?? (baseSlug || shopAny.slug || 'shop')).slice(0, 100);
+
+      const requestedName = (data.name ?? (pending as { requestedName?: string } | null)?.requestedName ?? shopAny.name).trim();
+      const requestedDescription = data.description !== undefined ? (data.description?.trim() || null) : (pending as { requestedDescription?: string | null } | null)?.requestedDescription ?? shopAny.description ?? null;
+      const requestedLegalType = data.legalType !== undefined ? (data.legalType?.trim() || null) : (pending as { requestedLegalType?: string | null } | null)?.requestedLegalType ?? shopAny.legalType ?? null;
+      const requestedLegalName = data.legalName !== undefined ? (data.legalName?.trim() || null) : (pending as { requestedLegalName?: string | null } | null)?.requestedLegalName ?? shopAny.legalName ?? null;
+      const requestedOgrn = data.ogrn !== undefined ? (data.ogrn?.trim() || null) : (pending as { requestedOgrn?: string | null } | null)?.requestedOgrn ?? shopAny.ogrn ?? null;
+      const requestedInn = data.inn !== undefined ? (data.inn?.trim() || null) : (pending as { requestedInn?: string | null } | null)?.requestedInn ?? shopAny.inn ?? null;
+      const requestedDocumentUrls = data.documentUrls !== undefined ? (Array.isArray(data.documentUrls) ? data.documentUrls : null) : (pending as { requestedDocumentUrls?: string[] | null } | null)?.requestedDocumentUrls ?? (Array.isArray(shopAny.documentUrls) ? shopAny.documentUrls : null);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PendingShopUpdate on Prisma client
       await (this.prisma as any).pendingShopUpdate.upsert({
         where: { shopId: shop.id },
         create: {
           shopId: shop.id,
-          requestedName: data.name.trim(),
+          requestedName,
           requestedSlug: slug,
-          requestedDescription: data.description ?? null,
+          requestedDescription,
+          requestedLegalType,
+          requestedLegalName,
+          requestedOgrn,
+          requestedInn,
+          requestedDocumentUrls,
           status: 'PENDING',
         },
         update: {
-          requestedName: data.name.trim(),
+          requestedName,
           requestedSlug: slug,
-          requestedDescription: data.description ?? null,
+          requestedDescription,
+          requestedLegalType,
+          requestedLegalName,
+          requestedOgrn,
+          requestedInn,
+          requestedDocumentUrls,
           status: 'PENDING',
         },
       });

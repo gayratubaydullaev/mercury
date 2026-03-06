@@ -246,6 +246,7 @@ export class AdminService {
   }
 
   async updatePlatformSettings(data: {
+    siteName?: string | null;
     commissionRate?: number;
     minPayoutAmount?: number;
     paymentClickEnabled?: boolean;
@@ -273,6 +274,7 @@ export class AdminService {
     return this.prisma.platformSettings.update({
       where: { id: settings.id },
       data: {
+        ...(data.siteName !== undefined && { siteName: data.siteName?.trim() || null }),
         ...(data.commissionRate != null && { commissionRate: data.commissionRate }),
         ...(data.minPayoutAmount != null && { minPayoutAmount: data.minPayoutAmount }),
         ...(data.paymentClickEnabled != null && { paymentClickEnabled: data.paymentClickEnabled }),
@@ -574,6 +576,7 @@ export class AdminService {
       while (await this.prisma.shop.findUnique({ where: { slug: `${slug}-${suffix}` } })) suffix += 1;
       slug = `${slug}-${suffix}`;
     }
+    const appAny = app as { legalType?: string | null; legalName?: string | null; ogrn?: string | null; inn?: string | null; documentUrls?: string[] | null };
     await this.prisma.$transaction(async (tx) => {
       await tx.shop.create({
         data: {
@@ -581,6 +584,11 @@ export class AdminService {
           name: app.shopName,
           slug,
           description: app.description ?? null,
+          legalType: appAny.legalType ?? undefined,
+          legalName: appAny.legalName ?? undefined,
+          ogrn: appAny.ogrn ?? undefined,
+          inn: appAny.inn ?? undefined,
+          documentUrls: Array.isArray(appAny.documentUrls) ? appAny.documentUrls : undefined,
         },
       });
       await tx.user.update({
@@ -636,6 +644,13 @@ export class AdminService {
       where: { slug: pending.requestedSlug, id: { not: pending.shopId } },
     });
     if (slugExists) throw new BadRequestException(`Slug "${pending.requestedSlug}" allaqachon band.`);
+    const pendingAny = pending as {
+      requestedLegalType?: string | null;
+      requestedLegalName?: string | null;
+      requestedOgrn?: string | null;
+      requestedInn?: string | null;
+      requestedDocumentUrls?: string[] | null;
+    };
     await this.prisma.$transaction(async (tx) => {
       await tx.shop.update({
         where: { id: pending.shopId },
@@ -643,6 +658,11 @@ export class AdminService {
           name: pending.requestedName,
           slug: pending.requestedSlug,
           description: pending.requestedDescription ?? undefined,
+          legalType: pendingAny.requestedLegalType ?? undefined,
+          legalName: pendingAny.requestedLegalName ?? undefined,
+          ogrn: pendingAny.requestedOgrn ?? undefined,
+          inn: pendingAny.requestedInn ?? undefined,
+          documentUrls: pendingAny.requestedDocumentUrls ?? undefined,
         },
       });
       await tx.pendingShopUpdate.update({

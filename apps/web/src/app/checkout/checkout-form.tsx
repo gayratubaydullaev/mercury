@@ -36,6 +36,8 @@ export function CheckoutForm() {
     house: '',
     phone: '',
     email: '',
+    firstName: '',
+    lastName: '',
   });
   const [deliveryType, setDeliveryType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
   const [paymentMethod, setPaymentMethod] = useState<'CLICK' | 'PAYME' | 'CASH' | 'CARD_ON_DELIVERY'>('CASH');
@@ -72,7 +74,7 @@ export function CheckoutForm() {
     if (!allowedPayment.includes(paymentMethod) && allowedPayment[0]) setPaymentMethod(allowedPayment[0] as 'CLICK' | 'PAYME' | 'CASH' | 'CARD_ON_DELIVERY');
   }, [checkoutOptions]);
 
-  const { token } = useAuth();
+  const { token, setToken } = useAuth();
   const isGuest = !token;
 
   if (!cart) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
@@ -126,7 +128,14 @@ export function CheckoutForm() {
           deliveryType,
           shippingAddress,
           notes: notes.trim() || undefined,
-          ...(isGuest ? { guestPhone: address.phone.trim(), guestEmail: address.email?.trim() || undefined } : {}),
+          ...(isGuest
+            ? {
+                guestPhone: address.phone.trim(),
+                guestEmail: address.email?.trim() || undefined,
+                guestFirstName: address.firstName?.trim() || undefined,
+                guestLastName: address.lastName?.trim() || undefined,
+              }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -136,8 +145,11 @@ export function CheckoutForm() {
           : (err.message || 'Xatolik');
         throw new Error(msg);
       }
-      const orders = await res.json();
-      const orderList = Array.isArray(orders) ? orders : [orders];
+      const data = await res.json() as { orders?: unknown[]; guestAuth?: { accessToken: string; user: { id: string } } };
+      const orderList = Array.isArray(data) ? data : (data.orders ?? []);
+      if (data && !Array.isArray(data) && data.guestAuth) {
+        setToken(data.guestAuth.accessToken);
+      }
       if (orderList.length > 0 && typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('checkout_orders', JSON.stringify(orderList));
       }
@@ -286,6 +298,18 @@ export function CheckoutForm() {
               </div>
             );
           })()}
+          {(isGuest) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Ism (ixtiyoriy)</label>
+                <Input placeholder="Ism" value={address.firstName} onChange={(e) => setAddress((a) => ({ ...a, firstName: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Familiya (ixtiyoriy)</label>
+                <Input placeholder="Familiya" value={address.lastName} onChange={(e) => setAddress((a) => ({ ...a, lastName: e.target.value }))} className="mt-1" />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Telefon *</label>
@@ -309,7 +333,7 @@ export function CheckoutForm() {
             <label key={m} className="flex items-center gap-2">
               <input type="radio" name="pm" checked={paymentMethod === m} onChange={() => setPaymentMethod(m as typeof paymentMethod)} />
               {m === 'CASH' && 'Naqd'}
-              {m === 'CARD_ON_DELIVERY' && 'Karta (yetkazib berishda)'}
+              {m === 'CARD_ON_DELIVERY' && 'Karta (qabul qilishda)'}
               {m === 'CLICK' && 'Click'}
               {m === 'PAYME' && 'Payme'}
             </label>

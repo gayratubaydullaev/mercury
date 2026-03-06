@@ -1,4 +1,21 @@
+'use client';
+
 import Link from 'next/link';
+import { usePublicSettings } from '@/contexts/public-settings-context';
+
+function FooterCopy() {
+  const { siteName } = usePublicSettings();
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">
+        © {new Date().getFullYear()} {siteName}. Barcha huquqlar himoyalangan.
+      </p>
+      <Link href="/" className="font-semibold text-primary hover:underline underline-offset-2 text-sm">
+        {siteName}
+      </Link>
+    </>
+  );
+}
 
 const footerSections = [
   {
@@ -61,12 +78,7 @@ export function Footer() {
           ))}
         </div>
         <div className="mt-10 md:mt-12 pt-6 md:pt-8 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} MyShopUZ. Barcha huquqlar himoyalangan.
-          </p>
-          <Link href="/" className="font-semibold text-primary hover:underline underline-offset-2 text-sm">
-            MyShopUZ
-          </Link>
+          <FooterCopy />
         </div>
       </div>
     </footer>

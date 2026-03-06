@@ -100,8 +100,9 @@ export class AuthService implements OnModuleInit {
     return { ok: true, message: 'Admin and seller passwords reset. Use admin@myshop.uz / Admin123! or seller@myshop.uz / Seller123!' };
   }
 
-  async login(user: { id: string; email: string; role: UserRole }) {
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role };
+  async login(user: { id: string; email: string; role: UserRole; isGuest?: boolean }) {
+    const isGuest = !!user.isGuest;
+    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role, isGuest };
     const accessToken = this.jwt.sign(payload);
     const refreshToken = uuidv4();
     const expiresAt = new Date();
@@ -109,7 +110,7 @@ export class AuthService implements OnModuleInit {
     await this.prisma.refreshToken.create({
       data: { token: refreshToken, userId: user.id, expiresAt },
     });
-    return { accessToken, refreshToken, expiresAt, user: { id: user.id, email: user.email, role: user.role } };
+    return { accessToken, refreshToken, expiresAt, user: { id: user.id, email: user.email, role: user.role, isGuest } };
   }
 
   async refresh(refreshToken: string) {
@@ -164,7 +165,7 @@ export class AuthService implements OnModuleInit {
     });
     await this.mailer.sendMail({
       to: email,
-      subject: 'MyShopUZ – Tasdiqlash kodi',
+      subject: 'JomboyShop – Tasdiqlash kodi',
       text: `Tasdiqlash kodingiz: ${code}. Kod 10 daqiqa amal qiladi.`,
       html: `<p>Tasdiqlash kodingiz: <strong>${code}</strong>.</p><p>Kod 10 daqiqa amal qiladi.</p>`,
     });
@@ -340,6 +341,50 @@ export class AuthService implements OnModuleInit {
   /**
    * Проверка токена: вход (JWT) или привязка Telegram к аккаунту (linked).
    */
+  /** Нормализация телефона для поиска/создания гостя: только цифры. */
+  private normalizePhone(phone: string): string {
+    return (phone || '').replace(/\D/g, '');
+  }
+
+  /**
+   * Найти или создать гостевого пользователя по телефону (при заказе без авторизации).
+   * Email = guest_<normalizedPhone>@guest.local, пароля нет. При повторном заказе с тем же телефоном — возвращаем того же пользователя.
+   */
+  async registerOrLoginGuest(data: {
+    phone: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }): Promise<{ accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }> {
+    const normalized = this.normalizePhone(data.phone);
+    if (!normalized) throw new BadRequestException('Guest phone is required');
+    const email = `guest_${normalized}@guest.local`;
+    const firstName = (data.firstName ?? '').trim() || 'Mehmon';
+    const lastName = (data.lastName ?? '').trim() || '';
+    const phone = normalized;
+
+    const byEmail = await this.prisma.user.findUnique({ where: { email } });
+    if (byEmail) {
+      if (byEmail.isBlocked) throw new ForbiddenException('Account blocked');
+      const updated = await this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: { phone, firstName, lastName },
+      });
+      return this.login(updated);
+    }
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        phone,
+        firstName,
+        lastName,
+        role: 'BUYER',
+        isGuest: true,
+      },
+    });
+    return this.login(user);
+  }
+
   async verifyTelegramLogin(
     token: string,
   ): Promise<
@@ -368,7 +413,7 @@ export class AuthService implements OnModuleInit {
       }
       await this.prisma.user.update({
         where: { id: linkUserId },
-        data: { telegramId: row.telegramChatId } as { telegramId: string },
+        data: { telegramId: row.telegramChatId, isGuest: false } as { telegramId: string; isGuest: boolean },
       });
       await loginTokens.delete({ where: { id: row.id } });
       return { status: 'linked' };

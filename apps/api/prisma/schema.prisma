@@ -56,6 +56,7 @@ model User {
   avatarUrl     String?   @map("avatar_url")
   isBlocked     Boolean   @default(false) @map("is_blocked")
   emailVerified Boolean   @default(false) @map("email_verified")
+  isGuest       Boolean   @default(false) @map("is_guest") // гостевой аккаунт (по телефону); можно «апгрейднуть» через Telegram/пароль
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -138,6 +139,11 @@ model Shop {
   commissionRate  Decimal? @map("commission_rate") @db.Decimal(5, 2) // seller-specific %; null = use platform default
   telegramChatId  String?  @map("telegram_chat_id") // ID чата/группы/канала для уведомлений
   telegramType    String?  @map("telegram_type")   // PERSONAL | GROUP | CHANNEL
+  legalType       String?  @map("legal_type")       // IP | OOO — ИП или ООО
+  legalName       String?  @map("legal_name")      // полное название ИП/юрлица
+  ogrn            String?  @map("ogrn")            // ОГРН
+  inn             String?  @map("inn")             // ИНН
+  documentUrls    Json?    @map("document_urls")    // массив URL фото документов (загружаются через upload)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -154,6 +160,11 @@ model SellerApplication {
   shopName      String    @map("shop_name")
   description   String?   @map("description")
   message       String?   @map("message")   // комментарий от заявителя
+  legalType     String?   @map("legal_type")   // IP | OOO
+  legalName     String?   @map("legal_name")
+  ogrn          String?   @map("ogrn")
+  inn           String?   @map("inn")
+  documentUrls  Json?     @map("document_urls") // массив URL фото документов
   status        String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
   rejectReason  String?   @map("reject_reason")
   reviewedAt    DateTime? @map("reviewed_at")
@@ -167,13 +178,18 @@ model SellerApplication {
   @@map("seller_applications")
 }
 
-// Изменения данных магазина (имя, slug, описание) — вступают в силу после одобрения админа
+// Изменения данных магазина (имя, slug, описание, реквизиты ИП/ООО) — вступают в силу после одобрения админа
 model PendingShopUpdate {
   id                String    @id @default(uuid())
   shopId            String    @map("shop_id")
   requestedName     String    @map("requested_name")
   requestedSlug     String    @map("requested_slug")
   requestedDescription String? @map("requested_description")
+  requestedLegalType  String?  @map("requested_legal_type")
+  requestedLegalName  String?  @map("requested_legal_name")
+  requestedOgrn       String?  @map("requested_ogrn")
+  requestedInn        String?  @map("requested_inn")
+  requestedDocumentUrls Json?  @map("requested_document_urls")
   status            String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
   rejectReason      String?   @map("reject_reason")
   reviewedAt        DateTime? @map("reviewed_at")
@@ -405,6 +421,7 @@ model ChatMessage {
 
 model PlatformSettings {
   id              String   @id @default(uuid())
+  siteName        String?  @map("site_name") // название маркетплейса (в шапке, футере, title)
   commissionRate  Decimal  @map("commission_rate") @db.Decimal(5, 2) // e.g. 5.00 = 5%
   minPayoutAmount Decimal  @map("min_payout_amount") @db.Decimal(12, 2)
   // To'lov usullari (admin yoqadi/ochiradi)

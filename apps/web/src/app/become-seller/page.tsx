@@ -17,6 +17,11 @@ type ApplicationStatus = {
   shopName: string;
   description: string | null;
   message: string | null;
+  legalType?: string | null;
+  legalName?: string | null;
+  ogrn?: string | null;
+  inn?: string | null;
+  documentUrls?: string[] | null;
   status: string;
   rejectReason: string | null;
   createdAt: string;
@@ -33,6 +38,12 @@ export default function BecomeSellerPage() {
   const [shopName, setShopName] = useState('');
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
+  const [legalType, setLegalType] = useState('');
+  const [legalName, setLegalName] = useState('');
+  const [ogrn, setOgrn] = useState('');
+  const [inn, setInn] = useState('');
+  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
+  const [docUploading, setDocUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +61,11 @@ export default function BecomeSellerPage() {
           setShopName(data.application.shopName ?? '');
           setDescription(data.application.description ?? '');
           setMessage(data.application.message ?? '');
+          setLegalType(data.application.legalType ?? '');
+          setLegalName(data.application.legalName ?? '');
+          setOgrn(data.application.ogrn ?? '');
+          setInn(data.application.inn ?? '');
+          setDocumentUrls(Array.isArray(data.application.documentUrls) ? data.application.documentUrls : []);
         }
       })
       .catch(() => setApplication(null))
@@ -68,6 +84,11 @@ export default function BecomeSellerPage() {
         shopName: shopName.trim(),
         description: description.trim() || undefined,
         message: message.trim() || undefined,
+        legalType: legalType.trim() || undefined,
+        legalName: legalName.trim() || undefined,
+        ogrn: ogrn.trim() || undefined,
+        inn: inn.trim() || undefined,
+        documentUrls: documentUrls.length ? documentUrls : undefined,
       }),
     })
       .then((r) => {
@@ -157,7 +178,7 @@ export default function BecomeSellerPage() {
               Ariza yuborish
             </CardTitle>
             <p className="text-sm text-muted-foreground font-normal">
-              Do‘kon nomi va qisqacha tavsif kiriting. Admin tasdiqlagach siz sotuvchi bo‘lasiz.
+              Do‘kon nomi, tavsif va yuridik ma’lumotlarni kiriting. Admin tasdiqlagach siz sotuvchi bo‘lasiz.
             </p>
           </CardHeader>
           <CardContent>
@@ -182,6 +203,100 @@ export default function BecomeSellerPage() {
                   placeholder="Do‘koningiz haqida qisqacha"
                   maxLength={2000}
                 />
+              </div>
+              <div className="rounded-lg border border-border p-3 space-y-3 bg-muted/30">
+                <p className="text-sm font-medium">Yuridik maʼlumotlar (ixtiyoriy)</p>
+                <div>
+                  <label className="text-xs text-muted-foreground">Shakl (ИП / ООО)</label>
+                  <select
+                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={legalType}
+                    onChange={(e) => setLegalType(e.target.value)}
+                  >
+                    <option value="">Tanlang</option>
+                    <option value="IP">ИП (Yakka tadbirkor)</option>
+                    <option value="OOO">ООО (MChJ)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Toʻliq nomi (ИП/ООО)</label>
+                  <Input
+                    className="mt-1"
+                    value={legalName}
+                    onChange={(e) => setLegalName(e.target.value)}
+                    placeholder="Masalan: IP Ivanov I.I."
+                    maxLength={500}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">OGRN</label>
+                  <Input
+                    className="mt-1"
+                    value={ogrn}
+                    onChange={(e) => setOgrn(e.target.value)}
+                    placeholder="OGRN raqami"
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">INN</label>
+                  <Input
+                    className="mt-1"
+                    value={inn}
+                    onChange={(e) => setInn(e.target.value)}
+                    placeholder="INN raqami"
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Hujjatlar (foto)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="mt-1 w-full text-sm"
+                    onChange={async (e) => {
+                      const files = e.target.files;
+                      if (!files?.length || !token) return;
+                      e.target.value = '';
+                      setDocUploading(true);
+                      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+                      let added = 0;
+                      for (const file of Array.from(files).slice(0, 10)) {
+                        const form = new FormData();
+                        form.append('file', file);
+                        try {
+                          const r = await fetch(`${API_URL}/upload/image`, { method: 'POST', headers, body: form, credentials: 'include' });
+                          const data = await r.json();
+                          if (data?.url) {
+                            setDocumentUrls((prev) => [...prev, data.url]);
+                            added++;
+                          }
+                        } catch {
+                          // skip
+                        }
+                      }
+                      setDocUploading(false);
+                    }}
+                    disabled={docUploading}
+                  />
+                  {documentUrls.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {documentUrls.map((url, i) => (
+                        <div key={i} className="relative inline-block">
+                          <img src={url} alt="" className="h-16 w-16 object-cover rounded border" />
+                          <button
+                            type="button"
+                            className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground w-5 h-5 text-xs"
+                            onClick={() => setDocumentUrls((prev) => prev.filter((_, j) => j !== i))}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium">Administratorga xabar (ixtiyoriy)</label>
