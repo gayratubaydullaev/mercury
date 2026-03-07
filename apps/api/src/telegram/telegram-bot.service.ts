@@ -348,7 +348,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           chatId,
           welcome +
             `\n\n🔑 <b>Admin yoki sotuvchi boʻlsangiz</b> — saytni Telegramga ulash uchun quyidagi kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
-            `<code>${code}</code>\n\nKod 15 daqiqa amal qiladi.`,
+            `<code>${code}</code>\n\nKod 15 daqiqa amal qiladi.\n\nQuyidagi tugmalardan yoki buyruqlardan foydalaning:`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       }
@@ -374,7 +374,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (text === '/today') return this.sendTodayResponse(chatId);
     if (text === '/help') return this.sendHelpResponse(chatId, undefined, buyer, shop, isAdmin);
 
-    if (text.length > 0) {
+    // Nomaʼlum matn: bitta xabar bilan menyu (buyruqlar yuqorida qaytadi — ikkinchi xabar boʻlmasin)
+    const isCommand = text.startsWith('/') || text === 'start' || text === 'link';
+    if (text.length > 0 && !isCommand) {
       const menuMarkup = await this.getMenuWithPanel(chatId);
       await this.bot!.sendMessage(
         chatId,
