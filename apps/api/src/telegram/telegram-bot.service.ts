@@ -222,7 +222,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleMessage(msg: TelegramBotModule.Message) {
-    const rawText = msg.text?.trim() ?? '';
+    // Текст команды может быть в msg.text или в подписи к медиа (caption у фото/видео)
+    const msgWithCaption = msg as TelegramBotModule.Message & { caption?: string };
+    const rawText = (msg.text ?? msgWithCaption.caption ?? '').trim();
     const text = rawText.toLowerCase();
     const chatId = String(msg.chat.id);
 
@@ -302,13 +304,17 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const buyer = await this.getBuyerByTelegramChatId(chatId);
 
     // Отдельная команда для получения кода привязки — всегда выдаёт код
-    if (text === '/code' || text.startsWith('/code@')) {
+    // Telegram может присылать: /code, /code@BotName, /code или /code с пробелом/аргументом
+    const isCodeCommand =
+      text === '/code' || text.startsWith('/code@') || (text.startsWith('/code') && (text.length === 6 || text[6] === ' '));
+    if (isCodeCommand) {
       try {
         const code = await this.telegram.createLinkCode(chatId);
+        const menuMarkup = await this.getMenuWithPanel(chatId);
         await this.bot!.sendMessage(
           chatId,
           `🔑 <b>Ulash kodi:</b> <code>${code}</code>\n\nSaytda <b>Sozlamalar → Telegram</b> da kiriting. 15 daqiqa amal qiladi.`,
-          { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) },
+          { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } catch (e) {
         this.logger.warn('createLinkCode failed', e);

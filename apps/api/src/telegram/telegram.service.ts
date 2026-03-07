@@ -242,9 +242,21 @@ export class TelegramService {
 
   async createLinkCode(chatId: string): Promise<string> {
     await this.prisma.telegramLinkCode.deleteMany({ where: { chatId } });
-    const code = generateCode();
-    await this.prisma.telegramLinkCode.create({ data: { code, chatId } });
-    return code;
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const code = generateCode();
+      try {
+        await this.prisma.telegramLinkCode.create({ data: { code, chatId } });
+        return code;
+      } catch (e: unknown) {
+        // P2002 = unique constraint (редкая коллизия кода)
+        if (attempt < maxAttempts - 1 && typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2002') {
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw new Error('createLinkCode: max attempts');
   }
 
   async resolveLinkCode(code: string): Promise<string | null> {
