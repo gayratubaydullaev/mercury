@@ -301,7 +301,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const buyer = await this.getBuyerByTelegramChatId(chatId);
 
     // Отдельная команда для получения кода привязки — всегда выдаёт код (для Admin и Sotuvchi до первой привязки)
-    if (text === '/code') {
+    // Поддержка /code и /code@BotUsername (Telegram присылает с @ при выборе из меню)
+    if (text === '/code' || text.startsWith('/code@')) {
       const code = await this.telegram.createLinkCode(chatId);
       const menuMarkup = await this.getMenuWithPanel(chatId);
       await this.bot!.sendMessage(
@@ -317,10 +318,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if (text === '/start' || text === '/link') {
+    if (text === '/start' || text === '/link' || text.startsWith('/start@') || text.startsWith('/link@')) {
       const menuMarkup = await this.getMenuWithPanel(chatId);
+      const code = await this.telegram.createLinkCode(chatId);
       if (isAdmin) {
-        const code = await this.telegram.createLinkCode(chatId);
         await this.bot!.sendMessage(
           chatId,
           `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\n` +
@@ -330,7 +331,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else if (shop) {
-        const code = await this.telegram.createLinkCode(chatId);
         await this.bot!.sendMessage(
           chatId,
           `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\n` +
@@ -344,8 +344,13 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           buyer
             ? `Salom, ${esc(buyer.firstName)}! <b>JomboyShop</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
             : `Assalomu alaykum! <b>JomboyShop</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
-        const codeHint = '\n\nAdmin yoki sotuvchi boʻlsangiz, saytni Telegramga ulash uchun <b>/code</b> yuboring.';
-        await this.bot!.sendMessage(chatId, welcome + codeHint, { parse_mode: 'HTML', reply_markup: menuMarkup });
+        await this.bot!.sendMessage(
+          chatId,
+          welcome +
+            `\n\n🔑 <b>Admin yoki sotuvchi boʻlsangiz</b> — saytni Telegramga ulash uchun quyidagi kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
+            `<code>${code}</code>\n\nKod 15 daqiqa amal qiladi.`,
+          { parse_mode: 'HTML', reply_markup: menuMarkup },
+        );
       }
       return;
     }
