@@ -119,6 +119,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     // Umumiy buyruqlar ro'yxati — barcha rollar uchun bir xil; menyu tugmalari roldan qat'iy nazar boshqacha.
     this.bot.setMyCommands([
       { command: 'start', description: 'Botni ishga tushirish' },
+      { command: 'code', description: 'Ulash kodi olish (Admin / Sotuvchi)' },
       { command: 'shop', description: "Do'konni ochish (veb-ilova)" },
       { command: 'orders', description: "Mening buyurtmalarim / Sotuvchi: buyurtmalar" },
       { command: 'help', description: 'Yordam' },
@@ -300,57 +301,64 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
     const buyer = await this.getBuyerByTelegramChatId(chatId);
 
-    // Отдельная команда для получения кода привязки — всегда выдаёт код (для Admin и Sotuvchi до первой привязки)
-    // Поддержка /code и /code@BotUsername (Telegram присылает с @ при выборе из меню)
+    // Отдельная команда для получения кода привязки — всегда выдаёт код
     if (text === '/code' || text.startsWith('/code@')) {
-      const code = await this.telegram.createLinkCode(chatId);
-      const menuMarkup = await this.getMenuWithPanel(chatId);
-      await this.bot!.sendMessage(
-        chatId,
-        `🔑 <b>Ulash kodi</b>\n\n` +
-          `<code>${code}</code>\n\n` +
-          `Bu kodni saytda kiriting:\n` +
-          `• <b>Admin</b> boʻlsangiz — <b>Sozlamalar → Admin → Telegram</b>\n` +
-          `• <b>Sotuvchi</b> boʻlsangiz — <b>Sozlamalar → Telegram</b>\n\n` +
-          `Kod 15 daqiqa amal qiladi.`,
-        { parse_mode: 'HTML', reply_markup: menuMarkup },
-      );
+      try {
+        const code = await this.telegram.createLinkCode(chatId);
+        await this.bot!.sendMessage(
+          chatId,
+          `🔑 <b>Ulash kodi:</b> <code>${code}</code>\n\nSaytda <b>Sozlamalar → Telegram</b> da kiriting. 15 daqiqa amal qiladi.`,
+          { parse_mode: 'HTML', reply_markup: await this.getMenuWithPanel(chatId) },
+        );
+      } catch (e) {
+        this.logger.warn('createLinkCode failed', e);
+        await this.bot!.sendMessage(chatId, 'Kod yaratishda xatolik. Keyinroq /code yuboring.');
+      }
       return;
     }
 
-    if (text === '/start' || text === '/link' || text.startsWith('/start@') || text.startsWith('/link@')) {
+    const isStartOrLink = text === '/start' || text === '/link' || text.startsWith('/start@') || text.startsWith('/link@');
+    if (isStartOrLink) {
       const menuMarkup = await this.getMenuWithPanel(chatId);
-      const code = await this.telegram.createLinkCode(chatId);
+      let code: string | null = null;
+      try {
+        code = await this.telegram.createLinkCode(chatId);
+      } catch (e) {
+        this.logger.warn('createLinkCode failed on /start', e);
+      }
+      // Сначала отправляем код отдельным коротким сообщением, чтобы точно дошёл
+      if (code) {
+        await this.bot!.sendMessage(
+          chatId,
+          `🔑 <b>Ulash kodi:</b> <code>${code}</code>\nSaytda Sozlamalar → Telegram da kiriting. 15 daqiqa.`,
+          { parse_mode: 'HTML' },
+        );
+      }
       if (isAdmin) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\n` +
-            `Admin panelni ulash uchun kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
-            `<code>${code}</code>\n\n` +
-            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel.`,
+          `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else if (shop) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\n` +
-            `Doʻkoningizni ulash uchun kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
-            `<code>${code}</code>\n\n` +
-            `Kod 15 daqiqa amal qiladi. Quyidagi tugmalar: buyurtmalar, statistika, veb panel.`,
+          `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, veb panel.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else {
         const welcome =
           buyer
-            ? `Salom, ${esc(buyer.firstName)}! <b>JomboyShop</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
+            ? `Salom, ${esc(buyer.firstName)}! <b>JomboyShop</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali.`
             : `Assalomu alaykum! <b>JomboyShop</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
         await this.bot!.sendMessage(
           chatId,
-          welcome +
-            `\n\n🔑 <b>Admin yoki sotuvchi boʻlsangiz</b> — saytni Telegramga ulash uchun quyidagi kodni <b>Sozlamalar → Telegram</b> da kiriting:\n\n` +
-            `<code>${code}</code>\n\nKod 15 daqiqa amal qiladi.\n\nQuyidagi tugmalardan yoki buyruqlardan foydalaning:`,
+          welcome + '\n\nQuyidagi tugmalardan yoki buyruqlardan foydalaning:',
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
+      }
+      if (!code) {
+        await this.bot!.sendMessage(chatId, 'Ulash kodi kerak boʻlsa, <b>/code</b> yuboring.', { parse_mode: 'HTML' });
       }
       return;
     }
