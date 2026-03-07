@@ -300,6 +300,23 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
     const buyer = await this.getBuyerByTelegramChatId(chatId);
 
+    // Отдельная команда для получения кода привязки — всегда выдаёт код (для Admin и Sotuvchi до первой привязки)
+    if (text === '/code') {
+      const code = await this.telegram.createLinkCode(chatId);
+      const menuMarkup = await this.getMenuWithPanel(chatId);
+      await this.bot!.sendMessage(
+        chatId,
+        `🔑 <b>Ulash kodi</b>\n\n` +
+          `<code>${code}</code>\n\n` +
+          `Bu kodni saytda kiriting:\n` +
+          `• <b>Admin</b> boʻlsangiz — <b>Sozlamalar → Admin → Telegram</b>\n` +
+          `• <b>Sotuvchi</b> boʻlsangiz — <b>Sozlamalar → Telegram</b>\n\n` +
+          `Kod 15 daqiqa amal qiladi.`,
+        { parse_mode: 'HTML', reply_markup: menuMarkup },
+      );
+      return;
+    }
+
     if (text === '/start' || text === '/link') {
       const menuMarkup = await this.getMenuWithPanel(chatId);
       if (isAdmin) {
@@ -327,7 +344,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           buyer
             ? `Salom, ${esc(buyer.firstName)}! <b>JomboyShop</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali. "Mening buyurtmalarim" — sizning buyurtmalaringiz.`
             : `Assalomu alaykum! <b>JomboyShop</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
-        await this.bot!.sendMessage(chatId, welcome, { parse_mode: 'HTML', reply_markup: menuMarkup });
+        const codeHint = '\n\nAdmin yoki sotuvchi boʻlsangiz, saytni Telegramga ulash uchun <b>/code</b> yuboring.';
+        await this.bot!.sendMessage(chatId, welcome + codeHint, { parse_mode: 'HTML', reply_markup: menuMarkup });
       }
       return;
     }
@@ -630,7 +648,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       ? '<b>JomboyShop bot</b>\n\n' +
         'Sotuvchilar va admin uchun. Avval Sozlamalarda kodni kiriting.\n\n' +
         '<b>Buyruqlar:</b>\n' +
-        '• /start, /link — Ulash kodi\n' +
+        '• /code — Ulash kodi olish (Admin yoki Sotuvchi sozlamalarida kiriting)\n' +
+        '• /start, /link — Bosh menyu / ulash kodi (agar allaqachon ulangan boʻlsa)\n' +
         '• /orders — Aktiv buyurtmalar\n' +
         '• /stats — Statistika\n' +
         '• /pending — Kutilmoqda\n' +

@@ -356,8 +356,8 @@ export default function SellerSettingsPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                1) Telegramda JomboyShop sotuvchi botini qidiring va <b>/start</b> yoki <b>/link</b> yuboring.<br />
-                2) Bot sizga 6 ta belgili kod beradi. Uni quyida kiriting.
+                1) Telegramda JomboyShop botini oching va <b>/code</b> yuboring (kod olish uchun).<br />
+                2) Bot bergan 6 belgili kodni quyida kiriting.
               </p>
               <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">
                 <div className="flex-1 min-w-[140px]">
