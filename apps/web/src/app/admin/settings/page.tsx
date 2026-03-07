@@ -185,7 +185,7 @@ export default function AdminSettingsPage() {
             Admin Telegram — toʻliq buyurtma bildirishnomalari
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Admin bildirishnomalari shu chatga yuboriladi. Ulash: botda <b>/code</b> yuboring va kodni kiriting, yoki Chat ID ni qoʻlda kiriting. Serverda <code>.env</code> da <code>ADMIN_TELEGRAM_CHAT_ID</code> ham ishlatiladi (boʻsh boʻlsa sozlamalar qiymati).
+            Barcha yangi buyurtmalar va holat oʻzgarishlari toʻliq maʼlumot bilan (xaridor, sotuvchi, manzil, toʻlov, mahsulotlar) shu chatga yuboriladi. Ulash: botda <b>/code</b> yuboring, kodni quyida kiriting; yoki Chat ID ni qoʻlda kiriting; yoki <code>.env</code> da <code>ADMIN_TELEGRAM_CHAT_ID</code> belgilang.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -222,8 +222,8 @@ export default function AdminSettingsPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                1) Telegramda JomboyShop botini oching va <b>/code</b> yuboring (kod olish uchun).<br />
-                2) Bot bergan 6 belgili kodni quyida kiriting.
+                1) Telegramda botni oching va <b>/code</b> yuboring — 6 belgili kod olasiz.<br />
+                2) Shu kodni quyida kiriting va «Ulash» bosing.
               </p>
               <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">
                 <div className="flex-1 min-w-[140px]">
