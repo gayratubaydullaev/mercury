@@ -325,30 +325,16 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const isStartOrLink = text === '/start' || text === '/link' || text.startsWith('/start@') || text.startsWith('/link@');
     if (isStartOrLink) {
       const menuMarkup = await this.getMenuWithPanel(chatId);
-      let code: string | null = null;
-      try {
-        code = await this.telegram.createLinkCode(chatId);
-      } catch (e) {
-        this.logger.warn('createLinkCode failed on /start', e);
-      }
-      // Сначала отправляем код отдельным коротким сообщением, чтобы точно дошёл
-      if (code) {
-        await this.bot!.sendMessage(
-          chatId,
-          `🔑 <b>Ulash kodi:</b> <code>${code}</code>\nSaytda Sozlamalar → Telegram da kiriting. 15 daqiqa.`,
-          { parse_mode: 'HTML' },
-        );
-      }
       if (isAdmin) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel.`,
+          `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else if (shop) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, veb panel.`,
+          `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else {
@@ -361,9 +347,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           welcome + '\n\nQuyidagi tugmalardan yoki buyruqlardan foydalaning:',
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
-      }
-      if (!code) {
-        await this.bot!.sendMessage(chatId, 'Ulash kodi kerak boʻlsa, <b>/code</b> yuboring.', { parse_mode: 'HTML' });
       }
       return;
     }
