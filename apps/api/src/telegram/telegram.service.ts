@@ -86,6 +86,17 @@ export class TelegramService {
     return url ? url.replace(/\/$/, '') : '';
   }
 
+  /** Admin chat ID: сначала из БД (platform_settings), иначе из .env ADMIN_TELEGRAM_CHAT_ID */
+  async getAdminChatId(): Promise<string | null> {
+    const row = await this.prisma.platformSettings.findFirst({
+      select: { adminTelegramChatId: true },
+    });
+    const fromDb = (row as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId;
+    if (fromDb != null && String(fromDb).trim() !== '') return String(fromDb).trim();
+    const fromEnv = this.config.get<string>('ADMIN_TELEGRAM_CHAT_ID')?.trim();
+    return fromEnv ?? null;
+  }
+
   async sendMessage(
     chatId: string,
     text: string,
@@ -306,10 +317,8 @@ export class TelegramService {
     event: 'new_order' | 'status_updated',
     newStatus?: string,
   ): Promise<void> {
-    const settings = await this.prisma.platformSettings.findFirst({
-      select: { adminTelegramChatId: true },
-    });
-    if (!settings?.adminTelegramChatId) return;
+    const adminChatId = await this.getAdminChatId();
+    if (!adminChatId) return;
 
     const amount = Number(order.totalAmount).toLocaleString('uz-UZ');
     const buyerName = order.buyer
@@ -363,7 +372,7 @@ export class TelegramService {
     if (order.id) adminRows.push([{ text: '📄 Batafsil', callback_data: `admin_order_detail:${order.id}`, style: 'primary' as const }]);
     if (baseUrl) adminRows.push([{ text: '📋 Buyurtmalar', url: `${baseUrl}/admin/orders`, style: 'primary' as const }]);
     const replyMarkup = adminRows.length > 0 ? { inline_keyboard: adminRows } : undefined;
-    await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
+    await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
   /** Sotuvchiga: yangi sharh yozilganda */
@@ -392,8 +401,8 @@ export class TelegramService {
 
   /** Admin: yangi mahsulot moderatsiya kutilmoqda */
   async sendAdminPendingProductNotification(product: { id: string; title: string; shop?: { name: string } | null }): Promise<void> {
-    const settings = await this.prisma.platformSettings.findFirst({ select: { adminTelegramChatId: true } });
-    if (!settings?.adminTelegramChatId) return;
+    const adminChatId = await this.getAdminChatId();
+    if (!adminChatId) return;
     const text =
       '📦 <b>ADMIN: Yangi mahsulot (moderatsiya kutilmoqda)</b>\n\n' +
       `ID: <code>${escapeHtml(product.id)}</code>\n` +
@@ -403,7 +412,7 @@ export class TelegramService {
     const replyMarkup = baseUrl
       ? { inline_keyboard: [[{ text: '📦 Moderatsiya', url: `${baseUrl}/admin/products?filter=pending`, style: 'primary' as const }]] }
       : undefined;
-    await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
+    await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
   /** Admin: yangi ariza — sotuvchi bo'lish (tasdiqlash/rad etish tugmalari orqali). */
@@ -413,8 +422,8 @@ export class TelegramService {
     userName: string;
     message?: string | null;
   }): Promise<void> {
-    const settings = await this.prisma.platformSettings.findFirst({ select: { adminTelegramChatId: true } });
-    if (!settings?.adminTelegramChatId) return;
+    const adminChatId = await this.getAdminChatId();
+    if (!adminChatId) return;
     const text =
       '📝 <b>Yangi ariza: Sotuvchi bo\'lish</b>\n\n' +
       `🏪 Doʻkon nomi: ${escapeHtml(data.shopName)}\n` +
@@ -430,7 +439,7 @@ export class TelegramService {
     if (baseUrl) {
       rows.push([{ text: '📋 Arizalar roʻyxati', url: `${baseUrl}/admin/seller-applications` }]);
     }
-    await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+    await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   }
 
   /** Admin: yangi sharh moderatsiya kutilmoqda */
@@ -441,8 +450,8 @@ export class TelegramService {
     productTitle: string;
     userName: string;
   }): Promise<void> {
-    const settings = await this.prisma.platformSettings.findFirst({ select: { adminTelegramChatId: true } });
-    if (!settings?.adminTelegramChatId) return;
+    const adminChatId = await this.getAdminChatId();
+    if (!adminChatId) return;
     const stars = '⭐'.repeat(data.rating) + '☆'.repeat(5 - data.rating);
     const text =
       '💬 <b>ADMIN: Yangi sharh (moderatsiya kutilmoqda)</b>\n\n' +
@@ -453,6 +462,6 @@ export class TelegramService {
     const replyMarkup = baseUrl
       ? { inline_keyboard: [[{ text: '💬 Sharhlar', url: `${baseUrl}/admin/reviews?filter=pending`, style: 'primary' as const }]] }
       : undefined;
-    await this.sendMessage(settings.adminTelegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
+    await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 }

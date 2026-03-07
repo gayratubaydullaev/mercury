@@ -146,10 +146,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Returns admin Telegram chat ID (uses type assertion if Prisma client was generated before schema had this field). */
+  /** Admin Telegram chat ID: из настроек (БД) или .env ADMIN_TELEGRAM_CHAT_ID */
   private async getAdminTelegramChatId(): Promise<string | null> {
-    const row = await this.prisma.platformSettings.findFirst();
-    return (row as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId ?? null;
+    return this.telegram.getAdminChatId();
   }
 
   /** Покупатель по Telegram chat ID (в личке chat.id = user id). */

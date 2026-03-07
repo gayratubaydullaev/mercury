@@ -22,6 +22,7 @@ type Settings = {
   paymentCardOnDeliveryEnabled?: boolean;
   deliveryEnabled?: boolean;
   pickupEnabled?: boolean;
+  adminTelegramChatId?: string | null;
 };
 
 const defaultPaymentDelivery = {
@@ -41,7 +42,8 @@ export default function AdminSettingsPage() {
   const [paymentDelivery, setPaymentDelivery] = useState(defaultPaymentDelivery);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean } | null>(null);
+  const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean; adminTelegramChatId?: string | null } | null>(null);
+  const [adminTelegramChatId, setAdminTelegramChatId] = useState('');
   const [telegramCode, setTelegramCode] = useState('');
   const [telegramLinking, setTelegramLinking] = useState(false);
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
@@ -65,6 +67,7 @@ export default function AdminSettingsPage() {
         setSiteName(s.siteName ?? '');
         setCommission(String(s.commissionRate ?? ''));
         setMinPayout(String(s.minPayoutAmount ?? ''));
+        setAdminTelegramChatId(s.adminTelegramChatId ?? '');
         setPaymentDelivery({
           paymentClickEnabled: s.paymentClickEnabled ?? true,
           paymentPaymeEnabled: s.paymentPaymeEnabled ?? true,
@@ -132,6 +135,7 @@ export default function AdminSettingsPage() {
         siteName: siteName.trim() || null,
         commissionRate: Number(commission),
         minPayoutAmount: Number(minPayout),
+        adminTelegramChatId: adminTelegramChatId.trim() || null,
         ...paymentDelivery,
       }),
     })
@@ -148,6 +152,8 @@ export default function AdminSettingsPage() {
           deliveryEnabled: s.deliveryEnabled ?? true,
           pickupEnabled: s.pickupEnabled ?? true,
         });
+        setAdminTelegramChatId(s.adminTelegramChatId ?? '');
+        loadTelegramStatus();
         toast.success('Sozlamalar saqlandi');
       })
       .catch(() => {
@@ -179,10 +185,25 @@ export default function AdminSettingsPage() {
             Admin Telegram — toʻliq buyurtma bildirishnomalari
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Botga /start yoki /link yuboring, kodni quyida kiriting. Barcha yangi buyurtmalar va holat oʻzgarishlari toʻliq maʼlumot bilan (xaridor, sotuvchi, manzil, toʻlov, mahsulotlar) shu chatga yuboriladi.
+            Admin bildirishnomalari shu chatga yuboriladi. Ulash: botda <b>/code</b> yuboring va kodni kiriting, yoki Chat ID ni qoʻlda kiriting. Serverda <code>.env</code> da <code>ADMIN_TELEGRAM_CHAT_ID</code> ham ishlatiladi (boʻsh boʻlsa sozlamalar qiymati).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="admin-telegram-chat-id" className="text-sm">Admin Telegram Chat ID (ixtiyoriy)</Label>
+            <Input
+              id="admin-telegram-chat-id"
+              type="text"
+              inputMode="numeric"
+              placeholder="123456789"
+              value={adminTelegramChatId}
+              onChange={(e) => setAdminTelegramChatId(e.target.value.replace(/\D/g, '').slice(0, 20))}
+              className="font-mono max-w-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Raqam (masalan, @userinfobot orqali olingan). Boʻsh qoldirsangiz — faqat kod orqali ulash yoki .env ishlatiladi.
+            </p>
+          </div>
           {telegramStatus?.connected ? (
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium text-green-600">Admin Telegram ulangan</span>

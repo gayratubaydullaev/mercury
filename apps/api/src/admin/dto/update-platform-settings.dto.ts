@@ -49,4 +49,11 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsBoolean()
   pickupEnabled?: boolean;
+
+  /** Admin Telegram Chat ID — вручную или из .env; при пустой строке сбрасывается */
+  @ApiPropertyOptional({ description: 'Admin Telegram chat ID (число, напр. 123456789)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  adminTelegramChatId?: string | null;
 }

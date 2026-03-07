@@ -255,6 +255,7 @@ export class AdminService {
     paymentCardOnDeliveryEnabled?: boolean;
     deliveryEnabled?: boolean;
     pickupEnabled?: boolean;
+    adminTelegramChatId?: string | null;
   }) {
     const settings = await this.prisma.platformSettings.findFirst();
     if (!settings) {
@@ -283,6 +284,9 @@ export class AdminService {
         ...(data.paymentCardOnDeliveryEnabled != null && { paymentCardOnDeliveryEnabled: data.paymentCardOnDeliveryEnabled }),
         ...(data.deliveryEnabled != null && { deliveryEnabled: data.deliveryEnabled }),
         ...(data.pickupEnabled != null && { pickupEnabled: data.pickupEnabled }),
+        ...(data.adminTelegramChatId !== undefined && {
+          adminTelegramChatId: data.adminTelegramChatId?.trim() || null,
+        }),
       },
     });
   }
@@ -312,11 +316,9 @@ export class AdminService {
     return { ok: true };
   }
 
-  async getTelegramStatus(): Promise<{ connected: boolean }> {
-    const settings = await this.prisma.platformSettings.findFirst({
-      select: { adminTelegramChatId: true },
-    });
-    return { connected: !!settings?.adminTelegramChatId };
+  async getTelegramStatus(): Promise<{ connected: boolean; adminTelegramChatId?: string | null }> {
+    const chatId = await this.telegram.getAdminChatId();
+    return { connected: !!chatId, adminTelegramChatId: chatId ?? null };
   }
 
   async disconnectTelegram(): Promise<{ ok: boolean }> {
