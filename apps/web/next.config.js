@@ -5,10 +5,15 @@ if (apiServerUrl && !/^https?:\/\//i.test(apiServerUrl)) apiServerUrl = 'https:/
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
-  // BUILD_ID: set in CI/production so all instances share same build (avoids "Failed to find Server Action").
-  // NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: set in production (base64, 32 bytes) so action IDs are stable across instances.
-  // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-  generateBuildId: async () => process.env.BUILD_ID || `build-${Date.now()}`,
+  // BUILD_ID: set in CI so all instances share same build (avoids "Failed to find Server Action" / workers undefined).
+  // NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: set at BUILD TIME in production (base64, 32 bytes). Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+  generateBuildId: async () => {
+    if (process.env.BUILD_ID) return process.env.BUILD_ID;
+    // CI: use commit SHA so same commit = same build ID across deploys
+    const sha = process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
+    if (sha) return sha;
+    return `build-${Date.now()}`;
+  },
   async rewrites() {
     return [{ source: '/api-proxy/:path*', destination: `${apiServerUrl}/:path*` }];
   },

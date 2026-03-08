@@ -29,7 +29,15 @@ export const checkoutAddressSchema = z.object({
 );
 
 export function validateCheckoutAddress(
-  data: { city?: string; street?: string; house?: string; phone?: string; deliveryType: string }
+  data: {
+    city?: string;
+    street?: string;
+    house?: string;
+    phone?: string;
+    deliveryType: string;
+    firstName?: string;
+    lastName?: string;
+  }
 ): { success: true } | { success: false; errors: string[] } {
   const errors: string[] = [];
   if (!data.phone?.trim()) errors.push('Telefon raqamini kiriting');
@@ -37,6 +45,10 @@ export function validateCheckoutAddress(
     if (!data.city?.trim()) errors.push('Shahar kiriting');
     if (!data.street?.trim()) errors.push('Koʻcha kiriting');
     if (!data.house?.trim()) errors.push('Uy raqami kiriting');
+  }
+  if (data.deliveryType === 'PICKUP') {
+    if (!data.firstName?.trim()) errors.push('Ism kiriting');
+    if (!data.lastName?.trim()) errors.push('Familiya kiriting');
   }
   if (errors.length) return { success: false, errors };
   return { success: true };

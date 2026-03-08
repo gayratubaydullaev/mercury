@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 const rawServerApi = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 let serverApiUrl = rawServerApi.includes(',') ? rawServerApi.split(',')[0].trim() : rawServerApi;
 if (serverApiUrl && !/^https?:\/\//i.test(serverApiUrl)) serverApiUrl = 'https://' + serverApiUrl;
-export const API_URL = typeof window === 'undefined' ? serverApiUrl : '/api-proxy';
+export const API_URL = typeof window === 'undefined' ? serverApiUrl : '/api/proxy';
 
 /** Формат цены: целое число без копеек, пробел — разделитель тысяч (без запятых). */
 export function formatPrice(value: number): string {

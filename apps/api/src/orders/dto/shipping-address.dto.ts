@@ -44,6 +44,18 @@ export class ShippingAddressDto {
   @MaxLength(255)
   email?: string;
 
+  @ApiPropertyOptional({ description: 'First name (e.g. for pickup contact)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  firstName?: string;
+
+  @ApiPropertyOptional({ description: 'Last name (e.g. for pickup contact)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  lastName?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

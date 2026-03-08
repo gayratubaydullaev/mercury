@@ -119,7 +119,12 @@ export function CheckoutForm() {
             phone: address.phone.trim(),
             email: address.email?.trim() || undefined,
           }
-        : { phone: address.phone.trim(), email: address.email?.trim() || undefined };
+        : {
+            phone: address.phone.trim(),
+            email: address.email?.trim() || undefined,
+            firstName: address.firstName?.trim() || undefined,
+            lastName: address.lastName?.trim() || undefined,
+          };
       const res = await apiFetch(`${API_URL}/orders`, {
         method: 'POST',
         headers,
@@ -309,14 +314,14 @@ export function CheckoutForm() {
               </div>
             );
           })()}
-          {(isGuest) && (
+          {(isGuest || deliveryType === 'PICKUP') && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Ism (ixtiyoriy)</label>
+                <label className="text-sm font-medium">{deliveryType === 'PICKUP' ? 'Ism *' : 'Ism (ixtiyoriy)'}</label>
                 <Input placeholder="Ism" value={address.firstName} onChange={(e) => setAddress((a) => ({ ...a, firstName: e.target.value }))} className="mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium">Familiya (ixtiyoriy)</label>
+                <label className="text-sm font-medium">{deliveryType === 'PICKUP' ? 'Familiya *' : 'Familiya (ixtiyoriy)'}</label>
                 <Input placeholder="Familiya" value={address.lastName} onChange={(e) => setAddress((a) => ({ ...a, lastName: e.target.value }))} className="mt-1" />
               </div>
             </div>
