@@ -13,7 +13,12 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
       useFactory: (config: ConfigService) => {
         const url = config.get<string>('REDIS_URL');
         if (!url?.trim()) return null;
-        const client = new Redis(url, { maxRetriesPerRequest: 3, lazyConnect: true });
+        const client = new Redis(url, {
+          maxRetriesPerRequest: 3,
+          lazyConnect: true,
+          connectTimeout: 5000,
+          retryStrategy: (times) => (times <= 3 ? 1000 : null),
+        });
         client.on('error', () => {}); // avoid Unhandled error event when Redis is not running
         return client;
       },

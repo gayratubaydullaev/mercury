@@ -52,14 +52,15 @@ import { SettingsModule } from './settings/settings.module';
       useFactory: (config: ConfigService) => {
         const limitShort = parseInt(config.get('THROTTLE_LIMIT_SHORT') || '300', 10) || 300;
         const limitLong = parseInt(config.get('THROTTLE_LIMIT_LONG') || '2000', 10) || 2000;
+        // Redis for Throttler only if explicitly enabled (e.g. multiple API replicas). Otherwise in-memory.
         const redisUrl = config.get<string>('REDIS_URL');
-        const useRedisStorage = redisUrl?.trim() && process.env.NODE_ENV === 'production';
+        const throttleUseRedis = config.get<string>('THROTTLE_USE_REDIS') === 'true' && redisUrl?.trim();
         return {
           throttlers: [
             { name: 'short', ttl: 60000, limit: limitShort },
             { name: 'long', ttl: 86400000, limit: limitLong },
           ],
-          ...(useRedisStorage && {
+          ...(throttleUseRedis && {
             storage: new ThrottlerStorageRedisService(redisUrl!),
           }),
         };
