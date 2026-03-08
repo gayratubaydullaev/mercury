@@ -148,7 +148,10 @@ export class OrdersService {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { items: { include: { product: true } }, buyer: { select: { firstName: true, lastName: true, email: true } } },
+        include: {
+          items: { include: { product: { select: { id: true, title: true, price: true } }, variant: { select: { options: true } } } },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
       }),
       this.prisma.order.count({ where }),
     ]);

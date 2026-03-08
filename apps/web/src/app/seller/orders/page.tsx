@@ -37,6 +37,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CARD_ON_DELIVERY: 'Karta (yetkazishda)',
 };
 
+type ShippingAddr = { city?: string; district?: string; street?: string; house?: string; phone?: string; firstName?: string; lastName?: string };
+type OrderItemRow = { quantity: number; price: string; product: { id: string; title: string; price: string }; variant?: { options?: unknown } | null };
 type OrderRow = {
   id: string;
   orderNumber: string;
@@ -46,9 +48,17 @@ type OrderRow = {
   deliveryType?: string;
   totalAmount: string;
   createdAt: string;
-  buyer: { firstName: string; lastName: string } | null;
+  buyer: { firstName: string; lastName: string; email?: string; phone?: string } | null;
   guestPhone?: string | null;
+  shippingAddress?: ShippingAddr | null;
+  items?: OrderItemRow[];
 };
+
+function formatAddress(addr: ShippingAddr | null | undefined): string {
+  if (!addr || typeof addr !== 'object') return '—';
+  const parts = [addr.city, addr.district, addr.street, addr.house].filter(Boolean);
+  return parts.length ? parts.join(', ') : '—';
+}
 
 export default function SellerOrdersPage() {
   const [data, setData] = useState<{ data: OrderRow[] } | null>(null);
@@ -90,7 +100,7 @@ export default function SellerOrdersPage() {
   return (
     <div>
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Buyurtmalar</h1>
-      <p className="text-muted-foreground mb-6">Doʻkoningizga kelgan buyurtmalar</p>
+      <p className="text-muted-foreground mb-6">Doʻkoningizga kelgan buyurtmalar (faqat sizning doʻkoningiz uchun)</p>
       <div className="space-y-4">
         {orders.map((o) => (
           <Card key={o.id}>
@@ -104,8 +114,19 @@ export default function SellerOrdersPage() {
               </Badge>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p>Buyurtmachi: {o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</p>
-              <p className="font-semibold">{formatPrice(Number(o.totalAmount))} soʻm</p>
+              <p>Buyurtmachi: {o.buyer ? `${(o.buyer.firstName ?? '')} ${(o.buyer.lastName ?? '')}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</p>
+              <p>Telefon: {o.buyer?.phone ?? o.guestPhone ?? '—'}</p>
+              {!isPickup(o) && (
+                <p className="text-sm text-muted-foreground">Manzil: {formatAddress(o.shippingAddress)}</p>
+              )}
+              {Array.isArray(o.items) && o.items.length > 0 && (
+                <ul className="text-sm list-disc list-inside space-y-0.5">
+                  {o.items.map((it, idx) => (
+                    <li key={idx}>{it.product?.title ?? 'Mahsulot'} × {it.quantity} — {formatPrice(Number(it.price) * it.quantity)} soʻm</li>
+                  ))}
+                </ul>
+              )}
+              <p className="font-semibold">Jami: {formatPrice(Number(o.totalAmount))} soʻm</p>
               {(o.paymentMethod === 'CASH' || o.paymentMethod === 'CARD_ON_DELIVERY') && o.paymentStatus === 'PENDING' && (
                 <Button size="sm" variant="secondary" onClick={() => markAsPaid(o.id)}>
                   💳 To'lov qabul qilindi
