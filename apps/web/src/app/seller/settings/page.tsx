@@ -419,8 +419,8 @@ export default function SellerSettingsPage() {
                 <Input placeholder="Shahar" value={pickup?.city ?? ''} onChange={(e) => setPickup((p) => ({ ...p, city: e.target.value }))} className="mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium">Tuman</label>
-                <Input placeholder="Tuman" value={pickup?.district ?? ''} onChange={(e) => setPickup((p) => ({ ...p, district: e.target.value }))} className="mt-1" />
+                <label className="text-sm font-medium">Tuman va mahalla</label>
+                <Input placeholder="Tuman va mahalla" value={pickup?.district ?? ''} onChange={(e) => setPickup((p) => ({ ...p, district: e.target.value }))} className="mt-1" />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -11,17 +11,38 @@ import { apiFetch } from '@/lib/api';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Kutilmoqda',
-  CONFIRMED: 'Tasdiqlandi',
-  PROCESSING: 'Qayta ishlanmoqda',
+  CONFIRMED: 'Zakazingiz qabul qilindi',
+  PROCESSING: 'Tayyorlanmoqda',
   SHIPPED: 'Yuborildi',
   DELIVERED: 'Yetkazildi',
   CANCELLED: 'Bekor qilindi',
+};
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Berildi (Olib ketildi)';
+  }
+  return STATUS_LABELS[status] ?? status;
+}
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  PAID: "To'langan",
+  FAILED: 'Muvaffaqiyatsiz',
+  REFUNDED: 'Qaytarilgan',
+};
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CLICK: 'Click',
+  PAYME: 'Payme',
+  CASH: 'Naqd',
+  CARD_ON_DELIVERY: 'Karta (yetkazishda)',
 };
 
 type OrderRow = {
   id: string;
   orderNumber: string;
   status: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
   deliveryType?: string;
   totalAmount: string;
   createdAt: string;
@@ -38,17 +59,29 @@ export default function SellerOrdersPage() {
     apiFetch(`${API_URL}/orders/seller`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()).then(setData);
   }, [token]);
 
-  const updateStatus = (orderId: string, status: string) => {
+  const updateStatus = (orderId: string, status: string, deliveryType?: string) => {
     if (!token) return;
     apiFetch(`${API_URL}/orders/${orderId}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status }) })
       .then(() => {
         setData((d) => d ? { ...d, data: d.data.map((o) => (o.id === orderId ? { ...o, status } : o)) } : null);
-        toast.success(`Buyurtma: ${STATUS_LABELS[status] ?? status}`);
+        toast.success(`Buyurtma: ${getOrderStatusLabel(status, deliveryType)}`);
       })
       .catch(() => toast.error('Holat oʻzgartirilmadi'));
   };
 
+  const markAsPaid = (orderId: string) => {
+    if (!token) return;
+    apiFetch(`${API_URL}/orders/${orderId}/mark-paid`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      .then(() => {
+        setData((d) => d ? { ...d, data: d.data.map((o) => (o.id === orderId ? { ...o, paymentStatus: 'PAID' } : o)) } : null);
+        toast.success("To'lov belgilandi");
+      })
+      .catch((e) => toast.error(e?.message ?? "To'lov belgilanmadi"));
+  };
+
   const isPickup = (o: OrderRow) => o.deliveryType === 'PICKUP';
+  const isPrepaid = (o: OrderRow) => o.paymentMethod === 'CLICK' || o.paymentMethod === 'PAYME';
+  const canShipOrDeliver = (o: OrderRow) => !isPrepaid(o) || o.paymentStatus === 'PAID';
 
   if (!token) return <p>Kirish kerak</p>;
   if (!data) return <Skeleton className="h-24 w-full" />;
@@ -65,39 +98,65 @@ export default function SellerOrdersPage() {
               <span className="font-mono">{o.orderNumber}</span>
               <span className="text-sm text-muted-foreground">{new Date(o.createdAt).toLocaleDateString('uz-UZ')}</span>
               <Badge variant="secondary" className="text-xs">{isPickup(o) ? 'Olib ketish' : 'Yetkazib berish'}</Badge>
-              <Badge>{STATUS_LABELS[o.status] ?? o.status}</Badge>
+              <Badge>{getOrderStatusLabel(o.status, o.deliveryType)}</Badge>
+              <Badge variant="outline" className="text-xs">
+                💳 {PAYMENT_STATUS_LABELS[o.paymentStatus ?? ''] ?? o.paymentStatus ?? '—'} ({PAYMENT_METHOD_LABELS[o.paymentMethod ?? ''] ?? o.paymentMethod ?? '—'})
+              </Badge>
             </CardHeader>
             <CardContent className="space-y-3">
               <p>Buyurtmachi: {o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</p>
               <p className="font-semibold">{formatPrice(Number(o.totalAmount))} soʻm</p>
+              {(o.paymentMethod === 'CASH' || o.paymentMethod === 'CARD_ON_DELIVERY') && o.paymentStatus === 'PENDING' && (
+                <Button size="sm" variant="secondary" onClick={() => markAsPaid(o.id)}>
+                  💳 To'lov qabul qilindi
+                </Button>
+              )}
               <div className="flex flex-wrap gap-2 pt-1">
                 {o.status === 'PENDING' && (
                   <>
-                    <Button size="sm" onClick={() => updateStatus(o.id, 'CONFIRMED')}>Tasdiqlash</Button>
-                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED')}>Bekor qilish</Button>
+                    <Button size="sm" onClick={() => updateStatus(o.id, 'CONFIRMED', o.deliveryType)}>Tasdiqlash</Button>
+                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED', o.deliveryType)}>Bekor qilish</Button>
                   </>
                 )}
                 {o.status === 'CONFIRMED' && (
                   <>
-                    <Button size="sm" onClick={() => updateStatus(o.id, 'PROCESSING')}>Qayta ishlash</Button>
-                    <Button size="sm" onClick={() => updateStatus(o.id, 'SHIPPED')}>
-                      {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED')}>Bekor qilish</Button>
+                    <Button size="sm" onClick={() => updateStatus(o.id, 'PROCESSING', o.deliveryType)}>Qayta ishlash</Button>
+                    {canShipOrDeliver(o) ? (
+                      <Button size="sm" onClick={() => updateStatus(o.id, 'SHIPPED', o.deliveryType)}>
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to'lov kutilmoqda
+                      </Button>
+                    )}
+                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED', o.deliveryType)}>Bekor qilish</Button>
                   </>
                 )}
                 {o.status === 'PROCESSING' && (
                   <>
-                    <Button size="sm" onClick={() => updateStatus(o.id, 'SHIPPED')}>
-                      {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED')}>Bekor qilish</Button>
+                    {canShipOrDeliver(o) ? (
+                      <Button size="sm" onClick={() => updateStatus(o.id, 'SHIPPED', o.deliveryType)}>
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to'lov kutilmoqda
+                      </Button>
+                    )}
+                    <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED', o.deliveryType)}>Bekor qilish</Button>
                   </>
                 )}
                 {o.status === 'SHIPPED' && (
-                  <Button size="sm" onClick={() => updateStatus(o.id, 'DELIVERED')}>
-                    {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'}
-                  </Button>
+                  canShipOrDeliver(o) ? (
+                    <Button size="sm" onClick={() => updateStatus(o.id, 'DELIVERED', o.deliveryType)}>
+                      {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
+                      {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'} — to'lov kutilmoqda
+                    </Button>
+                  )
                 )}
               </div>
             </CardContent>

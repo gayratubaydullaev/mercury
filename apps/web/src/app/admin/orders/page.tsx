@@ -8,10 +8,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  CONFIRMED: 'Zakazingiz qabul qilindi',
+  PROCESSING: 'Tayyorlanmoqda',
+  SHIPPED: 'Yuborildi',
+  DELIVERED: 'Yetkazildi',
+  CANCELLED: 'Bekor qilindi',
+};
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Berildi (Olib ketildi)';
+  }
+  return STATUS_LABELS[status] ?? status;
+}
+
 type OrderRow = {
   id: string;
   orderNumber: string;
   status: string;
+  deliveryType?: string;
   paymentStatus?: string;
   totalAmount: string;
   createdAt: string;
@@ -69,7 +86,7 @@ export default function AdminOrdersPage() {
               <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3 mb-2">
                 <span className="font-mono text-sm font-medium">{o.orderNumber}</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="secondary">{o.status}</Badge>
+                  <Badge variant="secondary">{getOrderStatusLabel(o.status, o.deliveryType)}</Badge>
                   {o.paymentStatus && <Badge variant="outline">{o.paymentStatus}</Badge>}
                 </div>
                 <span className="font-semibold sm:ml-auto text-base">{formatPrice(Number(o.totalAmount))} soʻm</span>

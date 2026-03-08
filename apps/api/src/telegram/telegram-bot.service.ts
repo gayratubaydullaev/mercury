@@ -23,11 +23,34 @@ function formatVariantOptions(options: Record<string, string> | unknown): string
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Kutilmoqda',
-  CONFIRMED: 'Tasdiqlandi',
-  PROCESSING: 'Qayta ishlanmoqda',
+  CONFIRMED: 'Zakazingiz qabul qilindi',
+  PROCESSING: 'Tayyorlanmoqda',
   SHIPPED: 'Yuborildi',
   DELIVERED: 'Yetkazildi',
   CANCELLED: 'Bekor qilindi',
+};
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Berildi (Olib ketildi)';
+  }
+  return STATUS_LABELS[status] ?? status;
+}
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  PAID: "To'langan",
+  FAILED: 'Muvaffaqiyatsiz',
+  REFUNDED: 'Qaytarilgan',
+};
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CLICK: 'Click',
+  PAYME: 'Payme',
+  CASH: 'Naqd',
+  CARD_ON_DELIVERY: 'Karta (yetkazishda)',
+};
+const DELIVERY_TYPE_LABELS: Record<string, string> = {
+  DELIVERY: 'Yetkazib berish',
+  PICKUP: 'Olib ketish',
 };
 
 /** Кнопки «назад» в главное меню (общие для продавца и админа). */
@@ -396,7 +419,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
       const lines = orders.map(
         (o) =>
-          `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+          `• ${o.orderNumber} — ${getOrderStatusLabel(o.status, o.deliveryType)} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
       );
       const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
       const forButtons = orders.slice(0, 10);
@@ -431,7 +454,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
     const lines = orders.map(
       (o) =>
-        `📋 ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+        `📋 ${o.orderNumber} — ${getOrderStatusLabel(o.status, o.deliveryType)} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
     );
     const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
     for (let i = 0; i < orders.length; i += 2) {
@@ -615,7 +638,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
     const lines = orders.map(
       (o) =>
-        `• ${o.orderNumber} — ${STATUS_LABELS[o.status] ?? o.status} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
+        `• ${o.orderNumber} — ${getOrderStatusLabel(o.status, o.deliveryType)} — ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm`,
     );
     const orderButtons: TelegramBotModule.InlineKeyboardButton[][] = [];
     for (let i = 0; i < Math.min(orders.length, 10); i += 2) {
@@ -747,9 +770,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const text =
         '📄 <b>Buyurtma batafsil</b>\n\n' +
         `📋 Raqam: <code>${esc(o.orderNumber)}</code>\n` +
-        `📌 Holat: ${STATUS_LABELS[o.status] ?? o.status}\n` +
-        `💳 To'lov: ${o.paymentStatus ?? '—'} (${o.paymentMethod ?? '—'})\n` +
-        `🚚 Yetkazish: ${o.deliveryType ?? '—'}\n` +
+        `📌 Holat: ${getOrderStatusLabel(o.status, o.deliveryType)}\n` +
+        `💳 To'lov: ${PAYMENT_STATUS_LABELS[o.paymentStatus ?? ''] ?? o.paymentStatus ?? '—'} (${PAYMENT_METHOD_LABELS[o.paymentMethod ?? ''] ?? o.paymentMethod ?? '—'})\n` +
+        `🚚 Yetkazish: ${DELIVERY_TYPE_LABELS[o.deliveryType ?? ''] ?? o.deliveryType ?? '—'}\n` +
         `💰 Jami: ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
         `📅 Sana: ${new Date(o.createdAt).toLocaleString('uz-UZ')}\n\n` +
         `🏪 Sotuvchi: ${esc(sellerName)}\n📍 Manzil: ${esc(addr)}\n` +
@@ -809,9 +832,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const text =
         '📄 <b>ADMIN: Buyurtma batafsil</b>\n\n' +
         `📋 Raqam: <code>${esc(o.orderNumber)}</code>\n` +
-        `📌 Holat: ${STATUS_LABELS[o.status] ?? o.status}\n` +
-        `💳 To'lov: ${o.paymentStatus ?? '—'} (${o.paymentMethod ?? '—'})\n` +
-        `🚚 Yetkazish: ${o.deliveryType ?? '—'}\n` +
+        `📌 Holat: ${getOrderStatusLabel(o.status, o.deliveryType)}\n` +
+        `💳 To'lov: ${PAYMENT_STATUS_LABELS[o.paymentStatus ?? ''] ?? o.paymentStatus ?? '—'} (${PAYMENT_METHOD_LABELS[o.paymentMethod ?? ''] ?? o.paymentMethod ?? '—'})\n` +
+        `🚚 Yetkazish: ${DELIVERY_TYPE_LABELS[o.deliveryType ?? ''] ?? o.deliveryType ?? '—'}\n` +
         `💰 Jami: ${Number(o.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
         `📅 Sana: ${new Date(o.createdAt).toLocaleString('uz-UZ')}\n\n` +
         `👤 Xaridor: ${esc(buyerName)}\n📞 Aloqa: ${esc(buyerContact)}\n🏪 Sotuvchi: ${esc(sellerName)}\n📍 Manzil: ${esc(addr)}\n` +
@@ -857,13 +880,86 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const text =
         '📄 <b>Buyurtma batafsil</b>\n\n' +
         `📋 Raqam: <code>${esc(so.orderNumber)}</code>\n` +
-        `📌 Holat: ${STATUS_LABELS[so.status] ?? so.status}\n` +
+        `📌 Holat: ${getOrderStatusLabel(so.status, so.deliveryType)}\n` +
+        `💳 To'lov: ${PAYMENT_STATUS_LABELS[so.paymentStatus ?? ''] ?? so.paymentStatus ?? '—'} (${PAYMENT_METHOD_LABELS[so.paymentMethod ?? ''] ?? so.paymentMethod ?? '—'})\n` +
         `👤 Xaridor: ${esc(buyerName)}\n` +
         `💰 Jami: ${Number(so.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
         `📅 Sana: ${new Date(so.createdAt).toLocaleString('uz-UZ')}\n\n` +
         '<b>Mahsulotlar:</b>\n' +
         itemsText;
-      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: await this.getBackMenuRows(String(chatId)) } }, messageId);
+      const backRows = await this.getBackMenuRows(String(chatId));
+      const canMarkPaid =
+        (so.paymentMethod === 'CASH' || so.paymentMethod === 'CARD_ON_DELIVERY') && so.paymentStatus === 'PENDING';
+      const reply_markup: TelegramBotModule.InlineKeyboardMarkup = {
+        inline_keyboard: canMarkPaid
+          ? [[{ text: "💳 To'lov qabul qilindi", callback_data: `order_mark_paid:${orderId}`, style: 'primary' }], ...backRows]
+          : backRows,
+      };
+      await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup }, messageId);
+      return;
+    }
+
+    if (data.startsWith('order_mark_paid:')) {
+      const orderId = data.slice(16);
+      const shop = await this.prisma.shop.findFirst({
+        where: { telegramChatId: String(chatId) },
+        select: { userId: true },
+      });
+      if (!shop) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Doʻkon ulanmagan.' });
+        return;
+      }
+      const order = await this.prisma.order.findFirst({
+        where: { id: orderId, sellerId: shop.userId },
+        select: { paymentMethod: true, paymentStatus: true },
+      });
+      if (!order) {
+        await this.bot.answerCallbackQuery(query.id, { text: 'Buyurtma topilmadi.' });
+        return;
+      }
+      if (order.paymentMethod !== 'CASH' && order.paymentMethod !== 'CARD_ON_DELIVERY') {
+        await this.bot.answerCallbackQuery(query.id, { text: "Faqat naqd yoki karta (yetkazishda) uchun belgilash mumkin." });
+        return;
+      }
+      if (order.paymentStatus === 'PAID') {
+        await this.bot.answerCallbackQuery(query.id, { text: "To'lov allaqachon belgilangan." });
+        return;
+      }
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: 'PAID' },
+      });
+      await this.bot.answerCallbackQuery(query.id, { text: "To'lov belgilandi." });
+      const messageId = query.message?.message_id;
+      if (messageId) {
+        const updated = await this.prisma.order.findFirst({
+          where: { id: orderId, sellerId: shop.userId },
+          include: {
+            items: { include: { product: { select: { title: true } }, variant: true } },
+            buyer: { select: { firstName: true, lastName: true } },
+          },
+        });
+        if (updated) {
+          const buyerName = updated.buyer ? `${updated.buyer.firstName} ${updated.buyer.lastName}` : updated.guestPhone || updated.guestEmail || 'Mehmon';
+          const itemsText = updated.items
+            .map(
+              (i: { product: { title: string }; variant?: { options?: unknown } | null; quantity: number; price: { toNumber?: () => number } | number }) =>
+                `  • ${esc(i.product.title)}${i.variant?.options ? ` (${esc(formatVariantOptions(i.variant.options))})` : ''} × ${i.quantity} = ${Number(i.price).toLocaleString('uz-UZ')} soʻm`,
+            )
+            .join('\n');
+          const text =
+            '📄 <b>Buyurtma batafsil</b>\n\n' +
+            `📋 Raqam: <code>${esc(updated.orderNumber)}</code>\n` +
+            `📌 Holat: ${getOrderStatusLabel(updated.status, updated.deliveryType)}\n` +
+            `💳 To'lov: ${PAYMENT_STATUS_LABELS[updated.paymentStatus ?? ''] ?? updated.paymentStatus ?? '—'} (${PAYMENT_METHOD_LABELS[updated.paymentMethod ?? ''] ?? updated.paymentMethod ?? '—'})\n` +
+            `👤 Xaridor: ${esc(buyerName)}\n` +
+            `💰 Jami: ${Number(updated.totalAmount).toLocaleString('uz-UZ')} soʻm\n` +
+            `📅 Sana: ${new Date(updated.createdAt).toLocaleString('uz-UZ')}\n\n` +
+            '<b>Mahsulotlar:</b>\n' + itemsText;
+          const reply_markup: TelegramBotModule.InlineKeyboardMarkup = { inline_keyboard: await this.getBackMenuRows(String(chatId)) };
+          await this.sendOrEdit(String(chatId), text, { parse_mode: 'HTML', reply_markup }, messageId);
+        }
+      }
       return;
     }
 
@@ -984,12 +1080,20 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const isPrepaid = order.paymentMethod === 'CLICK' || order.paymentMethod === 'PAYME';
+    if ((status === 'SHIPPED' || status === 'DELIVERED') && isPrepaid && order.paymentStatus !== 'PAID') {
+      await this.bot.answerCallbackQuery(query.id, {
+        text: "Click/Payme to'lovi qilinmaguncha yetkazish belgilab bo'lmaydi.",
+      });
+      return;
+    }
+
     await this.prisma.order.update({
       where: { id: orderId },
       data: { status },
     });
 
-    const label = STATUS_LABELS[status] ?? status;
+    const label = getOrderStatusLabel(status);
     await this.bot.answerCallbackQuery(query.id, { text: `Holat: ${label}` });
     const msg = query.message as TelegramBotModule.Message | undefined;
     const currentText = msg?.text ?? 'Buyurtma';

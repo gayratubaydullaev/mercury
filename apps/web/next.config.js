@@ -3,7 +3,9 @@ const apiServerUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
-  // Unique build ID per deploy to avoid "Failed to find Server Action" after deploy (stale client/server mismatch)
+  // BUILD_ID: set in CI/production so all instances share same build (avoids "Failed to find Server Action").
+  // NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: set in production (base64, 32 bytes) so action IDs are stable across instances.
+  // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
   generateBuildId: async () => process.env.BUILD_ID || `build-${Date.now()}`,
   async rewrites() {
     return [{ source: '/api-proxy/:path*', destination: `${apiServerUrl}/:path*` }];

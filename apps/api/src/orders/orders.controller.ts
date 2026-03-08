@@ -125,4 +125,11 @@ export class OrdersController {
   ) {
     return this.orders.updateStatus(id, userId, dto.status);
   }
+
+  @Post(':id/mark-paid')
+  @Roles(UserRole.SELLER)
+  @ApiOperation({ summary: 'Mark order as paid (seller; only for CASH / CARD_ON_DELIVERY)' })
+  markAsPaid(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.orders.markAsPaid(id, userId);
+  }
 }

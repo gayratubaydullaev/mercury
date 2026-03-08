@@ -1,7 +1,7 @@
 {
-  "name": "JomboyShop",
-  "short_name": "JomboyShop",
-  "description": "O'zbekiston bo'ylab xaridlar markazi",
+  "name": "BozorUZ",
+  "short_name": "BozorUZ",
+  "description": "Xaridlar markazi",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -209,6 +209,12 @@ export class OrdersService {
   async updateStatus(id: string, sellerId: string, status: OrderStatus) {
     const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
     if (!order) throw new NotFoundException('Order not found');
+    const isPrepaid = order.paymentMethod === 'CLICK' || order.paymentMethod === 'PAYME';
+    if ((status === 'SHIPPED' || status === 'DELIVERED') && isPrepaid && order.paymentStatus !== 'PAID') {
+      throw new BadRequestException(
+        'Click yoki Payme orqali toʻlov qilinmaguncha «Yuborildi» / «Yetkazildi» belgilab boʻlmaydi. Toʻlovni kuting yoki naqd/karta (yetkazishda) uchun buyurtma qiling.',
+      );
+    }
     const updated = await this.prisma.order.update({
       where: { id },
       data: { status },
@@ -224,5 +230,27 @@ export class OrdersService {
       this.telegram.sendBuyerOrderNotification(updated.buyerId, updated, 'status_updated', status).catch(() => {});
     }
     return updated;
+  }
+
+  /** Продавец отмечает оплату наличными/картой при получении (только для CASH и CARD_ON_DELIVERY). */
+  async markAsPaid(id: string, sellerId: string) {
+    const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
+    if (!order) throw new NotFoundException('Order not found');
+    const method = order.paymentMethod;
+    if (method !== 'CASH' && method !== 'CARD_ON_DELIVERY') {
+      throw new BadRequestException('Toʻlovni faqat naqd yoki karta (yetkazishda) usuli uchun belgilash mumkin.');
+    }
+    if (order.paymentStatus === 'PAID') {
+      return order;
+    }
+    return this.prisma.order.update({
+      where: { id },
+      data: { paymentStatus: 'PAID' },
+      include: {
+        items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+        buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+      },
+    });
   }
 }

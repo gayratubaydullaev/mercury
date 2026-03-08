@@ -24,20 +24,28 @@ type Order = {
   id: string;
   orderNumber: string;
   status: string;
+  deliveryType?: string;
   totalAmount: string;
   createdAt: string;
   buyer: { firstName: string; lastName: string } | null;
   guestPhone?: string | null;
 };
 
-const statusLabel: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Kutilmoqda',
-  CONFIRMED: 'Tasdiqlandi',
-  PROCESSING: 'Qayta ishlanmoqda',
+  CONFIRMED: 'Zakazingiz qabul qilindi',
+  PROCESSING: 'Tayyorlanmoqda',
   SHIPPED: 'Yuborildi',
   DELIVERED: 'Yetkazildi',
   CANCELLED: 'Bekor qilindi',
 };
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Berildi (Olib ketildi)';
+  }
+  return STATUS_LABELS[status] ?? status;
+}
 
 export default function SellerDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -174,7 +182,7 @@ export default function SellerDashboardPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm">{o.orderNumber}</span>
                       <span className="text-muted-foreground text-sm">{o.buyer ? `${o.buyer.firstName} ${o.buyer.lastName}`.trim() || '—' : (o.guestPhone ? `Mehmon (${o.guestPhone})` : 'Mehmon')}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{statusLabel[o.status] ?? o.status}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{getOrderStatusLabel(o.status, o.deliveryType)}</span>
                     </div>
                     <span className="font-semibold text-sm">{formatPrice(Number(o.totalAmount))} soʻm</span>
                   </Link>

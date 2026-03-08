@@ -18,17 +18,38 @@ function generateCode(): string {
   return code;
 }
 
-function statusToLabel(s: string): string {
+function statusToLabel(s: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (s === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (s === 'DELIVERED') return 'Berildi (Olib ketildi)';
+  }
   const map: Record<string, string> = {
     PENDING: 'Kutilmoqda',
-    CONFIRMED: 'Tasdiqlandi',
-    PROCESSING: 'Qayta ishlanmoqda',
+    CONFIRMED: 'Zakazingiz qabul qilindi',
+    PROCESSING: 'Tayyorlanmoqda',
     SHIPPED: 'Yuborildi',
     DELIVERED: 'Yetkazildi',
     CANCELLED: 'Bekor qilindi',
   };
   return map[s] ?? s;
 }
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  PAID: "To'langan",
+  FAILED: 'Muvaffaqiyatsiz',
+  REFUNDED: 'Qaytarilgan',
+};
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CLICK: 'Click',
+  PAYME: 'Payme',
+  CASH: 'Naqd',
+  CARD_ON_DELIVERY: 'Karta (yetkazishda)',
+};
+const DELIVERY_TYPE_LABELS: Record<string, string> = {
+  DELIVERY: 'Yetkazib berish',
+  PICKUP: 'Olib ketish',
+};
 
 function escapeHtml(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -46,8 +67,16 @@ function canChangeStatus(current: string): boolean {
   return !['DELIVERED', 'CANCELLED'].includes(current);
 }
 
-function orderStatusKeyboard(orderId: string, currentStatus: string): TelegramBotModule.InlineKeyboardMarkup {
+/** Prepaid (Click/Payme) — кнопки «Yuborildi»/«Yetkazildi» показываем только после оплаты. */
+function orderStatusKeyboard(
+  orderId: string,
+  currentStatus: string,
+  paymentMethod?: string,
+  paymentStatus?: string,
+): TelegramBotModule.InlineKeyboardMarkup {
   const buttons: TelegramBotModule.InlineKeyboardButton[] = [];
+  const isPrepaid = paymentMethod === 'CLICK' || paymentMethod === 'PAYME';
+  const canShipOrDeliver = !isPrepaid || paymentStatus === 'PAID';
   if (currentStatus === 'PENDING') {
     buttons.push({ text: '✓ Tasdiqlash', callback_data: `order:${orderId}:CONFIRMED`, style: 'success' as const });
     buttons.push({ text: '✕ Bekor qilish', callback_data: `order:${orderId}:CANCELLED`, style: 'danger' as const });
@@ -56,10 +85,10 @@ function orderStatusKeyboard(orderId: string, currentStatus: string): TelegramBo
     buttons.push({ text: 'Qayta ishlash', callback_data: `order:${orderId}:PROCESSING`, style: 'primary' as const });
     buttons.push({ text: '✕ Bekor qilish', callback_data: `order:${orderId}:CANCELLED`, style: 'danger' as const });
   }
-  if (currentStatus === 'PROCESSING') {
+  if (currentStatus === 'PROCESSING' && canShipOrDeliver) {
     buttons.push({ text: 'Yuborildi', callback_data: `order:${orderId}:SHIPPED`, style: 'primary' as const });
   }
-  if (currentStatus === 'SHIPPED') {
+  if (currentStatus === 'SHIPPED' && canShipOrDeliver) {
     buttons.push({ text: '✓ Yetkazildi', callback_data: `order:${orderId}:DELIVERED`, style: 'success' as const });
   }
   if (buttons.length === 0) return { inline_keyboard: [] };
@@ -81,8 +110,10 @@ export class TelegramService {
     }
   }
 
+  /** Один URL для кнопок Telegram (APP_URL может содержать несколько через запятую — берём первый). */
   getBaseUrl(): string {
-    const url = this.config.get<string>('APP_URL')?.trim();
+    const raw = this.config.get<string>('APP_URL')?.trim() ?? '';
+    const url = raw.includes(',') ? raw.split(',')[0].trim() : raw;
     return url ? url.replace(/\/$/, '') : '';
   }
 
@@ -161,7 +192,8 @@ export class TelegramService {
         `<b>Mahsulotlar:</b>\n${itemsText}` +
         (order.items && order.items.length > 5 ? `\n  ... va yana ${order.items.length - 5} ta` : '');
     } else {
-      const statusLabel = statusToLabel(newStatus ?? order.status);
+      const deliveryType = (order as { deliveryType?: string }).deliveryType;
+      const statusLabel = statusToLabel(newStatus ?? order.status, deliveryType);
       text =
         '📢 <b>Buyurtma yangilandi</b>\n\n' +
         `📋 Raqam: <code>${escapeHtml(order.orderNumber)}</code>\n` +
@@ -172,7 +204,12 @@ export class TelegramService {
 
     const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
     if (event === 'new_order' || (event === 'status_updated' && canChangeStatus(order.status))) {
-      const kb = orderStatusKeyboard(order.id, order.status);
+      const kb = orderStatusKeyboard(
+        order.id,
+        order.status,
+        (order as { paymentMethod?: string }).paymentMethod,
+        (order as { paymentStatus?: string }).paymentStatus,
+      );
       if (kb.inline_keyboard[0]?.length) rows.push(kb.inline_keyboard[0]);
     }
     const bottomRow: TelegramBotModule.InlineKeyboardButton[] = [];
@@ -234,7 +271,8 @@ export class TelegramService {
         `<b>Mahsulotlar:</b>\n${itemsText}` +
         (order.items && order.items.length > 5 ? `\n  ... va yana ${order.items.length - 5} ta` : '');
     } else {
-      const statusLabel = statusToLabel(newStatus ?? order.status);
+      const deliveryType = (order as { deliveryType?: string }).deliveryType;
+      const statusLabel = statusToLabel(newStatus ?? order.status, deliveryType);
       text =
         '📢 <b>Buyurtmangiz yangilandi</b>\n\n' +
         `📋 Raqam: <code>${escapeHtml(order.orderNumber)}</code>\n` +
@@ -346,7 +384,8 @@ export class TelegramService {
         )
         .join('\n') ?? '—';
 
-    const statusLabel = statusToLabel(newStatus ?? order.status);
+    const deliveryType = order.deliveryType;
+    const statusLabel = statusToLabel(newStatus ?? order.status, deliveryType);
     const header =
       event === 'new_order'
         ? '📦 <b>ADMIN: Yangi buyurtma</b>'
@@ -355,9 +394,9 @@ export class TelegramService {
     const text =
       `${header}\n\n` +
       `📋 Raqam: <code>${escapeHtml(order.orderNumber)}</code>\n` +
-      `📌 Holat: ${escapeHtml(statusToLabel(order.status))}${newStatus ? ` → ${escapeHtml(statusLabel)}` : ''}\n` +
-      `💳 To'lov: ${escapeHtml(order.paymentStatus ?? '—')} (${escapeHtml(order.paymentMethod ?? '—')})\n` +
-      `🚚 Yetkazish: ${escapeHtml(order.deliveryType ?? '—')}\n` +
+      `📌 Holat: ${escapeHtml(statusToLabel(order.status, deliveryType))}${newStatus ? ` → ${escapeHtml(statusLabel)}` : ''}\n` +
+      `💳 To'lov: ${escapeHtml(PAYMENT_STATUS_LABELS[order.paymentStatus ?? ''] ?? order.paymentStatus ?? '—')} (${escapeHtml(PAYMENT_METHOD_LABELS[order.paymentMethod ?? ''] ?? order.paymentMethod ?? '—')})\n` +
+      `🚚 Yetkazish: ${escapeHtml(DELIVERY_TYPE_LABELS[order.deliveryType ?? ''] ?? order.deliveryType ?? '—')}\n` +
       `💰 Jami: ${amount} soʻm\n` +
       `📅 Sana: ${new Date(order.createdAt).toLocaleString('uz-UZ')}\n\n` +
       `👤 Xaridor: ${escapeHtml(buyerName)}\n` +
