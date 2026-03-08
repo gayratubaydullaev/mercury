@@ -1,12 +1,14 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CsrfMiddleware } from './common/csrf.middleware';
 import { RlsInterceptor } from './common/rls.interceptor';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -44,10 +46,26 @@ import { SettingsModule } from './settings/settings.module';
           : []),
       ],
     }),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60000, limit: 100 }, // 100/min anonymous
-      { name: 'long', ttl: 86400000, limit: 1000 },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const limitShort = parseInt(config.get('THROTTLE_LIMIT_SHORT') || '300', 10) || 300;
+        const limitLong = parseInt(config.get('THROTTLE_LIMIT_LONG') || '2000', 10) || 2000;
+        const redisUrl = config.get<string>('REDIS_URL');
+        const useRedisStorage = redisUrl?.trim() && process.env.NODE_ENV === 'production';
+        return {
+          throttlers: [
+            { name: 'short', ttl: 60000, limit: limitShort },
+            { name: 'long', ttl: 86400000, limit: limitLong },
+          ],
+          ...(useRedisStorage && {
+            storage: new ThrottlerStorageRedisService(redisUrl!),
+          }),
+        };
+      },
+    }),
+    RedisModule,
     PrismaModule,
     AuthModule,
     UsersModule,

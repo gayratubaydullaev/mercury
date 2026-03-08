@@ -201,6 +201,13 @@ Keyingi `main` ga push lardan so‘ng workflow avtomatik: reponi yangilaydi, ima
 
 **Eslatma:** Web (Next.js) ni Vercel yoki boshqa platformaga ulaganingizda ular o‘zlari repodan build qiladi; API ni GHCR image dan yoki Railway/Render orqali deploy qilishingiz mumkin.
 
+## Produktivlik va masshtab
+
+- **Rate limit:** `THROTTLE_LIMIT_SHORT` (sukutda 300/daq), `THROTTLE_LIMIT_LONG` (sukutda 2000/kun). `REDIS_URL` bo‘lsa, limitlar barcha API replikalari uchun umumiy hisoblanadi.
+- **PostgreSQL:** Yuqori yuklama uchun `DATABASE_URL` da `?connection_limit=20` (yoki ko‘proq) qo‘shing.
+- **Redis:** `REDIS_URL` bo‘lsa — Throttler Redis da saqlanadi (replikalar uchun umumiy), bankerlar 1 daqiqa keshlanadi.
+- **Gorizontal masshtab:** 2 ta API + Nginx: `docker compose -f docker-compose.scale.yml up -d`. Nginx 4000 portda, so‘rovlar api1 va api2 ga taqsimlanadi.
+
 ## Deploy
 
 - **Frontend**: Vercel – `apps/web`, `NEXT_PUBLIC_API_URL` ni **https://** bilan oʻrnating
@@ -245,6 +252,18 @@ cd apps/api && pnpm test
 
 # Web
 cd apps/web && pnpm test
+```
+
+### Yuklama testi
+
+API ga bosim o‘tkazish (API ishlab turgan bo‘lishi kerak):
+
+```bash
+# Node bilan oddiy test (100 so‘rov, 10 parallel)
+node scripts/load-test.js
+
+# yoki k6 o‘rnatib (https://k6.io):
+# k6 run --vus 20 --duration 30s scripts/load-test-k6.js
 ```
 
 ## Litsenziya

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +16,7 @@ export interface BannerSlide {
 }
 
 const INTERVAL_MS = 5000;
+const PROGRESS_TICK_MS = 80;
 
 const ReklamaBadge = () => (
   <div
@@ -38,6 +39,8 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
   const [isDesktop, setIsDesktop] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const slideStartRef = useRef(Date.now());
 
   useEffect(() => {
     const checkDesktop = () => setIsDesktop(typeof window !== 'undefined' && window.innerWidth >= 768);
@@ -49,31 +52,44 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
   }, []);
 
   useEffect(() => {
-    if (slides.length <= 1 || isPaused) return;
-    const start = Date.now();
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mq.matches);
+    const handler = () => setPrefersReducedMotion(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const shouldAutoAdvance = slides.length > 1 && !isPaused && !prefersReducedMotion;
+
+  useEffect(() => {
+    if (!shouldAutoAdvance) return;
+    slideStartRef.current = Date.now();
     setProgress(0);
     const tick = setInterval(() => {
-      const elapsed = Date.now() - start;
-      setProgress(Math.min((elapsed / intervalMs) * 100, 100));
-    }, 100);
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length);
-    }, intervalMs);
-    return () => {
-      clearInterval(timer);
-      clearInterval(tick);
-    };
-  }, [slides.length, intervalMs, isPaused, currentIndex]);
+      const elapsed = Date.now() - slideStartRef.current;
+      const pct = Math.min((elapsed / intervalMs) * 100, 100);
+      setProgress(pct);
+      if (pct >= 100) {
+        setCurrentIndex((prev) => (prev + 1) % slides.length);
+        slideStartRef.current = Date.now();
+      }
+    }, PROGRESS_TICK_MS);
+    return () => clearInterval(tick);
+  }, [slides.length, intervalMs, shouldAutoAdvance]);
 
   const goTo = useCallback((index: number) => {
+    slideStartRef.current = Date.now();
     setCurrentIndex(index);
     setProgress(0);
   }, []);
   const goPrev = useCallback(() => {
+    slideStartRef.current = Date.now();
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
     setProgress(0);
   }, [slides.length]);
   const goNext = useCallback(() => {
+    slideStartRef.current = Date.now();
     setCurrentIndex((prev) => (prev + 1) % slides.length);
     setProgress(0);
   }, [slides.length]);
@@ -124,7 +140,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
       aria-label="Reklama bannerlari"
     >
       <div
-        className="relative w-full max-w-[100vw] aspect-[16/9] md:aspect-[5/1] flex items-center justify-center group touch-pan-y"
+        className="relative w-full max-w-[100vw] aspect-[16/9] md:aspect-[5/1] flex items-center justify-center group touch-pan-y contain-paint"
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
         onTouchEnd={swipe.onTouchEnd}
@@ -147,7 +163,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                     fill
                     className="object-cover rounded-2xl"
                     priority
-                    sizes="100vw"
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     unoptimized={slide.image.startsWith('http')}
                   />
                   {slide.title && <TitleOverlay title={slide.title} />}
@@ -160,7 +176,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                     fill
                     className="object-cover rounded-2xl"
                     priority
-                    sizes="100vw"
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     unoptimized={slide.image.startsWith('http')}
                   />
                   {slide.title && <TitleOverlay title={slide.title} />}
@@ -207,10 +223,10 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                           fill
                           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 rounded-2xl"
                           priority={index === 0}
-                          sizes="(max-width: 768px) 100vw, 80vw"
+                          sizes="(max-width: 768px) 100vw, 45vw"
                           unoptimized={slide.image.startsWith('http')}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none rounded-2xl" aria-hidden />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl" aria-hidden />
                         {slide.title && <TitleOverlay title={slide.title} />}
                       </Link>
                     ) : (
@@ -221,7 +237,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                           fill
                           className="object-cover rounded-2xl"
                           priority={index === 0}
-                          sizes="(max-width: 768px) 100vw, 80vw"
+                          sizes="(max-width: 768px) 100vw, 45vw"
                           unoptimized={slide.image.startsWith('http')}
                         />
                         {slide.title && <TitleOverlay title={slide.title} />}

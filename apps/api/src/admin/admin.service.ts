@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { BannersService } from '../banners/banners.service';
 import { UserRole } from '@prisma/client';
 import { Request } from 'express';
 
@@ -13,6 +14,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private banners: BannersService,
   ) {}
 
   /** Get users in a transaction with RLS context set on the same connection to avoid 500 when using connection pool. */
@@ -510,20 +512,47 @@ export class AdminService {
     return this.prisma.banner.findMany({ orderBy: { sortOrder: 'asc' } });
   }
 
-  async createBanner(data: { image: string; href: string; external?: boolean; title?: string; sortOrder?: number }) {
-    return this.prisma.banner.create({
+  async createBanner(data: {
+    image: string;
+    href: string;
+    external?: boolean;
+    title?: string;
+    sortOrder?: number;
+    displaySeconds?: number;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    const result = await this.prisma.banner.create({
       data: {
         image: data.image,
         href: data.href,
         external: data.external ?? false,
         title: data.title ?? null,
         sortOrder: data.sortOrder ?? 0,
+        displaySeconds: data.displaySeconds ?? null,
+        startsAt: data.startsAt ? new Date(data.startsAt) : null,
+        endsAt: data.endsAt ? new Date(data.endsAt) : null,
       },
     });
+    await this.banners.invalidateCache();
+    return result;
   }
 
-  async updateBanner(id: string, data: { image?: string; href?: string; external?: boolean; title?: string; sortOrder?: number; isActive?: boolean }) {
-    return this.prisma.banner.update({
+  async updateBanner(
+    id: string,
+    data: {
+      image?: string;
+      href?: string;
+      external?: boolean;
+      title?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+      displaySeconds?: number | null;
+      startsAt?: string | null;
+      endsAt?: string | null;
+    },
+  ) {
+    const result = await this.prisma.banner.update({
       where: { id },
       data: {
         ...(data.image != null && { image: data.image }),
@@ -532,12 +561,19 @@ export class AdminService {
         ...(data.title != null && { title: data.title }),
         ...(data.sortOrder != null && { sortOrder: data.sortOrder }),
         ...(data.isActive != null && { isActive: data.isActive }),
+        ...(data.displaySeconds !== undefined && { displaySeconds: data.displaySeconds }),
+        ...(data.startsAt !== undefined && { startsAt: data.startsAt ? new Date(data.startsAt) : null }),
+        ...(data.endsAt !== undefined && { endsAt: data.endsAt ? new Date(data.endsAt) : null }),
       },
     });
+    await this.banners.invalidateCache();
+    return result;
   }
 
   async deleteBanner(id: string) {
-    return this.prisma.banner.delete({ where: { id } });
+    const result = await this.prisma.banner.delete({ where: { id } });
+    await this.banners.invalidateCache();
+    return result;
   }
 
   /** Заявки на продавца: список с фильтром по status (PENDING | APPROVED | REJECTED). */

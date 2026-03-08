@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateBannerDto {
   @ApiProperty()
@@ -26,5 +27,29 @@ export class CreateBannerDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(120)
+  @Type(() => Number)
   sortOrder?: number;
+
+  /** Время показа слайда в карусели (секунды), 1–60. */
+  @ApiPropertyOptional({ minimum: 1, maximum: 60 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(60)
+  @Type(() => Number)
+  displaySeconds?: number;
+
+  /** Показывать баннер с этой даты (ISO string). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  /** Деактивировать баннер после этой даты (ISO string). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  endsAt?: string;
 }
