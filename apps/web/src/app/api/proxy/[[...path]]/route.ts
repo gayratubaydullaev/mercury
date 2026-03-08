@@ -77,8 +77,19 @@ async function proxy(
     );
   }
 
+  let resBody: string;
+  try {
+    resBody = await res.text();
+  } catch (err) {
+    console.error('[api/proxy] Invalid response body:', url, err);
+    return NextResponse.json(
+      { message: 'Invalid response from backend' },
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   if (res.status >= 500) {
-    console.error('[api/proxy] Backend 5xx:', res.status, url);
+    console.error('[api/proxy] Backend 5xx:', res.status, url, resBody.slice(0, 200));
   }
   const resHeaders = new Headers();
   const contentType = res.headers.get('content-type');
@@ -89,17 +100,6 @@ async function proxy(
   } else {
     const setCookie = res.headers.get('set-cookie');
     if (setCookie) resHeaders.set('set-cookie', setCookie);
-  }
-
-  let resBody: string;
-  try {
-    resBody = await res.text();
-  } catch (err) {
-    console.error('[api/proxy] Invalid response body:', url, err);
-    return NextResponse.json(
-      { message: 'Invalid response from backend' },
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    );
   }
 
   return new NextResponse(resBody, {
