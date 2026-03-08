@@ -38,7 +38,27 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 type ShippingAddr = { city?: string; district?: string; street?: string; house?: string; phone?: string; firstName?: string; lastName?: string };
-type OrderItemRow = { quantity: number; price: string; product: { id: string; title: string; price: string }; variant?: { options?: unknown } | null };
+type OrderItemRow = {
+  quantity: number;
+  price: string;
+  product: {
+    id: string;
+    title: string;
+    price: string;
+    sku?: string | null;
+    unit?: string | null;
+    stock?: number;
+    options?: unknown;
+    specs?: unknown;
+  };
+  variant?: {
+    id?: string;
+    options?: Record<string, string> | unknown;
+    sku?: string | null;
+    stock?: number;
+    priceOverride?: string | null;
+  } | null;
+};
 type OrderRow = {
   id: string;
   orderNumber: string;
@@ -58,6 +78,12 @@ function formatAddress(addr: ShippingAddr | null | undefined): string {
   if (!addr || typeof addr !== 'object') return '—';
   const parts = [addr.city, addr.district, addr.street, addr.house].filter(Boolean);
   return parts.length ? parts.join(', ') : '—';
+}
+
+function formatVariantOptions(opts: Record<string, string> | unknown): string {
+  if (!opts || typeof opts !== 'object') return '';
+  const entries = Object.entries(opts as Record<string, string>);
+  return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join(', ') : '';
 }
 
 export default function SellerOrdersPage() {
@@ -120,11 +146,43 @@ export default function SellerOrdersPage() {
                 <p className="text-sm text-muted-foreground">Manzil: {formatAddress(o.shippingAddress)}</p>
               )}
               {Array.isArray(o.items) && o.items.length > 0 && (
-                <ul className="text-sm list-disc list-inside space-y-0.5">
-                  {o.items.map((it, idx) => (
-                    <li key={idx}>{it.product?.title ?? 'Mahsulot'} × {it.quantity} — {formatPrice(Number(it.price) * it.quantity)} soʻm</li>
-                  ))}
-                </ul>
+                <div className="rounded-md border overflow-hidden overflow-x-auto">
+                  <table className="w-full text-sm min-w-[600px]">
+                    <thead>
+                      <tr className="bg-muted/50 text-left">
+                        <th className="p-2 font-medium">SKU</th>
+                        <th className="p-2 font-medium">Mahsulot</th>
+                        <th className="p-2 font-medium">Variant</th>
+                        <th className="p-2 font-medium">Birlik</th>
+                        <th className="p-2 font-medium text-right">Miqdor</th>
+                        <th className="p-2 font-medium text-right">Ombordagi</th>
+                        <th className="p-2 font-medium text-right">Narx</th>
+                        <th className="p-2 font-medium text-right">Summa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {o.items.map((it, idx) => {
+                        const variantOpts = it.variant ? formatVariantOptions(it.variant.options) : '';
+                        const sku = it.variant?.sku ?? it.product?.sku ?? '—';
+                        const unit = it.product?.unit ?? 'dona';
+                        const stock = it.variant != null ? it.variant.stock : it.product?.stock;
+                        const lineTotal = Number(it.price) * it.quantity;
+                        return (
+                          <tr key={idx} className="border-t">
+                            <td className="p-2 font-mono text-muted-foreground">{sku}</td>
+                            <td className="p-2">{it.product?.title ?? 'Mahsulot'}</td>
+                            <td className="p-2 text-muted-foreground">{variantOpts || '—'}</td>
+                            <td className="p-2 text-muted-foreground">{unit}</td>
+                            <td className="p-2 text-right">{it.quantity}</td>
+                            <td className="p-2 text-right text-muted-foreground">{stock != null ? stock : '—'}</td>
+                            <td className="p-2 text-right">{formatPrice(Number(it.price))} soʻm</td>
+                            <td className="p-2 text-right font-medium">{formatPrice(lineTotal)} soʻm</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
               <p className="font-semibold">Jami: {formatPrice(Number(o.totalAmount))} soʻm</p>
               {(o.paymentMethod === 'CASH' || o.paymentMethod === 'CARD_ON_DELIVERY') && o.paymentStatus === 'PENDING' && (

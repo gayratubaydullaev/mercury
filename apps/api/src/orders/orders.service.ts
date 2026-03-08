@@ -140,6 +140,14 @@ export class OrdersService {
   }
 
   async findSellerOrders(sellerId: string, page = 1, limit = 20, status?: OrderStatus) {
+    // Only shop owners can see orders; filter strictly by sellerId (= shop owner's user id)
+    const shop = await this.prisma.shop.findUnique({
+      where: { userId: sellerId },
+      select: { id: true },
+    });
+    if (!shop) {
+      return { data: [], total: 0, page: 1, limit, totalPages: 0 };
+    }
     const where: { sellerId: string; status?: OrderStatus } = { sellerId };
     if (status) where.status = status;
     const [data, total] = await Promise.all([
@@ -149,7 +157,31 @@ export class OrdersService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          items: { include: { product: { select: { id: true, title: true, price: true } }, variant: { select: { options: true } } } },
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  title: true,
+                  price: true,
+                  sku: true,
+                  unit: true,
+                  stock: true,
+                  options: true,
+                  specs: true,
+                },
+              },
+              variant: {
+                select: {
+                  id: true,
+                  options: true,
+                  sku: true,
+                  stock: true,
+                  priceOverride: true,
+                },
+              },
+            },
+          },
           buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
         },
       }),
