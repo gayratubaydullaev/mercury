@@ -269,6 +269,65 @@ export class AuthService implements OnModuleInit {
     });
     if (existingUser) {
       if (existingUser.isBlocked) throw new ForbiddenException('Account blocked');
+      if (existingUser.role === 'ADMIN') {
+        await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: { firstName: first, lastName: last },
+        });
+        return existingUser;
+      }
+      // Пользователь с этим telegramId не админ — но если это Admin Telegram из настроек, входим как админ.
+      const settings = await this.prisma.platformSettings.findFirst({
+        select: { adminTelegramChatId: true },
+      });
+      const adminChatId = (settings as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId;
+      if (adminChatId && String(adminChatId).trim() === String(telegramId).trim()) {
+        let adminUser = await this.prisma.user.findFirst({
+          where: { role: 'ADMIN', telegramId: null },
+          select: { id: true, email: true, role: true, isBlocked: true },
+        });
+        if (!adminUser) {
+          adminUser = await this.prisma.user.findFirst({
+            where: { role: 'ADMIN' },
+            select: { id: true, email: true, role: true, isBlocked: true },
+          });
+        }
+        if (adminUser) {
+          if (adminUser.isBlocked) throw new ForbiddenException('Account blocked');
+          await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: { telegramId: null },
+          });
+          await this.prisma.user.update({
+            where: { id: adminUser.id },
+            data: { telegramId, firstName: first, lastName: last },
+          });
+          return adminUser;
+        }
+      }
+      // Пользователь с этим telegramId не админ — но если это Telegram привязанного магазина, входим как продавец.
+      const shopByChat = await this.prisma.shop.findFirst({
+        where: { telegramChatId: telegramId },
+        select: { userId: true },
+      });
+      if (shopByChat) {
+        const sellerUser = await this.prisma.user.findUnique({
+          where: { id: shopByChat.userId },
+          select: { id: true, email: true, role: true, isBlocked: true },
+        });
+        if (sellerUser) {
+          if (sellerUser.isBlocked) throw new ForbiddenException('Account blocked');
+          await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: { telegramId: null },
+          });
+          await this.prisma.user.update({
+            where: { id: sellerUser.id },
+            data: { telegramId, firstName: first, lastName: last },
+          });
+          return sellerUser;
+        }
+      }
       await this.prisma.user.update({
         where: { id: existingUser.id },
         data: { firstName: first, lastName: last },
@@ -282,6 +341,51 @@ export class AuthService implements OnModuleInit {
         data: { telegramId, firstName: first, lastName: last },
       });
       return { id: existingByEmail.id, email: existingByEmail.email, role: existingByEmail.role };
+    }
+    // Если этот Telegram ID указан в настройках как Admin Telegram — входим как админ, не создаём нового BUYER.
+    const settings = await this.prisma.platformSettings.findFirst({
+      select: { adminTelegramChatId: true },
+    });
+    const adminChatId = (settings as { adminTelegramChatId?: string | null } | null)?.adminTelegramChatId;
+    if (adminChatId && String(adminChatId).trim() === String(telegramId).trim()) {
+      let adminUser = await this.prisma.user.findFirst({
+        where: { role: 'ADMIN', telegramId },
+        select: { id: true, email: true, role: true, isBlocked: true },
+      });
+      if (!adminUser) {
+        adminUser = await this.prisma.user.findFirst({
+          where: { role: 'ADMIN', telegramId: null },
+          select: { id: true, email: true, role: true, isBlocked: true },
+        });
+      }
+      if (!adminUser) {
+        adminUser = await this.prisma.user.findFirst({
+          where: { role: 'ADMIN' },
+          select: { id: true, email: true, role: true, isBlocked: true },
+        });
+      }
+      if (adminUser) {
+        if (adminUser.isBlocked) throw new ForbiddenException('Account blocked');
+        await this.prisma.user.update({
+          where: { id: adminUser.id },
+          data: { telegramId, firstName: first, lastName: last },
+        });
+        return adminUser;
+      }
+    }
+    // Если этот Telegram привязан к магазину продавца — входим как продавец, не создаём нового BUYER.
+    const shopByChat = await this.prisma.shop.findFirst({
+      where: { telegramChatId: telegramId },
+      select: { user: { select: { id: true, email: true, role: true, isBlocked: true } } },
+    });
+    if (shopByChat?.user) {
+      const sellerUser = shopByChat.user;
+      if (sellerUser.isBlocked) throw new ForbiddenException('Account blocked');
+      await this.prisma.user.update({
+        where: { id: sellerUser.id },
+        data: { telegramId, firstName: first, lastName: last },
+      });
+      return sellerUser;
     }
     const created = await this.prisma.user.create({
       data: {
