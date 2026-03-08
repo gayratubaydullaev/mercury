@@ -21,7 +21,8 @@ const DEFAULT_SITE_NAME = 'JomboyShop';
 
 export async function generateMetadata(): Promise<Metadata> {
   const raw = process.env.NEXT_PUBLIC_API_URL;
-  const apiUrl = raw?.includes(',') ? raw.split(',')[0].trim() : raw;
+  let apiUrl = raw?.includes(',') ? raw.split(',')[0].trim() : raw;
+  if (apiUrl && !/^https?:\/\//i.test(apiUrl)) apiUrl = 'https://' + apiUrl;
   let siteName = DEFAULT_SITE_NAME;
   if (apiUrl) {
     try {
