@@ -17,6 +17,12 @@ export class ShippingAddressDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(200)
+  district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   street?: string;
 
@@ -24,7 +30,19 @@ export class ShippingAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(50)
+  house?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
   phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  email?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

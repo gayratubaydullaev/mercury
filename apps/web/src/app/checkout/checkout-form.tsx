@@ -139,10 +139,11 @@ export function CheckoutForm() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { message?: string; outOfStock?: string[] };
+        const err = await res.json().catch(() => ({})) as { message?: string; outOfStock?: string[]; statusCode?: number };
         const msg = Array.isArray(err.outOfStock) && err.outOfStock.length > 0
           ? [err.message || 'Xatolik', ...err.outOfStock].join('\n')
-          : (err.message || 'Xatolik');
+          : (err.message || (res.status === 400 ? 'Savat boʻsh boʻlishi yoki maʼlumotlar xato. Savatni tekshiring va qayta urinib koʻring.' : 'Xatolik'));
+        setFieldErrors([msg]);
         throw new Error(msg);
       }
       const data = await res.json() as { orders?: unknown[]; guestAuth?: { accessToken: string; user: { id: string } } };
@@ -189,7 +190,9 @@ export function CheckoutForm() {
         router.push(successUrl);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Xatolik');
+      const msg = err instanceof Error ? err.message : 'Xatolik';
+      setFieldErrors([msg]);
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -229,7 +232,15 @@ export function CheckoutForm() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle>{deliveryType === 'PICKUP' ? 'Aloqa maʼlumotlari' : 'Yetkazib berish manzili'}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{deliveryType === 'PICKUP' ? 'Aloqa maʼlumotlari' : 'Yetkazib berish manzili'}</CardTitle>
+          {!isGuest && deliveryType === 'DELIVERY' && (
+            <p className="text-sm text-muted-foreground font-normal mt-1">Shahar, koʻcha va uy raqami majburiy. Telefon ham kiritilishi shart.</p>
+          )}
+          {!isGuest && deliveryType === 'PICKUP' && (
+            <p className="text-sm text-muted-foreground font-normal mt-1">Aloqa uchun telefon raqamini kiriting.</p>
+          )}
+        </CardHeader>
         <CardContent className="space-y-4">
           {deliveryType === 'DELIVERY' && (
             <>

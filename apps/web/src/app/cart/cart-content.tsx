@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { getCartHeaders, saveCartSessionFromResponse } from '@/lib/cart-session';
 import { apiFetch } from '@/lib/api';
@@ -43,6 +43,20 @@ export function CartContent() {
       headers: getCartHeaders(),
       body: JSON.stringify({ quantity: newQty }),
     })
+      .then((r) => r.json())
+      .then((data) => {
+        saveCartSessionFromResponse(data);
+        mutate(data, false);
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cart-updated'));
+      });
+  };
+
+  const removeItem = (productId: string, variantId?: string | null) => {
+    if (!cart) return;
+    const url = variantId
+      ? `${API_URL}/cart/items/${productId}?variantId=${encodeURIComponent(variantId)}`
+      : `${API_URL}/cart/items/${productId}`;
+    apiFetch(url, { method: 'DELETE', headers: getCartHeaders() })
       .then((r) => r.json())
       .then((data) => {
         saveCartSessionFromResponse(data);
@@ -99,7 +113,7 @@ export function CartContent() {
                 {stockWarning && (
                   <p className="text-sm font-medium text-amber-600 dark:text-amber-400 mt-1">{stockWarning}</p>
                 )}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <div className="flex items-center border rounded-lg overflow-hidden">
                     <Button
                       type="button"
@@ -123,6 +137,17 @@ export function CartContent() {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeItem(item.product.id, item.variantId)}
+                    title="Savatchadan olib tashlash"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Olib tashlash
+                  </Button>
                 </div>
               </div>
               <p className="font-semibold shrink-0 self-start w-full sm:w-auto text-left sm:text-right">{formatPrice(Number(item.product.price) * item.quantity)} soʻm</p>
