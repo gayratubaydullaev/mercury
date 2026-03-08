@@ -187,7 +187,7 @@ export default function SellerOrdersPage() {
               <p className="font-semibold">Jami: {formatPrice(Number(o.totalAmount))} soʻm</p>
               {(o.paymentMethod === 'CASH' || o.paymentMethod === 'CARD_ON_DELIVERY') && o.paymentStatus === 'PENDING' && (
                 <Button size="sm" variant="secondary" onClick={() => markAsPaid(o.id)}>
-                  💳 To'lov qabul qilindi
+                  💳 To&apos;lov qabul qilindi
                 </Button>
               )}
               <div className="flex flex-wrap gap-2 pt-1">
@@ -205,8 +205,8 @@ export default function SellerOrdersPage() {
                         {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
                       </Button>
                     ) : (
-                      <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
-                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to'lov kutilmoqda
+                      <Button size="sm" variant="secondary" disabled title={"Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi"}>
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to&apos;lov kutilmoqda
                       </Button>
                     )}
                     <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED', o.deliveryType)}>Bekor qilish</Button>
@@ -219,8 +219,8 @@ export default function SellerOrdersPage() {
                         {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'}
                       </Button>
                     ) : (
-                      <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
-                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to'lov kutilmoqda
+                      <Button size="sm" variant="secondary" disabled title={"Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi"}>
+                        {isPickup(o) ? 'Tayyor (olib ketish)' : 'Yuborildi'} — to&apos;lov kutilmoqda
                       </Button>
                     )}
                     <Button size="sm" variant="destructive" onClick={() => updateStatus(o.id, 'CANCELLED', o.deliveryType)}>Bekor qilish</Button>
@@ -232,8 +232,8 @@ export default function SellerOrdersPage() {
                       {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'}
                     </Button>
                   ) : (
-                    <Button size="sm" variant="secondary" disabled title="Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi">
-                      {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'} — to'lov kutilmoqda
+                    <Button size="sm" variant="secondary" disabled title={"Click/Payme to'lovi qilinmaguncha belgilab bo'lmaydi"}>
+                      {isPickup(o) ? 'Olib ketildi' : 'Yetkazildi'} — to&apos;lov kutilmoqda
                     </Button>
                   )
                 )}
