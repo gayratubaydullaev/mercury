@@ -54,9 +54,9 @@ async function proxy(
   }
 
   let body: string | ArrayBuffer | undefined;
-  const contentType = request.headers.get('content-type') || '';
+  const requestContentType = request.headers.get('content-type') || '';
   try {
-    if (contentType.includes('multipart/form-data')) {
+    if (requestContentType.includes('multipart/form-data')) {
       const buf = await request.arrayBuffer();
       if (buf.byteLength > 0) body = buf;
     } else {
