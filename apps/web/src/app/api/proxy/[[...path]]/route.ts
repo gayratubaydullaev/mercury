@@ -53,10 +53,16 @@ async function proxy(
     if (value) headers.set(name, value);
   }
 
-  let body: string | undefined;
+  let body: string | ArrayBuffer | undefined;
+  const contentType = request.headers.get('content-type') || '';
   try {
-    const text = await request.text();
-    if (text) body = text;
+    if (contentType.includes('multipart/form-data')) {
+      const buf = await request.arrayBuffer();
+      if (buf.byteLength > 0) body = buf;
+    } else {
+      const text = await request.text();
+      if (text) body = text;
+    }
   } catch {
     // no body
   }
