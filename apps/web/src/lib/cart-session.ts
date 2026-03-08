@@ -20,3 +20,9 @@ export function getCartHeaders(): Record<string, string> {
 export function saveCartSessionFromResponse(data: { sessionId?: string | null } | null): void {
   if (data?.sessionId) setCartSessionId(data.sessionId);
 }
+
+/** Clear cart session (e.g. on logout so the next user doesn't see the previous user's cart). */
+export function clearCartSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(CART_SESSION_KEY);
+}

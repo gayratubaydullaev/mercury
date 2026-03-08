@@ -145,9 +145,12 @@ export function CheckoutForm() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { message?: string; outOfStock?: string[]; statusCode?: number };
-        const msg = Array.isArray(err.outOfStock) && err.outOfStock.length > 0
-          ? [err.message || 'Xatolik', ...err.outOfStock].join('\n')
-          : (err.message || (res.status === 400 ? 'Savat boʻsh boʻlishi yoki maʼlumotlar xato. Savatni tekshiring va qayta urinib koʻring.' : 'Xatolik'));
+        const msg =
+          res.status === 502
+            ? 'Serverni tekshiring. Qayta urinib koʻring.'
+            : Array.isArray(err.outOfStock) && err.outOfStock.length > 0
+              ? [err.message || 'Xatolik', ...err.outOfStock].join('\n')
+              : (err.message || (res.status === 400 ? 'Savat boʻsh boʻlishi yoki maʼlumotlar xato. Savatni tekshiring va qayta urinib koʻring.' : 'Xatolik'));
         setFieldErrors([msg]);
         throw new Error(msg);
       }
@@ -195,7 +198,12 @@ export function CheckoutForm() {
         router.push(successUrl);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Xatolik';
+      const msg =
+        err instanceof TypeError
+          ? 'Tarmoq xatosi. Qayta urinib koʻring.'
+          : err instanceof Error
+            ? err.message
+            : 'Xatolik';
       setFieldErrors([msg]);
       alert(msg);
     } finally {

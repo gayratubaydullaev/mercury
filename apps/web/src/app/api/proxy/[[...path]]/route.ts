@@ -61,19 +61,47 @@ async function proxy(
     // no body
   }
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ?? undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ?? undefined,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Backend unreachable';
+    console.error('[api/proxy] Backend unreachable:', url, err);
+    return NextResponse.json(
+      { message: 'Backend unavailable', error: message },
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
+  if (res.status >= 500) {
+    console.error('[api/proxy] Backend 5xx:', res.status, url);
+  }
   const resHeaders = new Headers();
   const contentType = res.headers.get('content-type');
   if (contentType) resHeaders.set('content-type', contentType);
-  const setCookie = res.headers.get('set-cookie');
-  if (setCookie) resHeaders.set('set-cookie', setCookie);
+  const setCookies = res.headers.getSetCookie?.();
+  if (Array.isArray(setCookies)) {
+    for (const cookie of setCookies) resHeaders.append('set-cookie', cookie);
+  } else {
+    const setCookie = res.headers.get('set-cookie');
+    if (setCookie) resHeaders.set('set-cookie', setCookie);
+  }
 
-  const resBody = await res.text();
+  let resBody: string;
+  try {
+    resBody = await res.text();
+  } catch (err) {
+    console.error('[api/proxy] Invalid response body:', url, err);
+    return NextResponse.json(
+      { message: 'Invalid response from backend' },
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   return new NextResponse(resBody, {
     status: res.status,
     statusText: res.statusText,

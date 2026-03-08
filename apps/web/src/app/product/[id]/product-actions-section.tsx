@@ -93,9 +93,10 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
   }, [ctx?.product.id, ctx?.variantId, ctx?.stock, router]);
 
   const openVariantModal = useCallback((action: 'cart' | 'buy') => {
+    ctx?.resetSelected?.();
     setPendingVariantAction(action);
     setVariantModalOpen(true);
-  }, []);
+  }, [ctx]);
 
   useTelegramBackHandler(variantModalOpen, () => {
     setVariantModalOpen(false);
@@ -133,7 +134,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
         buttons
       )}
 
-      <Dialog open={variantModalOpen} onOpenChange={(open) => { setVariantModalOpen(open); if (!open) setPendingVariantAction(null); }}>
+      <Dialog open={variantModalOpen} onOpenChange={(open) => { if (!open) { setPendingVariantAction(null); } else { ctx?.resetSelected?.(); } setVariantModalOpen(open); }}>
         <DialogContent
           showClose={false}
           className="max-w-4xl w-full p-0 gap-0 overflow-hidden md:rounded-2xl rounded-t-2xl rounded-b-none md:h-[600px] h-[90vh] flex flex-col [&>button:last-child]:hidden"

@@ -75,6 +75,7 @@ type ContextValue = {
   stock: number;
   variantId: string | undefined;
   handleVariantChange: (groupId: string, value: string | null) => void;
+  resetSelected: () => void;
 };
 
 const ProductSelectionContext = createContext<ContextValue | null>(null);
@@ -114,6 +115,10 @@ export function ProductSelectionProvider({
     });
   }, []);
 
+  const resetSelected = useCallback(() => {
+    setSelected({});
+  }, []);
+
   const value = useMemo<ContextValue>(
     () => ({
       product,
@@ -123,8 +128,9 @@ export function ProductSelectionProvider({
       stock,
       variantId,
       handleVariantChange,
+      resetSelected,
     }),
-    [product, selected, variantGroups, currentVariant, stock, variantId, handleVariantChange]
+    [product, selected, variantGroups, currentVariant, stock, variantId, handleVariantChange, resetSelected]
   );
 
   return (

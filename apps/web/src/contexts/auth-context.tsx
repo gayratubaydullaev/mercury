@@ -2,8 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { API_URL } from '@/lib/utils';
+import { clearCartSession } from '@/lib/cart-session';
+import { clearGuestFavorites } from '@/lib/guest-favorites';
 
 const STORAGE_KEY = 'accessToken';
+const CHECKOUT_ORDERS_KEY = 'checkout_orders';
+const RECENT_SEARCHES_KEY = 'myshop-recent-searches';
 
 type AuthContextValue = {
   token: string | null;
@@ -59,15 +63,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setToken = useCallback((value: string | null) => {
     if (typeof window !== 'undefined') {
       if (value == null) localStorage.removeItem(STORAGE_KEY);
-      else localStorage.setItem(STORAGE_KEY, value);
+      else {
+        localStorage.setItem(STORAGE_KEY, value);
+        window.dispatchEvent(new CustomEvent('cart-updated'));
+      }
     }
     setTokenState(value);
     window.dispatchEvent(new Event('auth-change'));
   }, []);
 
   const logout = useCallback(() => {
-    setToken(null);
-  }, [setToken]);
+    if (typeof window !== 'undefined') {
+      if (API_URL && token) {
+        fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
+      setToken(null);
+      clearCartSession();
+      clearGuestFavorites();
+      try {
+        sessionStorage.removeItem(CHECKOUT_ORDERS_KEY);
+        localStorage.removeItem(RECENT_SEARCHES_KEY);
+      } catch {
+        // ignore
+      }
+    } else {
+      setToken(null);
+    }
+  }, [setToken, token]);
 
   const value: AuthContextValue = {
     token: mounted ? token : null,

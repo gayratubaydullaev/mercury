@@ -14,6 +14,7 @@ import { TelegramThemeApplicator } from '@/components/telegram-theme-applicator'
 import { TelegramBackButton } from '@/components/telegram-back-button';
 import { TelegramBackHandlerProvider } from '@/contexts/telegram-back-handler-context';
 import { TelegramWebAppAuth } from '@/components/telegram-webapp-auth';
+import { MergeGuestFavoritesOnLogin } from '@/components/merge-guest-favorites-on-login';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <PublicSettingsProvider>
               <TelegramWebAppAuth />
+              <MergeGuestFavoritesOnLogin />
               <CsrfPrefetch />
               <PwaRegister />
               <ShellWrapper>{children}</ShellWrapper>

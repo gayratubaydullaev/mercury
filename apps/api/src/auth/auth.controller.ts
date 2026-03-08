@@ -63,7 +63,8 @@ export class AuthController {
 
   @Post('register')
   @Public()
-  @ApiOperation({ summary: 'Register new user' })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Register new user (rate limit: 5/min)' })
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email already registered');

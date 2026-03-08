@@ -52,14 +52,7 @@ export function ProductOptionsAndActions({ product, isMobile = false }: { produc
   const hasOptions = Object.keys(options).length > 0;
   const variantGroups = useMemo(() => buildVariantGroups(options), [options]);
 
-  const [selected, setSelected] = useState<SelectedOptions>(() => {
-    const initial: SelectedOptions = {};
-    Object.entries(options).forEach(([k, vals]) => {
-      const first = vals?.[0];
-      if (first) initial[k] = first;
-    });
-    return initial;
-  });
+  const [selected, setSelected] = useState<SelectedOptions>(() => ({}));
 
   const currentVariant = useMemo(() => findVariant(variants, selected), [variants, selected]);
   const stock = currentVariant != null ? currentVariant.stock : product.stock;

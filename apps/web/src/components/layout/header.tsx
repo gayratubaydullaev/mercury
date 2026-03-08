@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/api';
 import { getGuestFavoriteIds } from '@/lib/guest-favorites';
 import { useAuth } from '@/contexts/auth-context';
 import { usePublicSettings } from '@/contexts/public-settings-context';
+import { toast } from 'sonner';
 
 const RECENT_SEARCHES_KEY = 'myshop-recent-searches';
 const MAX_RECENT = 5;
@@ -53,8 +54,17 @@ function useCartCount() {
   useEffect(() => {
     function fetchCart(retry = false) {
       apiFetch(`${API_URL}/cart`, { headers: getCartHeaders() })
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) {
+            if (r.status === 502 && !retry) toast.error('Tarmoq xatosi. Qayta urinib koʻring.');
+            setCount(0);
+            if (!retry) setTimeout(() => fetchCart(true), 2000);
+            return null;
+          }
+          return r.json();
+        })
         .then((data: { items?: { quantity?: number }[]; sessionId?: string } | null) => {
+          if (data == null) return;
           saveCartSessionFromResponse(data);
           const items = data?.items ?? [];
           setCount(items.reduce((s, i) => s + (i.quantity ?? 0), 0));
