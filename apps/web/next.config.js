@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const apiServerUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const apiServerUrl = rawApiUrl.includes(',') ? rawApiUrl.split(',')[0].trim() : rawApiUrl;
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },

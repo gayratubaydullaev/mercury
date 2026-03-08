@@ -1,10 +1,9 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { API_URL } from '@/lib/utils';
 
 const STORAGE_KEY = 'accessToken';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 type AuthContextValue = {
   token: string | null;

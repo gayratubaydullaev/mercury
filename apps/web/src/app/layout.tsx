@@ -20,7 +20,8 @@ const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sa
 const DEFAULT_SITE_NAME = 'JomboyShop';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const raw = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = raw?.includes(',') ? raw.split(',')[0].trim() : raw;
   let siteName = DEFAULT_SITE_NAME;
   if (apiUrl) {
     try {

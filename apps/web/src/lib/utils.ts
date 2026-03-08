@@ -5,11 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Server: full API URL. Client: same-origin proxy to avoid "local network" permission. */
-export const API_URL =
-  typeof window === 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000')
-    : '/api-proxy';
+/** Server: full API URL (single; if env has comma-separated list, use first). Client: same-origin proxy. */
+const rawServerApi = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const serverApiUrl = rawServerApi.includes(',') ? rawServerApi.split(',')[0].trim() : rawServerApi;
+export const API_URL = typeof window === 'undefined' ? serverApiUrl : '/api-proxy';
 
 /** Формат цены: целое число без копеек, пробел — разделитель тысяч (без запятых). */
 export function formatPrice(value: number): string {
