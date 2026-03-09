@@ -296,7 +296,7 @@ export function Header() {
           {/* Одна строка: логотип + каталог + поиск; на десктопе ещё иконки */}
           <div className="flex items-center gap-2 md:gap-6 md:h-20 py-2 md:py-0">
             {/* Logo — только десктоп */}
-            <Link href="/" className="hidden md:flex shrink-0 font-bold text-xl text-primary" aria-label={`${siteName} — bosh sahifa`}>
+            <Link href="/" target="_self" className="hidden md:flex shrink-0 font-bold text-xl text-primary" aria-label={`${siteName} — bosh sahifa`}>
               {siteName}
             </Link>
 

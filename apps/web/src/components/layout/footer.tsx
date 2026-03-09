@@ -10,7 +10,7 @@ function FooterCopy() {
       <p className="text-sm text-muted-foreground">
         © {new Date().getFullYear()} {siteName}. Barcha huquqlar himoyalangan.
       </p>
-      <Link href="/" className="font-semibold text-primary hover:underline underline-offset-2 text-sm">
+      <Link href="/" target="_self" className="font-semibold text-primary hover:underline underline-offset-2 text-sm">
         {siteName}
       </Link>
     </>
