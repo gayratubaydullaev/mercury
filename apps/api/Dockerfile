@@ -14,8 +14,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 WORKDIR /app
-# Use project's Prisma (5.x from lockfile), not npx which can pull Prisma 7
-RUN pnpm --filter @myshopuz/api exec prisma generate --schema=/app/apps/api/prisma/schema.prisma && pnpm --filter @myshopuz/api run build
+# Build shared package first (API depends on it); then Prisma generate and API build
+RUN pnpm --filter @myshopuz/shared run build && \
+  pnpm --filter @myshopuz/api exec prisma generate --schema=/app/apps/api/prisma/schema.prisma && \
+  pnpm --filter @myshopuz/api run build
 
 FROM base AS runner
 ENV NODE_ENV=production
