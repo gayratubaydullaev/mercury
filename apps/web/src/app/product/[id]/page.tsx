@@ -11,6 +11,7 @@ import { ProductVariantsSection } from './product-variants-section';
 import { ProductActionsSection } from './product-actions-section';
 import { ProductSpecsSectionMobile } from './product-specs-section-mobile';
 import { ProductRatingLabel } from './product-rating-label';
+import { ProductStockLabel } from './product-stock-label';
 import { ReviewsSection } from './reviews-section';
 import { RelatedProducts } from '@/components/product/related-products';
 import { FavoriteButton } from '@/app/product/[id]/favorite-button';
@@ -125,6 +126,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                     </div>
                   )}
                 </div>
+                <ProductStockLabel />
                 <ProductActionsSection />
                 {shop && (
                   <>
@@ -195,6 +197,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                     </Badge>
                   )}
                 </div>
+                <ProductStockLabel />
               </div>
 
               <Separator className="my-1 sm:my-2" />
