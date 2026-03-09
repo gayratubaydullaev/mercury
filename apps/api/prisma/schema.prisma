@@ -13,7 +13,8 @@ datasource db {
 enum UserRole {
   BUYER
   SELLER
-  ADMIN
+  ADMIN             // главный админ: пользователи, роли, настройки платформы, выплаты
+  ADMIN_MODERATOR   // модератор: товары, отзывы, заявки продавцов, изменения магазинов
 }
 
 enum OrderStatus {
@@ -53,6 +54,7 @@ model User {
   firstName     String    @map("first_name")
   lastName      String    @map("last_name")
   role          UserRole  @default(BUYER)
+  moderatorPermissions Json?   @map("moderator_permissions") // only for ADMIN_MODERATOR: { canModerateProducts, canModerateReviews, canApproveSellerApplications, canApproveShopUpdates }
   avatarUrl     String?   @map("avatar_url")
   isBlocked     Boolean   @default(false) @map("is_blocked")
   emailVerified Boolean   @default(false) @map("email_verified")
@@ -82,6 +84,8 @@ model User {
   sellerApplication       SellerApplication?
   reviewedSellerApplications SellerApplication[] @relation("ApplicationReviewer")
   reviewedPendingShopUpdates PendingShopUpdate[]  @relation("PendingUpdateReviewer")
+
+  notifications Notification[]
 
   @@map("users")
 }
@@ -466,4 +470,20 @@ model PayoutRecord {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("payout_records")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @map("type")   // NEW_ORDER, NEW_SELLER_APPLICATION, PENDING_PRODUCT, NEW_REVIEW, NEW_CHAT_MESSAGE, PENDING_SHOP_UPDATE
+  title     String    @map("title")
+  body      String?   @map("body")
+  link      String?   @map("link")   // e.g. /admin/orders, /seller/orders, /seller/products/123
+  entityId  String?  @map("entity_id") // orderId, productId, applicationId, etc.
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
 }

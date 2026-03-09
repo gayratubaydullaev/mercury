@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductFilterDto } from './dto/product-filter.dto';
@@ -98,6 +99,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private notifications: NotificationsService,
   ) {}
 
   async create(sellerId: string, dto: CreateProductDto) {
@@ -142,6 +144,15 @@ export class ProductsService {
       include: { images: true, category: true, variants: true, shop: { select: { name: true } } },
     });
     this.telegram.sendAdminPendingProductNotification(product).catch(() => {});
+    this.notifications
+      .createForAdmins({
+        type: 'PENDING_PRODUCT',
+        title: 'Yangi tovar — moderatsiya',
+        body: product.title,
+        link: '/admin/products',
+        entityId: product.id,
+      })
+      .catch(() => {});
     if (hasVariants) {
       await this.prisma.productVariant.createMany({
         data: dto.variants!.map((v) => ({

@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, BarChart3, Settings, ArrowLeft, Store, MessageCircle, Plus, ExternalLink, Star, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, BarChart3, Settings, ArrowLeft, Store, MessageCircle, Plus, ExternalLink, Star, Menu, X, Bell } from 'lucide-react';
 import { cn, API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { NotificationsBell } from './notifications-bell';
 
 const mainItems = [
   { href: '/seller', label: 'Bosh sahifa', icon: LayoutDashboard },
+  { href: '/seller/notifications', label: 'Bildirishnomalar', icon: Bell },
   { href: '/seller/products', label: 'Tovarlar', icon: Package },
   { href: '/seller/orders', label: 'Buyurtmalar', icon: ShoppingBag, badgeKey: 'pendingOrdersCount' as const },
   { href: '/seller/reviews', label: 'Sharhlar', icon: Star },
@@ -204,6 +206,7 @@ export function SellerNav() {
             </Link>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationsBell basePath="/seller" />
             <Link
               href="/seller/products/new"
               onClick={() => setMobileOpen(false)}

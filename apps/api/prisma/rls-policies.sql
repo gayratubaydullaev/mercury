@@ -16,29 +16,29 @@ ALTER TABLE shops ENABLE ROW LEVEL SECURITY;
 -- Set role for current request (application sets this via SET LOCAL role_id / role)
 -- Example: SELECT set_config('app.current_user_id', 'uuid', true);
 
--- Users: own row or ADMIN
+-- Users: own row or ADMIN / ADMIN_MODERATOR (select); full CRUD only ADMIN
 CREATE POLICY users_select_own ON users FOR SELECT
-  USING (id = current_setting('app.current_user_id', true)::uuid OR current_setting('app.user_role', true) = 'ADMIN');
+  USING (id = current_setting('app.current_user_id', true)::uuid OR current_setting('app.user_role', true) IN ('ADMIN', 'ADMIN_MODERATOR'));
 CREATE POLICY users_update_own ON users FOR UPDATE
   USING (id = current_setting('app.current_user_id', true)::uuid);
 CREATE POLICY users_all_admin ON users FOR ALL
   USING (current_setting('app.user_role', true) = 'ADMIN');
 
--- Products: public read active+moderated; seller own CRUD; admin all
+-- Products: public read active+moderated; seller own CRUD; admin/moderator all (for moderation)
 CREATE POLICY products_select_public ON products FOR SELECT
   USING (is_active = true AND is_moderated = true);
 CREATE POLICY products_seller_own ON products FOR ALL
   USING (shop_id IN (SELECT id FROM shops WHERE user_id = current_setting('app.current_user_id', true)::uuid));
 CREATE POLICY products_admin ON products FOR ALL
-  USING (current_setting('app.user_role', true) = 'ADMIN');
+  USING (current_setting('app.user_role', true) IN ('ADMIN', 'ADMIN_MODERATOR'));
 
--- Orders: buyer sees own; seller sees own shop orders; admin all
+-- Orders: buyer sees own; seller sees own shop orders; admin/moderator all
 CREATE POLICY orders_buyer ON orders FOR SELECT
   USING (buyer_id = current_setting('app.current_user_id', true)::uuid);
 CREATE POLICY orders_seller ON orders FOR SELECT
   USING (seller_id = current_setting('app.current_user_id', true)::uuid);
 CREATE POLICY orders_admin ON orders FOR ALL
-  USING (current_setting('app.user_role', true) = 'ADMIN');
+  USING (current_setting('app.user_role', true) IN ('ADMIN', 'ADMIN_MODERATOR'));
 
 -- Cart: own cart only
 CREATE POLICY cart_own ON carts FOR ALL

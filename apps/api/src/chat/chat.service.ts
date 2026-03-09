@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async isSellerChatEnabled(sellerId: string): Promise<boolean> {
     const shop = await this.prisma.shop.findFirst({ where: { userId: sellerId }, select: { chatEnabled: true } });
@@ -75,10 +79,22 @@ export class ChatService {
       if (!chatEnabled) throw new ForbiddenException('Sotuvchi hozircha xabarlarni qabul qilmaydi');
     }
     await this.prisma.chatSession.update({ where: { id: sessionId }, data: { updatedAt: new Date() } });
-    return this.prisma.chatMessage.create({
+    const message = await this.prisma.chatMessage.create({
       data: { sessionId, senderId, content: content.trim() },
       include: { sender: { select: { id: true, firstName: true, lastName: true } } },
     });
+    if (session.buyerId === senderId) {
+      this.notifications
+        .createForUser(session.sellerId, {
+          type: 'NEW_CHAT_MESSAGE',
+          title: 'Yangi xabar',
+          body: message.content.slice(0, 80) + (message.content.length > 80 ? '…' : ''),
+          link: '/chat',
+          entityId: sessionId,
+        })
+        .catch(() => {});
+    }
+    return message;
   }
 
   async getMessages(sessionId: string, userId: string) {

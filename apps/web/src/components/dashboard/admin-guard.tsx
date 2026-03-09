@@ -21,7 +21,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     apiFetch(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((user: { role?: string }) => {
-        if (user?.role !== 'ADMIN') {
+        if (user?.role !== 'ADMIN' && user?.role !== 'ADMIN_MODERATOR') {
           router.replace('/');
           return;
         }

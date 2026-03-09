@@ -4,11 +4,14 @@ import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { ModeratorPermissionsGuard } from '../auth/guards/moderator-permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequireModeratorPermission } from '../auth/decorators/require-moderator-permission.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { BlockUserDto } from './dto/block-user.dto';
 import { SetRoleDto } from './dto/set-role.dto';
+import { SetModeratorPermissionsDto } from './dto/set-moderator-permissions.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CreateBannerDto } from './dto/create-banner.dto';
@@ -18,10 +21,13 @@ import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { RecordPayoutDto } from './dto/record-payout.dto';
 import { SetSellerCommissionDto } from './dto/set-seller-commission.dto';
 
+/** Только главный админ (ADMIN) — назначение ролей, блокировка, настройки, выплаты, категории, баннеры, Telegram. */
+const SUPER_ADMIN = [UserRole.ADMIN];
+
 @ApiTags('admin')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard, RolesGuard, ModeratorPermissionsGuard)
+@Roles(UserRole.ADMIN, UserRole.ADMIN_MODERATOR)
 @ApiBearerAuth()
 export class AdminController {
   constructor(private admin: AdminService) {}
@@ -39,15 +45,28 @@ export class AdminController {
   }
 
   @Post('users/:id/block')
-  @ApiOperation({ summary: 'Block user' })
-  blockUser(@Param('id') id: string, @Body() dto: BlockUserDto) {
-    return this.admin.blockUser(id, dto.block);
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Block user (only main admin)' })
+  blockUser(@Param('id') id: string, @Body() dto: BlockUserDto, @CurrentUser('id') callerId: string) {
+    return this.admin.blockUser(id, dto.block, callerId);
   }
 
   @Patch('users/:id/role')
-  @ApiOperation({ summary: 'Set user role' })
-  setRole(@Param('id') id: string, @Body() dto: SetRoleDto) {
-    return this.admin.setRole(id, dto.role);
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Set user role (only main admin)' })
+  setRole(@Param('id') id: string, @Body() dto: SetRoleDto, @CurrentUser('id') callerId: string, @CurrentUser('role') callerRole: string) {
+    return this.admin.setRole(id, dto.role, callerId, callerRole as UserRole);
+  }
+
+  @Patch('users/:id/moderator-permissions')
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Set moderator permissions (only for ADMIN_MODERATOR users)' })
+  setModeratorPermissions(
+    @Param('id') id: string,
+    @Body() dto: SetModeratorPermissionsDto,
+    @CurrentUser('role') callerRole: string,
+  ) {
+    return this.admin.setModeratorPermissions(id, callerRole as UserRole, dto);
   }
 
   @Get('categories')
@@ -57,19 +76,22 @@ export class AdminController {
   }
 
   @Post('categories')
-  @ApiOperation({ summary: 'Create category' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create category (only main admin)' })
   createCategory(@Body() dto: CreateCategoryDto) {
     return this.admin.createCategory(dto);
   }
 
   @Patch('categories/:id')
-  @ApiOperation({ summary: 'Update category' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update category (only main admin)' })
   updateCategory(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
     return this.admin.updateCategory(id, dto);
   }
 
   @Delete('categories/:id')
-  @ApiOperation({ summary: 'Delete category' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete category (only main admin)' })
   deleteCategory(@Param('id') id: string) {
     return this.admin.deleteCategory(id);
   }
@@ -81,24 +103,28 @@ export class AdminController {
   }
 
   @Post('banners')
-  @ApiOperation({ summary: 'Create banner' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create banner (only main admin)' })
   createBanner(@Body() dto: CreateBannerDto) {
     return this.admin.createBanner(dto);
   }
 
   @Patch('banners/:id')
-  @ApiOperation({ summary: 'Update banner' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update banner (only main admin)' })
   updateBanner(@Param('id') id: string, @Body() dto: UpdateBannerDto) {
     return this.admin.updateBanner(id, dto);
   }
 
   @Delete('banners/:id')
-  @ApiOperation({ summary: 'Delete banner' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete banner (only main admin)' })
   deleteBanner(@Param('id') id: string) {
     return this.admin.deleteBanner(id);
   }
 
   @Get('products')
+  @RequireModeratorPermission('canModerateProducts')
   @ApiOperation({ summary: 'List products for moderation' })
   getProducts(@Query('page') page?: number, @Query('limit') limit?: number, @Query('isModerated') isModerated?: string) {
     const filter = isModerated === 'true' ? true : isModerated === 'false' ? false : undefined;
@@ -106,6 +132,7 @@ export class AdminController {
   }
 
   @Post('products/:id/moderate')
+  @RequireModeratorPermission('canModerateProducts')
   @ApiOperation({ summary: 'Moderate product' })
   moderateProduct(@Param('id') id: string, @Body() dto: ModerateProductDto) {
     return this.admin.moderateProduct(id, dto.approve);
@@ -142,13 +169,15 @@ export class AdminController {
   }
 
   @Patch('settings')
-  @ApiOperation({ summary: 'Update platform settings' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update platform settings (only main admin)' })
   updatePlatformSettings(@Body() dto: UpdatePlatformSettingsDto) {
     return this.admin.updatePlatformSettings(dto);
   }
 
   @Post('telegram/link')
-  @ApiOperation({ summary: 'Link admin Telegram by code from bot /start or /link' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Link admin Telegram (only main admin)' })
   linkTelegram(@Body() body: { code: string }) {
     return this.admin.linkTelegram(body.code ?? '');
   }
@@ -160,7 +189,8 @@ export class AdminController {
   }
 
   @Post('telegram/disconnect')
-  @ApiOperation({ summary: 'Disconnect admin Telegram notifications' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Disconnect admin Telegram (only main admin)' })
   disconnectTelegram() {
     return this.admin.disconnectTelegram();
   }
@@ -172,19 +202,22 @@ export class AdminController {
   }
 
   @Post('payouts/record')
-  @ApiOperation({ summary: 'Record payment received from seller (e.g. cash)' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Record payment received from seller (only main admin)' })
   recordPayout(@Body() dto: RecordPayoutDto) {
     const paidAt = dto.paidAt ? new Date(dto.paidAt) : undefined;
     return this.admin.recordPayout(dto.sellerId, dto.amount, dto.method ?? 'CASH', paidAt, dto.note);
   }
 
   @Patch('sellers/:id/commission')
-  @ApiOperation({ summary: 'Set seller commission % (null = platform default)' })
+  @Roles(...SUPER_ADMIN)
+  @ApiOperation({ summary: 'Set seller commission % (only main admin)' })
   setSellerCommission(@Param('id') id: string, @Body() dto: SetSellerCommissionDto) {
     return this.admin.setSellerCommissionRate(id, dto.commissionRate);
   }
 
   @Get('reviews')
+  @RequireModeratorPermission('canModerateReviews')
   @ApiOperation({ summary: 'List all reviews (for admin)' })
   getReviews(
     @Query('page') page?: number,
@@ -206,12 +239,14 @@ export class AdminController {
   }
 
   @Post('seller-applications/:id/approve')
+  @RequireModeratorPermission('canApproveSellerApplications')
   @ApiOperation({ summary: 'Approve seller application — create shop and set role SELLER' })
   approveSellerApplication(@Param('id') id: string, @CurrentUser('id') adminId: string) {
     return this.admin.approveSellerApplication(id, adminId);
   }
 
   @Post('seller-applications/:id/reject')
+  @RequireModeratorPermission('canApproveSellerApplications')
   @ApiOperation({ summary: 'Reject seller application' })
   rejectSellerApplication(
     @Param('id') id: string,
@@ -222,18 +257,21 @@ export class AdminController {
   }
 
   @Get('pending-shop-updates')
+  @RequireModeratorPermission('canApproveShopUpdates')
   @ApiOperation({ summary: 'List pending shop data change requests' })
   getPendingShopUpdates(@Query('page') page?: number, @Query('limit') limit?: number) {
     return this.admin.getPendingShopUpdates(page ?? 1, limit ?? 20);
   }
 
   @Post('pending-shop-updates/:id/approve')
+  @RequireModeratorPermission('canApproveShopUpdates')
   @ApiOperation({ summary: 'Approve pending shop update' })
   approvePendingShopUpdate(@Param('id') id: string, @CurrentUser('id') adminId: string) {
     return this.admin.approvePendingShopUpdate(id, adminId);
   }
 
   @Post('pending-shop-updates/:id/reject')
+  @RequireModeratorPermission('canApproveShopUpdates')
   @ApiOperation({ summary: 'Reject pending shop update' })
   rejectPendingShopUpdate(
     @Param('id') id: string,

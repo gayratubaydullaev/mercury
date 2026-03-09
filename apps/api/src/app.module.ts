@@ -28,6 +28,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { MailerModule } from './mailer/mailer.module';
 import { BannersModule } from './banners/banners.module';
 import { SettingsModule } from './settings/settings.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { SettingsModule } from './settings/settings.module';
     TelegramModule,
     BannersModule,
     SettingsModule,
+    NotificationsModule,
   ],
   providers: [
     // Rate limit first, then JWT. ThrottlerGuard uses @Throttle() overrides on auth routes.

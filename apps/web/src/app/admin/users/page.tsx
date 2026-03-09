@@ -12,8 +12,13 @@ import { apiFetch, apiGetJson } from '@/lib/api';
 import { isApiError } from '@/types/api';
 import { User } from 'lucide-react';
 
-const ROLES = ['BUYER', 'SELLER', 'ADMIN'] as const;
-const ROLE_LABELS: Record<string, string> = { BUYER: 'Xaridor', SELLER: 'Sotuvchi', ADMIN: 'Admin' };
+const ROLES = ['BUYER', 'SELLER', 'ADMIN', 'ADMIN_MODERATOR'] as const;
+const ROLE_LABELS: Record<string, string> = {
+  BUYER: 'Xaridor',
+  SELLER: 'Sotuvchi',
+  ADMIN: 'Bosh admin',
+  ADMIN_MODERATOR: 'Moderator',
+};
 
 interface AdminUser {
   id: string;
@@ -48,7 +53,9 @@ export default function AdminUsersPage() {
   const [data, setData] = useState<AdminUsersResponse | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [page, setPage] = useState(1);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const isSuperAdmin = currentUserRole === 'ADMIN';
 
   const load = () => {
     if (!token) return;
@@ -61,20 +68,31 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
+    if (token) {
+      apiGetJson<{ role?: string }>(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((me) => setCurrentUserRole(me?.role ?? null))
+        .catch(() => setCurrentUserRole(null));
+    }
+  }, [token]);
+  useEffect(() => {
     load();
   }, [token, roleFilter, page]);
 
   const block = (id: string, block: boolean) => {
     if (!token) return;
-    apiFetch(`${API_URL}/admin/users/${id}/block`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ block }) })
-      .then(() => {
+    apiFetch(`${API_URL}/admin/users/${id}/block`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ block }) })
+      .then(async (r) => {
+        if (!r.ok) {
+          const msg = await r.json().catch(() => ({})) as { message?: string };
+          throw new Error(msg?.message ?? 'Amal bajarilmadi');
+        }
         setData((d) => {
           if (!d || !Array.isArray(d.data)) return d;
           return { ...d, data: d.data.map((u) => (u.id === id ? { ...u, isBlocked: block } : u)) };
         });
         toast.success(block ? 'Foydalanuvchi bloklandi' : 'Foydalanuvchi blokdan chiqarildi');
       })
-      .catch(() => toast.error('Amal bajarilmadi'));
+      .catch((err: Error) => toast.error(err.message ?? 'Amal bajarilmadi'));
   };
 
   const setRole = (id: string, role: string) => {
@@ -84,14 +102,18 @@ export default function AdminUsersPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ role }),
     })
-      .then(() => {
+      .then(async (r) => {
+        if (!r.ok) {
+          const msg = await r.json().catch(() => ({})) as { message?: string };
+          throw new Error(msg?.message ?? 'Rol saqlanmadi');
+        }
         setData((d) => {
           if (!d || !Array.isArray(d.data)) return d;
           return { ...d, data: d.data.map((u) => (u.id === id ? { ...u, role } : u)) };
         });
         toast.success(`Rol oʻzgartirildi: ${ROLE_LABELS[role] ?? role}`);
       })
-      .catch(() => toast.error('Rol saqlanmadi'));
+      .catch((err: Error) => toast.error(err.message ?? 'Rol saqlanmadi'));
   };
 
   if (!token) return <p>Kirish kerak</p>;
@@ -106,7 +128,9 @@ export default function AdminUsersPage() {
   return (
     <div className="min-w-0 max-w-full">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Foydalanuvchilar</h1>
-      <p className="text-muted-foreground mb-4 text-sm sm:text-base">Koʻrish, bloklash va rol berish. Jami: {total}</p>
+      <p className="text-muted-foreground mb-4 text-sm sm:text-base">
+        {isSuperAdmin ? 'Koʻrish, bloklash va rol berish.' : 'Faqat koʻrish. Rol va bloklash — bosh admin uchun.'} Jami: {total}
+      </p>
       <div className="flex flex-wrap gap-2 mb-4">
         <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
         {ROLES.map((r) => (
@@ -140,19 +164,23 @@ export default function AdminUsersPage() {
                 <Button size="sm" variant="outline" className="min-h-[40px] touch-manipulation" asChild>
                   <Link href={`/admin/users/${u.id}`}><User className="h-4 w-4 mr-1" /> Profil</Link>
                 </Button>
-                <select
-                  className="rounded-lg border border-input bg-background h-10 min-h-[40px] px-3 text-sm touch-manipulation"
-                  value={u.role}
-                  onChange={(e) => setRole(u.id, e.target.value)}
-                  disabled={u.isBlocked}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                  ))}
-                </select>
-                <Button size="sm" variant={u.isBlocked ? 'default' : 'outline'} className={cn('min-h-[40px] touch-manipulation', u.isBlocked ? '' : 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground')} onClick={() => block(u.id, !u.isBlocked)}>
-                  {u.isBlocked ? 'Ochish' : 'Bloklash'}
-                </Button>
+                {isSuperAdmin && (
+                  <>
+                    <select
+                      className="rounded-lg border border-input bg-background h-10 min-h-[40px] px-3 text-sm touch-manipulation"
+                      value={u.role}
+                      onChange={(e) => setRole(u.id, e.target.value)}
+                      disabled={u.isBlocked}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant={u.isBlocked ? 'default' : 'outline'} className={cn('min-h-[40px] touch-manipulation', u.isBlocked ? '' : 'text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground')} onClick={() => block(u.id, !u.isBlocked)}>
+                      {u.isBlocked ? 'Ochish' : 'Bloklash'}
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException,
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto, DeliveryType } from './dto/create-order.dto';
 import { OrderStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -13,6 +14,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private notifications: NotificationsService,
   ) {}
 
   private async generateOrderNumber() {
@@ -116,6 +118,15 @@ export class OrdersService {
       if (order.buyerId) {
         this.telegram.sendBuyerOrderNotification(order.buyerId, order, 'new_order').catch(() => {});
       }
+      this.notifications
+        .createForUser(order.sellerId, {
+          type: 'NEW_ORDER',
+          title: 'Yangi buyurtma',
+          body: `${order.orderNumber} — ${Number(order.totalAmount).toLocaleString()} soʻm`,
+          link: '/seller/orders',
+          entityId: order.id,
+        })
+        .catch(() => {});
     }
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     this.logger.log(`Orders created: ${orders.map((o) => o.id).join(', ')} for ${buyerId ?? 'guest'}`);
@@ -196,7 +207,7 @@ export class OrdersService {
       include: { items: { include: { product: true } }, buyer: true, seller: true },
     });
     if (!order) throw new NotFoundException('Order not found');
-    const canAccess = order.buyerId === userId || order.sellerId === userId || role === 'ADMIN';
+    const canAccess = order.buyerId === userId || order.sellerId === userId || role === 'ADMIN' || role === 'ADMIN_MODERATOR';
     if (!canAccess) throw new ForbiddenException();
     return order;
   }

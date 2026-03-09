@@ -1,11 +1,11 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { BannersService } from '../banners/banners.service';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { Request } from 'express';
 
-const VALID_ROLES: UserRole[] = ['ADMIN', 'BUYER', 'SELLER'];
+const VALID_ROLES: UserRole[] = ['ADMIN', 'ADMIN_MODERATOR', 'BUYER', 'SELLER'];
 
 @Injectable()
 export class AdminService {
@@ -36,7 +36,7 @@ export class AdminService {
           skip,
           take,
           orderBy: { createdAt: 'desc' },
-          select: { id: true, email: true, firstName: true, lastName: true, role: true, isBlocked: true, createdAt: true },
+          select: { id: true, email: true, firstName: true, lastName: true, role: true, isBlocked: true, createdAt: true, moderatorPermissions: true },
         }),
         tx.user.count({ where }),
       ]);
@@ -65,6 +65,7 @@ export class AdminService {
           isBlocked: true,
           emailVerified: true,
           avatarUrl: true,
+          moderatorPermissions: true,
           createdAt: true,
           updatedAt: true,
           shop: { select: { id: true, name: true, slug: true, description: true, isActive: true } },
@@ -88,17 +89,62 @@ export class AdminService {
     });
   }
 
-  async blockUser(userId: string, block: boolean) {
+  async blockUser(userId: string, block: boolean, callerId: string) {
+    if (userId === callerId && block) {
+      throw new BadRequestException('O‘zingizni bloklay olmaysiz.');
+    }
     return this.prisma.user.update({
       where: { id: userId },
       data: { isBlocked: block },
     });
   }
 
-  async setRole(userId: string, role: UserRole) {
+  async setRole(userId: string, role: UserRole, callerId: string, callerRole: UserRole) {
+    if (callerRole !== UserRole.ADMIN) {
+      throw new ForbiddenException('Faqat bosh admin foydalanuvchi rolini o‘zgartirishi mumkin.');
+    }
+    if (!VALID_ROLES.includes(role)) {
+      throw new BadRequestException('Noto‘g‘ri rol.');
+    }
+    if (userId === callerId && role !== UserRole.ADMIN) {
+      throw new BadRequestException('O‘zingizga bosh admindan boshqa rol berib bo‘lmaydi (tizimdan chiqib ketasiz).');
+    }
+    const data: { role: UserRole; moderatorPermissions?: typeof Prisma.JsonNull } = { role };
+    if (role !== UserRole.ADMIN_MODERATOR) {
+      data.moderatorPermissions = Prisma.JsonNull;
+    }
     return this.prisma.user.update({
       where: { id: userId },
-      data: { role },
+      data,
+    });
+  }
+
+  /** Set moderator permissions (only for users with role ADMIN_MODERATOR). Main admin only. */
+  async setModeratorPermissions(
+    userId: string,
+    callerRole: UserRole,
+    permissions: { canModerateProducts?: boolean; canModerateReviews?: boolean; canApproveSellerApplications?: boolean; canApproveShopUpdates?: boolean },
+  ) {
+    if (callerRole !== UserRole.ADMIN) {
+      throw new ForbiddenException('Faqat bosh admin moderator huquqlarini o‘zgartirishi mumkin.');
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, moderatorPermissions: true },
+    });
+    if (!target || target.role !== UserRole.ADMIN_MODERATOR) {
+      throw new BadRequestException('Faqat moderator rolidagi foydalanuvchiga huquqlar beriladi.');
+    }
+    const current = (target.moderatorPermissions as Record<string, boolean> | null) ?? {};
+    const data = (permissions as Record<string, unknown>) ?? {};
+    const keys: (keyof typeof permissions)[] = ['canModerateProducts', 'canModerateReviews', 'canApproveSellerApplications', 'canApproveShopUpdates'];
+    const merged = { ...current } as Record<string, boolean>;
+    for (const k of keys) {
+      if (data[k] === true || data[k] === false) merged[k] = data[k] as boolean;
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { moderatorPermissions: Object.keys(merged).length > 0 ? merged : Prisma.JsonNull },
     });
   }
 

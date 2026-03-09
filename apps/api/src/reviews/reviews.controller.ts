@@ -3,7 +3,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { ModeratorPermissionsGuard } from '../auth/guards/moderator-permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequireModeratorPermission } from '../auth/decorators/require-moderator-permission.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '@prisma/client';
@@ -52,8 +54,9 @@ export class ReviewsController {
   }
 
   @Post(':id/moderate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, ModeratorPermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN_MODERATOR)
+  @RequireModeratorPermission('canModerateReviews')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin: approve or reject review' })
   moderate(@Param('id') id: string, @Body() body: { approve: boolean }) {
@@ -61,8 +64,9 @@ export class ReviewsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, ModeratorPermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.ADMIN_MODERATOR)
+  @RequireModeratorPermission('canModerateReviews')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin: delete review' })
   remove(@Param('id') id: string) {

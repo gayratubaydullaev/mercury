@@ -16,6 +16,7 @@ export class UsersService {
         lastName: true,
         phone: true,
         role: true,
+        moderatorPermissions: true,
         avatarUrl: true,
         createdAt: true,
         emailVerified: true,

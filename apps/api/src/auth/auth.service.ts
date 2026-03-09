@@ -100,9 +100,15 @@ export class AuthService implements OnModuleInit {
     return { ok: true, message: 'Admin and seller passwords reset. Use admin@myshop.uz / Admin123! or seller@myshop.uz / Seller123!' };
   }
 
-  async login(user: { id: string; email: string; role: UserRole; isGuest?: boolean }) {
+  async login(user: { id: string; email: string; role: UserRole; isGuest?: boolean; moderatorPermissions?: unknown }) {
     const isGuest = !!user.isGuest;
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role, isGuest };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      isGuest,
+      ...(user.role === UserRole.ADMIN_MODERATOR && user.moderatorPermissions != null && { moderatorPermissions: user.moderatorPermissions as JwtPayload['moderatorPermissions'] }),
+    };
     const accessToken = this.jwt.sign(payload);
     const refreshToken = uuidv4();
     const expiresAt = new Date();
@@ -110,7 +116,18 @@ export class AuthService implements OnModuleInit {
     await this.prisma.refreshToken.create({
       data: { token: refreshToken, userId: user.id, expiresAt },
     });
-    return { accessToken, refreshToken, expiresAt, user: { id: user.id, email: user.email, role: user.role, isGuest } };
+    return {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isGuest,
+        ...(user.role === UserRole.ADMIN_MODERATOR && user.moderatorPermissions != null && { moderatorPermissions: user.moderatorPermissions }),
+      },
+    };
   }
 
   async refresh(refreshToken: string) {

@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SellerService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private notifications: NotificationsService,
   ) {}
 
   async getShop(userId: string) {
@@ -86,7 +88,7 @@ export class SellerService {
           : pending?.requestedDocumentUrls ?? (Array.isArray(shop.documentUrls) ? shop.documentUrls : null);
 
       const docUrlsJson = Array.isArray(requestedDocumentUrls) ? requestedDocumentUrls : undefined;
-      await this.prisma.pendingShopUpdate.upsert({
+      const pendingRecord = await this.prisma.pendingShopUpdate.upsert({
         where: { shopId: shop.id },
         create: {
           shopId: shop.id,
@@ -112,6 +114,15 @@ export class SellerService {
           status: 'PENDING',
         },
       });
+      this.notifications
+        .createForAdmins({
+          type: 'PENDING_SHOP_UPDATE',
+          title: 'Doʻkon oʻzgarishlari',
+          body: `${requestedName} — tasdiqlash kutilmoqda`,
+          link: '/admin/pending-shop-updates',
+          entityId: pendingRecord.id,
+        })
+        .catch(() => {});
     }
 
     const shopUpdate: Record<string, unknown> = {};

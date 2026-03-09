@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { ApplySellerDto } from './dto/apply-seller.dto';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class SellerApplicationService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private notifications: NotificationsService,
   ) {}
 
   /** Подать заявку на продавца (только BUYER, одна активная заявка). */
@@ -18,7 +20,9 @@ export class SellerApplicationService {
     });
     if (!user) throw new BadRequestException('User not found');
     if (user.role === 'SELLER') throw new BadRequestException('Siz allaqachon sotuvchisiz.');
-    if (user.role === 'ADMIN') throw new BadRequestException('Admin uchun ariza kerak emas.');
+    if (user.role === 'ADMIN' || user.role === 'ADMIN_MODERATOR') {
+      throw new BadRequestException('Admin uchun ariza kerak emas.');
+    }
 
     const existing = await this.prisma.sellerApplication.findUnique({
       where: { userId },
@@ -49,6 +53,15 @@ export class SellerApplicationService {
         },
       });
       this.notifyAdminNewApplication(existing.id).catch(() => {});
+      this.notifications
+        .createForAdmins({
+          type: 'NEW_SELLER_APPLICATION',
+          title: 'Yangi sotuvchi arizasi',
+          body: `${dto.shopName} — koʻrib chiqish kutilmoqda`,
+          link: '/admin/seller-applications',
+          entityId: existing.id,
+        })
+        .catch(() => {});
       return this.getMyStatus(userId);
     }
 
@@ -67,6 +80,15 @@ export class SellerApplicationService {
       },
     });
     this.notifyAdminNewApplication(created.id).catch(() => {});
+    this.notifications
+      .createForAdmins({
+        type: 'NEW_SELLER_APPLICATION',
+        title: 'Yangi sotuvchi arizasi',
+        body: `${dto.shopName} — koʻrib chiqish kutilmoqda`,
+        link: '/admin/seller-applications',
+        entityId: created.id,
+      })
+      .catch(() => {});
     return this.getMyStatus(userId);
   }
 

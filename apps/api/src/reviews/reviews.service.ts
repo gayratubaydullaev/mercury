@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class ReviewsService {
   constructor(
     private prisma: PrismaService,
     private telegram: TelegramService,
+    private notifications: NotificationsService,
   ) {}
 
   /** Количество купленных единиц товара пользователем (оплаченные, не отменённые заказы). */
@@ -64,12 +66,22 @@ export class ReviewsService {
       include: { product: { include: { shop: true } }, user: { select: { firstName: true, lastName: true } } },
     });
     if (full) {
+      const sellerId = full.product.shop.userId;
       this.telegram
-        .sendSellerReviewNotification(full.product.shop.userId, {
+        .sendSellerReviewNotification(sellerId, {
           rating: full.rating,
           comment: full.comment,
           productTitle: full.product.title,
           userName: `${full.user.firstName} ${full.user.lastName}`,
+        })
+        .catch(() => {});
+      this.notifications
+        .createForUser(sellerId, {
+          type: 'NEW_REVIEW',
+          title: 'Yangi sharh',
+          body: `${full.product.title} — ${full.rating} yulduz`,
+          link: `/seller/reviews`,
+          entityId: full.id,
         })
         .catch(() => {});
       this.telegram
