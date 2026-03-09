@@ -18,7 +18,7 @@ import { MergeGuestFavoritesOnLogin } from '@/components/merge-guest-favorites-o
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-geist-sans' });
 
-const DEFAULT_SITE_NAME = 'JomboyShop';
+const DEFAULT_SITE_NAME = 'Oline Bozor';
 
 export async function generateMetadata(): Promise<Metadata> {
   const raw = process.env.NEXT_PUBLIC_API_URL;

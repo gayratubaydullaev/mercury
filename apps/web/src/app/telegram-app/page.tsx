@@ -40,7 +40,7 @@ export default function TelegramAppPage() {
     return (
       <main className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center p-4 text-center bg-background text-foreground">
         <div className="max-w-sm w-full space-y-6">
-          <h1 className="text-2xl font-bold">JomboyShop — Telegram</h1>
+          <h1 className="text-2xl font-bold">Oline Bozor — Telegram</h1>
           <p className="text-sm text-muted-foreground">
             Bu sahifa Telegram Mini App sifatida ishlaydi. Bot orqali oching yoki toʻliq saytga oʻting.
           </p>
@@ -63,7 +63,7 @@ export default function TelegramAppPage() {
       style={{ backgroundColor: bgColor, color: textColor }}
     >
       <div className="max-w-sm w-full space-y-6">
-        <h1 className="text-2xl font-bold">JomboyShop</h1>
+        <h1 className="text-2xl font-bold">Oline Bozor</h1>
         {userName && <p className="text-lg opacity-90">Salom, {userName}!</p>}
         <p className="text-sm opacity-80">
           Telegram ichida doʻkon. Katalog, savatcha va buyurtmalar — quyidagi tugma orqali toʻliq saytda.

@@ -239,7 +239,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private async sendMenuResponse(chatId: string, messageId?: number) {
     const menuMarkup = await this.getMenuWithPanel(chatId);
     const text =
-      '<b>JomboyShop bot</b>\n\nQuyidagi tugmalardan foydalaning. Buyurtma xabarida "Batafsil" — toʻliq maʼlumot.';
+      '<b>Oline Bozor bot</b>\n\nQuyidagi tugmalardan foydalaning. Buyurtma xabarida "Batafsil" — toʻliq maʼlumot.';
     await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: menuMarkup }, messageId);
   }
 
@@ -351,20 +351,20 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       if (isAdmin) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Admin</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
+          `Assalomu alaykum! <b>Oline Bozor</b> — <b>Admin</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, moderatsiya, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else if (shop) {
         await this.bot!.sendMessage(
           chatId,
-          `Assalomu alaykum! <b>JomboyShop</b> — <b>Sotuvchi</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
+          `Assalomu alaykum! <b>Oline Bozor</b> — <b>Sotuvchi</b>.\n\nQuyidagi tugmalar: buyurtmalar, statistika, veb panel. Ulash kodi kerak boʻlsa — <b>/code</b> yuboring.`,
           { parse_mode: 'HTML', reply_markup: menuMarkup },
         );
       } else {
         const welcome =
           buyer
-            ? `Salom, ${esc(buyer.firstName)}! <b>JomboyShop</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali.`
-            : `Assalomu alaykum! <b>JomboyShop</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
+            ? `Salom, ${esc(buyer.firstName)}! <b>Oline Bozor</b> — xaridor.\n\nKatalog, savatcha va buyurtmalar — quyidagi tugma orqali.`
+            : `Assalomu alaykum! <b>Oline Bozor</b> doʻkoni.\n\nQuyidagi tugma orqali katalogni oching, xarid qiling. Birinchi ochishda avtomatik roʻyxatdan oʻtasiz.`;
         await this.bot!.sendMessage(
           chatId,
           welcome + '\n\nQuyidagi tugmalardan yoki buyruqlardan foydalaning:',
@@ -671,7 +671,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       isSellerOrAdmin = adminChatId === chatId || !!shopFound;
     }
     const text = isSellerOrAdmin
-      ? '<b>JomboyShop bot</b>\n\n' +
+      ? '<b>Oline Bozor bot</b>\n\n' +
         'Sotuvchilar va admin uchun. Avval Sozlamalarda kodni kiriting.\n\n' +
         '<b>Buyruqlar:</b>\n' +
         '• /code — Ulash kodi olish (Admin yoki Sotuvchi sozlamalarida kiriting)\n' +
@@ -682,7 +682,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         '• /today — Bugungi buyurtmalar\n' +
         '• /help — Yordam\n\n' +
         'Buyurtma xabarida tugmalar orqali holatni oʻzgartiring.'
-      : '<b>JomboyShop — xaridorlar uchun</b>\n\n' +
+      : '<b>Oline Bozor — xaridorlar uchun</b>\n\n' +
         '• <b>/start</b> — Bosh menyu\n' +
         '• <b>/shop</b> — Do\'konni ochish (veb-ilova)\n' +
         '• <b>/orders</b> — Mening buyurtmalarim\n' +

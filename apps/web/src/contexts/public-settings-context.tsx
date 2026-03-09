@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { API_URL } from '@/lib/utils';
 
-const DEFAULT_SITE_NAME = 'JomboyShop';
+const DEFAULT_SITE_NAME = 'Oline Bozor';
 
 type PublicSettings = { siteName: string };
 

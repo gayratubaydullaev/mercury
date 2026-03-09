@@ -250,12 +250,12 @@ export default function AdminSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Store className="h-5 w-5" /> Markaz nomi</CardTitle>
-            <p className="text-sm text-muted-foreground font-normal mt-1">Sayt sarlavhasi, shapka va futerdagi nom. Boʻsh qoldirsangiz — JomboyShop koʻrsatiladi.</p>
+            <p className="text-sm text-muted-foreground font-normal mt-1">Sayt sarlavhasi, shapka va futerdagi nom. Boʻsh qoldirsangiz — Oline Bozor koʻrsatiladi.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="siteName">Nomi</Label>
-              <Input id="siteName" type="text" placeholder="JomboyShop" maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+              <Input id="siteName" type="text" placeholder="Oline Bozor" maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
             </div>
           </CardContent>
         </Card>

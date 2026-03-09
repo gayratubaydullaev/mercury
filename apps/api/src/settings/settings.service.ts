@@ -8,7 +8,7 @@ export class SettingsService {
   /** Public: название маркетплейса и прочие публичные настройки (для шапки, футера, title). */
   async getPublicSettings(): Promise<{ siteName: string }> {
     const settings = await this.prisma.platformSettings.findFirst({ select: { siteName: true } });
-    const siteName = settings?.siteName?.trim() || 'JomboyShop';
+    const siteName = settings?.siteName?.trim() || 'Oline Bozor';
     return { siteName };
   }
 

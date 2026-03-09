@@ -356,7 +356,7 @@ export default function SellerSettingsPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                1) Telegramda JomboyShop botini oching va <b>/code</b> yuboring (kod olish uchun).<br />
+                1) Telegramda Oline Bozor botini oching va <b>/code</b> yuboring (kod olish uchun).<br />
                 2) Bot bergan 6 belgili kodni quyida kiriting.
               </p>
               <form onSubmit={linkTelegram} className="flex flex-wrap items-end gap-2">

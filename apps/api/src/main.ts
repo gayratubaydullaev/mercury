@@ -56,7 +56,7 @@ async function bootstrap() {
   app.useLogger(logger);
 
   const config = new DocumentBuilder()
-    .setTitle('JomboyShop API')
+    .setTitle('Oline Bozor API')
     .setDescription('Marketplace API - buyer, seller, admin')
     .setVersion('1.0')
     .addBearerAuth()

@@ -165,7 +165,7 @@ export class AuthService implements OnModuleInit {
     });
     await this.mailer.sendMail({
       to: email,
-      subject: 'JomboyShop – Tasdiqlash kodi',
+      subject: 'Oline Bozor – Tasdiqlash kodi',
       text: `Tasdiqlash kodingiz: ${code}. Kod 10 daqiqa amal qiladi.`,
       html: `<p>Tasdiqlash kodingiz: <strong>${code}</strong>.</p><p>Kod 10 daqiqa amal qiladi.</p>`,
     });
