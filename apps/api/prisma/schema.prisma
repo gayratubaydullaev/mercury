@@ -313,6 +313,25 @@ model Order {
   payments Payment[]
 }
 
+model CheckoutSession {
+  id              String   @id @default(uuid())
+  buyerId         String?  @map("buyer_id")
+  guestEmail      String?  @map("guest_email")
+  guestPhone      String?  @map("guest_phone")
+  guestFirstName  String?  @map("guest_first_name")
+  guestLastName   String?  @map("guest_last_name")
+  cartSnapshot    Json     @map("cart_snapshot")   // [{ productId, variantId, quantity, price, sellerId }]
+  shippingAddress Json     @map("shipping_address")
+  deliveryType    String   @map("delivery_type")   // DELIVERY | PICKUP
+  paymentMethod   String   @map("payment_method")  // CLICK | PAYME
+  totalAmount     Decimal  @map("total_amount")   @db.Decimal(12, 2)
+  notes           String?
+  orderId         String?  @map("order_id")        // set after successful payment
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("checkout_sessions")
+}
+
 model Payment {
   id         String   @id @default(uuid())
   orderId    String   @map("order_id")

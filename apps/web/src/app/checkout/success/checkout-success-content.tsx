@@ -80,6 +80,7 @@ export function CheckoutSuccessContent() {
   const [orders, setOrders] = useState<StoredOrder[] | null>(null);
   const orderIdFromUrl = searchParams.get('orderId');
   const tokenFromUrl = searchParams.get('token');
+  const sessionIdFromUrl = searchParams.get('session_id');
 
   useEffect(() => {
     (async () => {
@@ -101,12 +102,31 @@ export function CheckoutSuccessContent() {
           }
           return;
         }
+        if (sessionIdFromUrl) {
+          const sessionOrderRes = await apiFetch(`${API_URL}/checkout-session/${sessionIdFromUrl}/order`);
+          if (sessionOrderRes.ok) {
+            const { orderId } = (await sessionOrderRes.json()) as { orderId?: string };
+            if (orderId) {
+              const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+              const orderRes = await apiFetch(`${API_URL}/orders/${orderId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (orderRes.ok) {
+                const order = await orderRes.json();
+                setOrders([toStoredOrder(order)]);
+                return;
+              }
+            }
+          }
+          setOrders([]);
+          return;
+        }
         setOrders([]);
       } catch {
         setOrders([]);
       }
     })();
-  }, [orderIdFromUrl, tokenFromUrl]);
+  }, [orderIdFromUrl, tokenFromUrl, sessionIdFromUrl]);
 
   if (orders === null) return <div className="animate-pulse h-24 bg-muted rounded-lg" />;
 

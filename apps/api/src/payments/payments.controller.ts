@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -20,9 +20,11 @@ export class PaymentsController {
   @ApiBearerAuth()
   async clickInit(
     @CurrentUser('id') _userId: string,
-    @Body() body: { orderId: string; returnUrl: string },
+    @Body() body: { sessionId?: string; orderId?: string; returnUrl: string },
   ) {
-    return this.payments.createClickPayment(body.orderId, body.returnUrl);
+    const id = body.sessionId ?? body.orderId;
+    if (!id || !body.returnUrl) throw new BadRequestException('sessionId or orderId and returnUrl required');
+    return this.payments.createClickPayment(id, body.returnUrl);
   }
 
   @Post('payme/init')
@@ -30,9 +32,11 @@ export class PaymentsController {
   @ApiBearerAuth()
   async paymeInit(
     @CurrentUser('id') _userId: string,
-    @Body() body: { orderId: string; returnUrl: string },
+    @Body() body: { sessionId?: string; orderId?: string; returnUrl: string },
   ) {
-    return this.payments.createPaymePayment(body.orderId, body.returnUrl);
+    const id = body.sessionId ?? body.orderId;
+    if (!id || !body.returnUrl) throw new BadRequestException('sessionId or orderId and returnUrl required');
+    return this.payments.createPaymePayment(id, body.returnUrl);
   }
 
   @Post('click/callback')

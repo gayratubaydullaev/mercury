@@ -133,6 +133,97 @@ export class OrdersService {
     return orders;
   }
 
+  /**
+   * Create order from checkout session after successful Click/Payme payment.
+   * Idempotent: if session already has orderId, returns existing order.
+   */
+  async createOrderFromCheckoutSession(
+    sessionId: string,
+    provider: 'CLICK' | 'PAYME',
+    externalId: string,
+  ) {
+    const session = await this.prisma.checkoutSession.findUnique({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Checkout session not found');
+    if (session.orderId) {
+      const existing = await this.prisma.order.findUnique({
+        where: { id: session.orderId },
+        include: {
+          items: { include: { product: { include: { images: true, shop: true } }, variant: true } },
+          seller: { include: { shop: true } },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
+      });
+      return existing!;
+    }
+    const cartSnapshot = session.cartSnapshot as Array<{ productId: string; variantId?: string; quantity: number; price: number; sellerId: string }>;
+    if (!Array.isArray(cartSnapshot) || cartSnapshot.length === 0) throw new BadRequestException('Invalid session cart');
+
+    const sellerId = cartSnapshot[0]!.sellerId;
+    for (const item of cartSnapshot) {
+      const stock = item.variantId
+        ? (await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } }))?.stock ?? 0
+        : (await this.prisma.product.findUnique({ where: { id: item.productId }, select: { stock: true, title: true } }))?.stock ?? 0;
+      const productTitle = (await this.prisma.product.findUnique({ where: { id: item.productId }, select: { title: true } }))?.title ?? item.productId;
+      if (stock < item.quantity) {
+        throw new BadRequestException(`Mahsulot yetarli emas: ${productTitle}`);
+      }
+    }
+
+    const orderNumber = await this.generateOrderNumber();
+    const totalAmount = cartSnapshot.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const order = await this.prisma.$transaction(async (tx) => {
+      const o = await tx.order.create({
+        data: {
+          orderNumber,
+          buyerId: session.buyerId!,
+          sellerId,
+          paymentMethod: session.paymentMethod as 'CLICK' | 'PAYME',
+          paymentStatus: 'PAID',
+          status: 'CONFIRMED',
+          deliveryType: session.deliveryType as 'DELIVERY' | 'PICKUP',
+          totalAmount: new Decimal(totalAmount),
+          shippingAddress: session.shippingAddress as object,
+          notes: session.notes ?? undefined,
+          items: {
+            create: cartSnapshot.map((i) => ({
+              productId: i.productId,
+              variantId: i.variantId ?? undefined,
+              quantity: i.quantity,
+              price: new Decimal(i.price),
+            })),
+          },
+        },
+        include: {
+          items: { include: { product: { include: { images: true, shop: true } }, variant: true } },
+          seller: { include: { shop: true } },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
+      });
+      await tx.payment.create({
+        data: { orderId: o.id, provider, amount: new Decimal(totalAmount), status: 'PAID', externalId },
+      });
+      await tx.checkoutSession.update({ where: { id: sessionId }, data: { orderId: o.id } });
+      const cart = await tx.cart.findFirst({ where: { userId: session.buyerId! } });
+      if (cart) await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      return o;
+    });
+
+    this.telegram.sendOrderNotification(order.sellerId, order, 'new_order').catch(() => {});
+    this.telegram.sendAdminOrderNotification(order, 'new_order').catch(() => {});
+    this.telegram.sendBuyerOrderNotification(order.buyerId!, order, 'new_order').catch(() => {});
+    this.notifications
+      .createForUser(order.sellerId, {
+        type: 'NEW_ORDER',
+        title: 'Yangi buyurtma',
+        body: `${order.orderNumber} — ${Number(order.totalAmount).toLocaleString()} soʻm`,
+        link: '/seller/orders',
+        entityId: order.id,
+      })
+      .catch(() => {});
+    this.logger.log(`Order created from checkout session ${sessionId}: ${order.id}`);
+    return order;
+  }
+
   async findMyOrders(buyerId: string, page = 1, limit = 20) {
     const [data, total] = await Promise.all([
       this.prisma.order.findMany({

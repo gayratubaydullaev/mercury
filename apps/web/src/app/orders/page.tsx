@@ -11,6 +11,22 @@ import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  CONFIRMED: 'Tasdiqlandi',
+  PROCESSING: 'Tayyorlanmoqda',
+  SHIPPED: 'Yuborildi',
+  DELIVERED: 'Yetkazildi',
+  CANCELLED: 'Bekor qilindi',
+};
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Olib ketildi';
+  }
+  return ORDER_STATUS_LABELS[status] ?? status;
+}
+
 function formatPickupAddress(addr: Record<string, unknown> | null | undefined): string {
   if (!addr || typeof addr !== 'object') return '';
   const parts = [
@@ -18,7 +34,6 @@ function formatPickupAddress(addr: Record<string, unknown> | null | undefined): 
     addr.district,
     addr.street,
     addr.house,
-    addr.phone,
     typeof addr.fullAddress === 'string' ? addr.fullAddress : null,
   ].filter((x) => x != null && String(x).trim() !== '');
   return parts.map(String).join(', ').trim();
@@ -87,7 +102,7 @@ export default function MyOrdersPage() {
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                   <span className="font-mono text-sm">{o.orderNumber}</span>
-                  <Badge>{o.status}</Badge>
+                  <Badge>{getOrderStatusLabel(o.status, o.deliveryType)}</Badge>
                   <span className="font-semibold">{formatPrice(Number(o.totalAmount))} soʻm</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">{new Date(o.createdAt).toLocaleString('uz-UZ')}</p>
@@ -99,14 +114,13 @@ export default function MyOrdersPage() {
                         <span className="text-foreground/90">Doʻkon: </span>{o.seller.shop.name}
                       </p>
                     )}
-                    {formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress) && (
+                    {o.seller?.shop?.pickupAddress && formatPickupAddress(o.seller.shop.pickupAddress as Record<string, unknown>) ? (
                       <p className="text-muted-foreground mt-0.5">
                         <span className="text-foreground/90">Manzil (qayerdan olib ketish): </span>
-                        {formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress)}
+                        {formatPickupAddress(o.seller.shop.pickupAddress as Record<string, unknown>)}
                       </p>
-                    )}
-                    {!formatPickupAddress(o.seller?.shop?.pickupAddress ?? o.shippingAddress) && o.seller?.shop && (
-                      <p className="text-muted-foreground text-xs mt-0.5">Sotuvchi siz bilan bogʻlanadi</p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs mt-0.5">Sotuvchi siz bilan bogʻlanadi (manzil doʻkon sozlamalarida koʻrsatilmagan)</p>
                     )}
                   </div>
                 )}

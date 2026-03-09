@@ -11,6 +11,22 @@ import { apiFetch } from '@/lib/api';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Kutilmoqda',
+  CONFIRMED: 'Tasdiqlandi',
+  PROCESSING: 'Tayyorlanmoqda',
+  SHIPPED: 'Yuborildi',
+  DELIVERED: 'Yetkazildi',
+  CANCELLED: 'Bekor qilindi',
+};
+function getOrderStatusLabel(status: string, deliveryType?: string): string {
+  if (deliveryType === 'PICKUP') {
+    if (status === 'SHIPPED') return 'Olib ketishga tayyor';
+    if (status === 'DELIVERED') return 'Olib ketildi';
+  }
+  return ORDER_STATUS_LABELS[status] ?? status;
+}
+
 function formatPickupAddress(addr: PickupAddress): string {
   if (!addr || typeof addr !== 'object') return '';
   const parts = [addr.city, addr.district, addr.street, addr.house, addr.phone].filter(Boolean);
@@ -115,11 +131,13 @@ export default function OrderLookupPage() {
               <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <span>{order.seller?.shop?.name ?? 'Doʻkon'}</span>
                 <span className="text-muted-foreground font-normal text-sm">#{order.orderNumber}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded bg-muted">{order.status}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-muted">{getOrderStatusLabel(order.status, order.deliveryType)}</span>
               </CardTitle>
-              {order.deliveryType === 'PICKUP' && order.seller?.shop?.pickupAddress && (
+              {order.deliveryType === 'PICKUP' && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  Olib ketish: {formatPickupAddress(order.seller.shop.pickupAddress) || 'Manzil koʻrsatilmagan'}
+                  {order.seller?.shop?.pickupAddress && formatPickupAddress(order.seller.shop.pickupAddress)
+                    ? `Olib ketish manzili: ${formatPickupAddress(order.seller.shop.pickupAddress)}`
+                    : 'Sotuvchi siz bilan bogʻlanadi (manzil doʻkon sozlamalarida koʻrsatilmagan)'}
                 </p>
               )}
             </CardHeader>

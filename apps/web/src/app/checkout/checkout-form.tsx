@@ -125,6 +125,44 @@ export function CheckoutForm() {
             firstName: address.firstName?.trim() || undefined,
             lastName: address.lastName?.trim() || undefined,
           };
+
+      const isPayFirst = (paymentMethod === 'CLICK' || paymentMethod === 'PAYME') && token;
+      if (isPayFirst) {
+        const sessionRes = await apiFetch(`${API_URL}/checkout-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ paymentMethod, deliveryType, shippingAddress, notes: notes.trim() || undefined }),
+        });
+        if (!sessionRes.ok) {
+          const err = await sessionRes.json().catch(() => ({})) as { message?: string; outOfStock?: string[] };
+          const msg =
+            Array.isArray(err.outOfStock) && err.outOfStock.length > 0
+              ? [err.message || 'Xatolik', ...err.outOfStock].join('\n')
+              : (err.message || 'Xatolik');
+          setFieldErrors([msg]);
+          throw new Error(msg);
+        }
+        const sessionData = await sessionRes.json() as { sessionId: string };
+        const sessionId = sessionData.sessionId;
+        const successWithSession = typeof window !== 'undefined' ? `${window.location.origin}/checkout/success?session_id=${encodeURIComponent(sessionId)}` : '';
+        const pay = await apiFetch(paymentMethod === 'CLICK' ? `${API_URL}/payments/click/init` : `${API_URL}/payments/payme/init`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ sessionId, returnUrl: successWithSession }),
+        });
+        const payData = await pay.json();
+        const redirectUrl = payData.redirectUrl ?? payData.paymentUrl;
+        if (redirectUrl) window.location.href = redirectUrl;
+        else router.push(`/checkout/success?session_id=${encodeURIComponent(sessionId)}`);
+        return;
+      }
+
+      if ((paymentMethod === 'CLICK' || paymentMethod === 'PAYME') && isGuest) {
+        setFieldErrors(['Click yoki Payme uchun tizimga kiring']);
+        setLoading(false);
+        return;
+      }
+
       const res = await apiFetch(`${API_URL}/orders`, {
         method: 'POST',
         headers,
@@ -162,41 +200,11 @@ export function CheckoutForm() {
       if (orderList.length > 0 && typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('checkout_orders', JSON.stringify(orderList));
       }
-      const order = orderList[0];
-      if (!order) {
-        router.push('/checkout/success');
-        return;
-      }
-      const firstOrderId = order.id;
-      const firstOrderToken = order.guestViewToken ?? null;
       const successUrl =
-        isGuest && firstOrderId && firstOrderToken
-          ? `/checkout/success?orderId=${encodeURIComponent(firstOrderId)}&token=${encodeURIComponent(firstOrderToken)}`
+        isGuest && orderList[0] && (orderList[0] as { id?: string; guestViewToken?: string }).guestViewToken
+          ? `/checkout/success?orderId=${encodeURIComponent((orderList[0] as { id: string }).id)}&token=${encodeURIComponent((orderList[0] as { guestViewToken: string }).guestViewToken)}`
           : '/checkout/success';
-      if (paymentMethod === 'CLICK' && token) {
-        const pay = await apiFetch(`${API_URL}/payments/click/init`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ orderId: order.id, returnUrl }),
-        });
-        const data = await pay.json();
-        if (data.redirectUrl) window.location.href = data.redirectUrl;
-        else router.push(successUrl);
-      } else if (paymentMethod === 'PAYME' && token) {
-        const pay = await apiFetch(`${API_URL}/payments/payme/init`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ orderId: order.id, returnUrl }),
-        });
-        const data = await pay.json();
-        if (data.paymentUrl) window.location.href = data.paymentUrl;
-        else router.push(successUrl);
-      } else if ((paymentMethod === 'CLICK' || paymentMethod === 'PAYME') && isGuest) {
-        alert('Click yoki Payme uchun tizimga kiring');
-        router.push(successUrl);
-      } else {
-        router.push(successUrl);
-      }
+      router.push(successUrl);
     } catch (err) {
       const msg =
         err instanceof TypeError

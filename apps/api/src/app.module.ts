@@ -29,6 +29,7 @@ import { MailerModule } from './mailer/mailer.module';
 import { BannersModule } from './banners/banners.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CheckoutSessionModule } from './checkout-session/checkout-session.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ReviewsModule,
     FavoritesModule,
     PaymentsModule,
+    CheckoutSessionModule,
     SellerModule,
     SellerApplicationModule,
     TelegramModule,
@@ -125,6 +127,8 @@ export class AppModule implements NestModule {
         { path: 'cart/items/:productId', method: RequestMethod.DELETE },
         // Заказы
         { path: 'orders', method: RequestMethod.POST },
+        // Сессия чекаута (Click/Payme — оплата до создания заказа)
+        { path: 'checkout-session', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }
