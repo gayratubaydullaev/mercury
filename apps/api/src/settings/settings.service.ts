@@ -12,8 +12,8 @@ export class SettingsService {
     return { siteName };
   }
 
-  /** Public: enabled payment methods and delivery types for checkout. */
-  async getCheckoutOptions(): Promise<{ paymentMethods: string[]; deliveryTypes: string[] }> {
+  /** Public: enabled payment methods, delivery types, and chat with sellers. */
+  async getCheckoutOptions(): Promise<{ paymentMethods: string[]; deliveryTypes: string[]; chatWithSellerEnabled: boolean }> {
     const settings = await this.prisma.platformSettings.findFirst();
     const paymentMethods: string[] = [];
     if (settings?.paymentClickEnabled) paymentMethods.push('CLICK');
@@ -25,6 +25,7 @@ export class SettingsService {
     if (settings?.deliveryEnabled) deliveryTypes.push('DELIVERY');
     if (settings?.pickupEnabled) deliveryTypes.push('PICKUP');
     if (deliveryTypes.length === 0) deliveryTypes.push('DELIVERY', 'PICKUP'); // fallback
-    return { paymentMethods, deliveryTypes };
+    const chatWithSellerEnabled = settings?.chatWithSellerEnabled ?? true;
+    return { paymentMethods, deliveryTypes, chatWithSellerEnabled };
   }
 }

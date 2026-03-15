@@ -50,6 +50,11 @@ export class UpdatePlatformSettingsDto {
   @IsBoolean()
   pickupEnabled?: boolean;
 
+  @ApiPropertyOptional({ description: 'Chat xaridor–sotuvchi: yoqilsa, sotuvchilar o\'z do\'konida chatni yoqishi/o\'chirishi mumkin' })
+  @IsOptional()
+  @IsBoolean()
+  chatWithSellerEnabled?: boolean;
+
   /** Admin Telegram Chat ID — вручную или из .env; при пустой строке сбрасывается */
   @ApiPropertyOptional({ description: 'Admin Telegram chat ID (число, напр. 123456789)' })
   @IsOptional()

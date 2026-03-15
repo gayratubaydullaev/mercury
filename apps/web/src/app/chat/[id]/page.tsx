@@ -31,6 +31,7 @@ type Session = {
     shop?: { chatEnabled: boolean } | null;
   };
   product: { id: string; title: string; slug: string } | null;
+  chatWithSellerEnabled?: boolean;
 };
 
 function getMyId(): string {
@@ -139,7 +140,7 @@ export default function ChatRoomPage() {
     : null;
   const isSeller = session ? myId === session.seller.id : false;
   const isBuyer = session ? myId === session.buyer.id : false;
-  const sellerChatDisabled = isBuyer && session?.seller?.shop?.chatEnabled === false;
+  const sellerChatDisabled = isBuyer && (session?.chatWithSellerEnabled === false || session?.seller?.shop?.chatEnabled === false);
   const headerTitle = otherUser
     ? `${otherUser.firstName} ${otherUser.lastName}`.trim() || (isSeller ? 'Xaridor' : 'Sotuvchi')
     : 'Suhbat';
@@ -205,7 +206,7 @@ export default function ChatRoomPage() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={sellerChatDisabled ? 'Sotuvchi xabarlarni o‘chirgan' : 'Xabar yozing...'}
+          placeholder={sellerChatDisabled ? (session?.chatWithSellerEnabled === false ? 'Platforma administratori chatni o‘chirgan' : 'Sotuvchi xabarlarni o‘chirgan') : 'Xabar yozing...'}
           className="flex-1"
           disabled={loading || sellerChatDisabled}
           autoComplete="off"

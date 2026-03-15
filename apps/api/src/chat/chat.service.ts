@@ -9,6 +9,11 @@ export class ChatService {
     private notifications: NotificationsService,
   ) {}
 
+  private async isPlatformChatWithSellerEnabled(): Promise<boolean> {
+    const settings = await this.prisma.platformSettings.findFirst({ select: { chatWithSellerEnabled: true } });
+    return settings?.chatWithSellerEnabled ?? true;
+  }
+
   private async isSellerChatEnabled(sellerId: string): Promise<boolean> {
     const shop = await this.prisma.shop.findFirst({ where: { userId: sellerId }, select: { chatEnabled: true } });
     return shop?.chatEnabled ?? true;
@@ -16,6 +21,10 @@ export class ChatService {
 
   async getOrCreateSession(buyerId: string, sellerId: string, productId?: string) {
     if (buyerId === sellerId) throw new ForbiddenException('Cannot chat with yourself');
+    const platformEnabled = await this.isPlatformChatWithSellerEnabled();
+    if (!platformEnabled) {
+      throw new ForbiddenException('Chat xaridor–sotuvchi hozircha platforma administratori tomonidan o‘chirilgan');
+    }
     const chatEnabled = await this.isSellerChatEnabled(sellerId);
     if (!chatEnabled) {
       throw new ForbiddenException('Sotuvchi hozircha xabarlarni qabul qilmaydi');
@@ -65,7 +74,8 @@ export class ChatService {
     });
     if (!session) throw new NotFoundException('Session not found');
     if (session.buyerId !== userId && session.sellerId !== userId) throw new ForbiddenException();
-    return session;
+    const chatWithSellerEnabled = await this.isPlatformChatWithSellerEnabled();
+    return { ...session, chatWithSellerEnabled };
   }
 
   async sendMessage(sessionId: string, senderId: string, content: string) {
@@ -73,8 +83,10 @@ export class ChatService {
     if (!session) throw new NotFoundException('Session not found');
     if (session.buyerId !== senderId && session.sellerId !== senderId) throw new ForbiddenException();
     if (!content?.trim()) throw new ForbiddenException('Content is required');
-    // Agar xaridor yozayotgan bo'lsa va sotuvchi chatni o'chirgan bo'lsa — rad etish
+    // Agar xaridor yozayotgan bo'lsa — platforma va sotuvchi chatni tekshirish
     if (session.buyerId === senderId) {
+      const platformEnabled = await this.isPlatformChatWithSellerEnabled();
+      if (!platformEnabled) throw new ForbiddenException('Chat xaridor–sotuvchi hozircha platforma administratori tomonidan o‘chirilgan');
       const chatEnabled = await this.isSellerChatEnabled(session.sellerId);
       if (!chatEnabled) throw new ForbiddenException('Sotuvchi hozircha xabarlarni qabul qilmaydi');
     }

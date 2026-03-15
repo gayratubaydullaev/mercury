@@ -287,6 +287,7 @@ export class AdminService {
           paymentCardOnDeliveryEnabled: true,
           deliveryEnabled: true,
           pickupEnabled: true,
+          chatWithSellerEnabled: true,
         },
       });
     }
@@ -303,6 +304,7 @@ export class AdminService {
     paymentCardOnDeliveryEnabled?: boolean;
     deliveryEnabled?: boolean;
     pickupEnabled?: boolean;
+    chatWithSellerEnabled?: boolean;
     adminTelegramChatId?: string | null;
   }) {
     const settings = await this.prisma.platformSettings.findFirst();
@@ -317,6 +319,7 @@ export class AdminService {
           paymentCardOnDeliveryEnabled: data.paymentCardOnDeliveryEnabled ?? true,
           deliveryEnabled: data.deliveryEnabled ?? true,
           pickupEnabled: data.pickupEnabled ?? true,
+          chatWithSellerEnabled: data.chatWithSellerEnabled ?? true,
         },
       });
     }
@@ -332,6 +335,7 @@ export class AdminService {
         ...(data.paymentCardOnDeliveryEnabled != null && { paymentCardOnDeliveryEnabled: data.paymentCardOnDeliveryEnabled }),
         ...(data.deliveryEnabled != null && { deliveryEnabled: data.deliveryEnabled }),
         ...(data.pickupEnabled != null && { pickupEnabled: data.pickupEnabled }),
+        ...(data.chatWithSellerEnabled != null && { chatWithSellerEnabled: data.chatWithSellerEnabled }),
         ...(data.adminTelegramChatId !== undefined && {
           adminTelegramChatId: data.adminTelegramChatId?.trim() || null,
         }),
@@ -354,6 +358,7 @@ export class AdminService {
           paymentCardOnDeliveryEnabled: true,
           deliveryEnabled: true,
           pickupEnabled: true,
+          chatWithSellerEnabled: true,
         },
       });
     }

@@ -20,6 +20,7 @@ export default function SellerSettingsPage() {
     description: string | null;
     pickupAddress: PickupAddress;
     chatEnabled?: boolean;
+    chatWithSellerEnabled?: boolean;
     legalType?: string | null;
     legalName?: string | null;
     ogrn?: string | null;
@@ -386,7 +387,9 @@ export default function SellerSettingsPage() {
             Xaridorlar bilan chat
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Chat yoqilganda xaridorlar sizga mahsulot haqida yozishi mumkin. O‘chirsangiz, yangi xabarlar qabul qilinmaydi (oldingi suhbatlar ko‘rinadi).
+            {shop?.chatWithSellerEnabled !== false
+              ? "Chat yoqilganda xaridorlar sizga mahsulot haqida yozishi mumkin. O‘chirsangiz, yangi xabarlar qabul qilinmaydi (oldingi suhbatlar ko‘rinadi)."
+              : "Platforma administratori chatni o‘chirgan. Chatni yoqish imkoni yo‘q — admin qayta yoqguncha kuting."}
           </p>
         </CardHeader>
         <CardContent>
@@ -396,13 +399,14 @@ export default function SellerSettingsPage() {
               id="chat-toggle"
               checked={chatEnabled}
               onChange={(e) => toggleChat(e.target.checked)}
-              disabled={chatSaving || shop === null}
+              disabled={chatSaving || shop === null || shop?.chatWithSellerEnabled === false}
               className="h-4 w-4 rounded border-input accent-primary"
             />
-            <Label htmlFor="chat-toggle" className="cursor-pointer text-sm font-medium">
+            <Label htmlFor="chat-toggle" className={shop?.chatWithSellerEnabled === false ? 'text-muted-foreground cursor-not-allowed' : 'cursor-pointer text-sm font-medium'}>
               Chatni qabul qilish — xaridorlar sizga yozishi mumkin
             </Label>
           </div>
+          {shop?.chatWithSellerEnabled === false && <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">Admin chatni platformada o‘chirgan</p>}
           {chatSaving && <p className="text-xs text-muted-foreground mt-2">Saqlanmoqda...</p>}
         </CardContent>
       </Card>

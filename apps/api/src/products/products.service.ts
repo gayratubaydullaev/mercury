@@ -341,7 +341,9 @@ export class ProductsService {
     if (!product) throw new NotFoundException('Product not found');
     const reviewsCount = product.reviews.length;
     const avgRating = reviewsCount ? Math.round((product.reviews.reduce((s, r) => s + r.rating, 0) / reviewsCount) * 10) / 10 : null;
-    return { ...product, reviewsCount, avgRating };
+    const platform = await this.prisma.platformSettings.findFirst({ select: { chatWithSellerEnabled: true } });
+    const chatWithSellerEnabled = platform?.chatWithSellerEnabled ?? true;
+    return { ...product, reviewsCount, avgRating, chatWithSellerEnabled };
   }
 
   async findBySlug(shopSlug: string, productSlug: string) {

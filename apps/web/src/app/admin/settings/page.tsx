@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { Banknote, Truck, CreditCard, Send, Unplug, Store } from 'lucide-react';
+import { Banknote, Truck, CreditCard, Send, Unplug, Store, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Settings = {
@@ -22,6 +22,7 @@ type Settings = {
   paymentCardOnDeliveryEnabled?: boolean;
   deliveryEnabled?: boolean;
   pickupEnabled?: boolean;
+  chatWithSellerEnabled?: boolean;
   adminTelegramChatId?: string | null;
 };
 
@@ -32,6 +33,7 @@ const defaultPaymentDelivery = {
   paymentCardOnDeliveryEnabled: true,
   deliveryEnabled: true,
   pickupEnabled: true,
+  chatWithSellerEnabled: true,
 };
 
 export default function AdminSettingsPage() {
@@ -75,6 +77,7 @@ export default function AdminSettingsPage() {
           paymentCardOnDeliveryEnabled: s.paymentCardOnDeliveryEnabled ?? true,
           deliveryEnabled: s.deliveryEnabled ?? true,
           pickupEnabled: s.pickupEnabled ?? true,
+          chatWithSellerEnabled: s.chatWithSellerEnabled ?? true,
         });
       })
       .catch(() => {
@@ -151,6 +154,7 @@ export default function AdminSettingsPage() {
           paymentCardOnDeliveryEnabled: s.paymentCardOnDeliveryEnabled ?? true,
           deliveryEnabled: s.deliveryEnabled ?? true,
           pickupEnabled: s.pickupEnabled ?? true,
+          chatWithSellerEnabled: s.chatWithSellerEnabled ?? true,
         });
         setAdminTelegramChatId(s.adminTelegramChatId ?? '');
         loadTelegramStatus();
@@ -313,6 +317,17 @@ export default function AdminSettingsPage() {
                 <span className="font-medium">Oʻzim olib ketaman</span>
               </label>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Chat xaridor–sotuvchi</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">Chat yoqilganda xaridorlar sotuvchilar bilan yozishlari mumkin. O‘chirsangiz, barcha chatlar platformada o‘chiriladi. Yoqilganda har bir sotuvchi o‘z do‘konida chatni alohida yoqishi yoki o‘chirishi mumkin.</p>
+            <label className={cn('flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50', paymentDelivery.chatWithSellerEnabled && 'border-primary bg-primary/5')}>
+              <input type="checkbox" className="h-4 w-4 rounded border-input" checked={paymentDelivery.chatWithSellerEnabled} onChange={() => toggle('chatWithSellerEnabled')} />
+              <span className="font-medium">Chat xaridor–sotuvchi yoqilgan</span>
+            </label>
           </CardContent>
         </Card>
 

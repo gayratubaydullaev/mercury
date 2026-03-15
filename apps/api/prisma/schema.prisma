@@ -455,6 +455,8 @@ model PlatformSettings {
   // Yetkazib berish / samoviyoz
   deliveryEnabled Boolean @default(true) @map("delivery_enabled")
   pickupEnabled   Boolean @default(true) @map("pickup_enabled")
+  // Chat xaridor–sotuvchi: admin yoqadi/ochiradi; ochiq bo'lsa, har bir sotuvchi o'z do'konida chatni yoqishi/o'chirishi mumkin
+  chatWithSellerEnabled Boolean @default(true) @map("chat_with_seller_enabled")
   adminTelegramChatId String? @map("admin_telegram_chat_id") // Admin uchun to'liq buyurtma bildirishnomalari
   updatedAt       DateTime @updatedAt @map("updated_at")
 

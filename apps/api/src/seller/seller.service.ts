@@ -22,8 +22,10 @@ export class SellerService {
     const { pendingUpdates, ...rest } = shop;
     const pending = pendingUpdates?.[0];
     const docUrls = pending?.requestedDocumentUrls;
+    const platform = await this.prisma.platformSettings.findFirst({ select: { chatWithSellerEnabled: true } });
     return {
       ...rest,
+      chatWithSellerEnabled: platform?.chatWithSellerEnabled ?? true,
       pendingUpdate: pending
         ? {
             requestedName: pending.requestedName,

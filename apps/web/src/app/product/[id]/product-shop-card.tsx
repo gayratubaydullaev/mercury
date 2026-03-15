@@ -5,9 +5,12 @@ import { ChatSellerButton } from './chat-seller-button';
 interface ProductShopCardProps {
   shop: { name: string; slug: string; userId?: string; chatEnabled?: boolean };
   productId?: string;
+  /** Platforma admin tomonidan chat yoqilgan bo‘lsa true (default: true) */
+  chatWithSellerEnabled?: boolean;
 }
 
-export function ProductShopCard({ shop, productId }: ProductShopCardProps) {
+export function ProductShopCard({ shop, productId, chatWithSellerEnabled = true }: ProductShopCardProps) {
+  const canChat = chatWithSellerEnabled && shop.chatEnabled !== false;
   return (
     <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">
       <Link
@@ -26,7 +29,7 @@ export function ProductShopCard({ shop, productId }: ProductShopCardProps) {
         <ChatSellerButton
           sellerId={shop.userId}
           productId={productId}
-          chatEnabled={shop.chatEnabled !== false}
+          chatEnabled={canChat}
           className="w-full mt-1"
         />
       )}

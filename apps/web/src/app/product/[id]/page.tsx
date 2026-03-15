@@ -131,7 +131,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
                 {shop && (
                   <>
                     <Separator className="bg-border" />
-                    <ProductShopCard shop={shop} productId={product.id} />
+                    <ProductShopCard shop={shop} productId={product.id} chatWithSellerEnabled={(product as { chatWithSellerEnabled?: boolean }).chatWithSellerEnabled !== false} />
                   </>
                 )}
               </div>
@@ -210,7 +210,7 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
 
               {shop && (
                 <>
-                  <ProductShopCard shop={shop} productId={product.id} />
+                  <ProductShopCard shop={shop} productId={product.id} chatWithSellerEnabled={(product as { chatWithSellerEnabled?: boolean }).chatWithSellerEnabled !== false} />
                   <Separator className="my-1 sm:my-2" />
                 </>
               )}
