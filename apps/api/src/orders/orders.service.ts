@@ -44,7 +44,6 @@ export class OrdersService {
         });
     if (!cart || !cart.items.length) throw new BadRequestException('Cart is empty');
 
-    // Validate stock before creating order — prevent checkout when product is out of stock
     const outOfStockMessages: string[] = [];
     for (const item of cart.items) {
       const available = item.variantId && item.variant
@@ -133,10 +132,6 @@ export class OrdersService {
     return orders;
   }
 
-  /**
-   * Create order from checkout session after successful Click/Payme payment.
-   * Idempotent: if session already has orderId, returns existing order.
-   */
   async createOrderFromCheckoutSession(
     sessionId: string,
     provider: 'CLICK' | 'PAYME',
@@ -242,7 +237,6 @@ export class OrdersService {
   }
 
   async findSellerOrders(sellerId: string, page = 1, limit = 20, status?: OrderStatus) {
-    // Only shop owners can see orders; filter strictly by sellerId (= shop owner's user id)
     const shop = await this.prisma.shop.findUnique({
       where: { userId: sellerId },
       select: { id: true },
@@ -303,12 +297,10 @@ export class OrdersService {
     return order;
   }
 
-  /** Normalize phone for lookup: digits only (e.g. 998901234567). */
   private normalizePhone(phone: string): string {
     return (phone || '').replace(/\D/g, '');
   }
 
-  /** Get guest order by order number + phone (public). For guests who lost the view link. */
   async findGuestOrderByNumberAndPhone(orderNumber: string, guestPhone: string) {
     const phone = this.normalizePhone(guestPhone ?? '');
     if (!orderNumber?.trim() || !phone) throw new NotFoundException('Order not found');
@@ -329,7 +321,6 @@ export class OrdersService {
     return order;
   }
 
-  /** Get order by id + guest view token (public, for guests to view their order after checkout). */
   async findOneByGuestToken(id: string, token: string) {
     if (!token?.trim()) throw new NotFoundException('Order not found');
     const order = await this.prisma.order.findFirst({
@@ -369,7 +360,6 @@ export class OrdersService {
     return updated;
   }
 
-  /** Продавец отмечает оплату наличными/картой при получении (только для CASH и CARD_ON_DELIVERY). */
   async markAsPaid(id: string, sellerId: string) {
     const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
     if (!order) throw new NotFoundException('Order not found');

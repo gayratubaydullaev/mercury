@@ -13,7 +13,6 @@ const EXCEL_IMPORT_MAX_ROWS = 500;
 const TITLE_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 10000;
 
-/** Парсинг числа из ячейки Excel (строка с пробелами/запятыми или число). */
 function parseNum(value: unknown): number | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value === 'number' && !isNaN(value)) return value;
@@ -22,12 +21,10 @@ function parseNum(value: unknown): number | undefined {
   return isNaN(n) ? undefined : n;
 }
 
-/** Нормализация для сравнения опций (пробелы, регистр ключей). */
 function normOpt(s: string): string {
   return String(s ?? '').replace(/\s+/g, '').trim();
 }
 
-/** Проверяет: при наличии options у каждой комбинации значений должен быть ровно один вариант. */
 function validateOptionsAndVariants(
   options: Record<string, string[]>,
   variants: Array<{ options: Record<string, string> }>,
@@ -65,7 +62,6 @@ function validateOptionsAndVariants(
     }
     variantCombos.add(key);
   }
-  // Декартово произведение — все комбинации
   function cartesian(acc: string[][], keyIndex: number): string[][] {
     if (keyIndex >= keys.length) return acc;
     const k = keys[keyIndex];
@@ -313,7 +309,6 @@ export class ProductsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  /** Публичная информация о магазине для покупателей: реквизиты ИП/ООО показываем, документы — только админу. */
   async findShopBySlug(slug: string) {
     const shop = await this.prisma.shop.findFirst({
       where: { slug, isActive: true },
@@ -326,7 +321,6 @@ export class ProductsService {
         legalName: true,
         ogrn: true,
         inn: true,
-        // documentUrls не отдаём — полная информация только для админа
       },
     });
     if (!shop) throw new NotFoundException('Shop not found');
@@ -449,7 +443,6 @@ export class ProductsService {
     return product;
   }
 
-  /** Скачать шаблон Excel для массовой загрузки товаров */
   async getImportTemplate(): Promise<Buffer> {
     const leafCategories = await this.prisma.category.findMany({
       where: { parentId: { not: null } },
@@ -514,7 +507,6 @@ export class ProductsService {
     return Buffer.from(XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }));
   }
 
-  /** Импорт товаров из Excel (только продавец) */
   async importFromExcel(
     sellerId: string,
     buffer: Buffer,

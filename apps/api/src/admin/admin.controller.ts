@@ -21,7 +21,6 @@ import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { RecordPayoutDto } from './dto/record-payout.dto';
 import { SetSellerCommissionDto } from './dto/set-seller-commission.dto';
 
-/** Только главный админ (ADMIN) — назначение ролей, блокировка, настройки, выплаты, категории, баннеры, Telegram. */
 const SUPER_ADMIN = [UserRole.ADMIN];
 
 @ApiTags('admin')

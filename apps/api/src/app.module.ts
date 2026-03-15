@@ -54,7 +54,6 @@ import { CheckoutSessionModule } from './checkout-session/checkout-session.modul
       useFactory: (config: ConfigService) => {
         const limitShort = parseInt(config.get('THROTTLE_LIMIT_SHORT') || '300', 10) || 300;
         const limitLong = parseInt(config.get('THROTTLE_LIMIT_LONG') || '2000', 10) || 2000;
-        // Redis for Throttler only if explicitly enabled (e.g. multiple API replicas). Otherwise in-memory.
         const redisUrl = config.get<string>('REDIS_URL');
         const throttleUseRedis = config.get<string>('THROTTLE_USE_REDIS') === 'true' && redisUrl?.trim();
         return {
@@ -91,7 +90,6 @@ import { CheckoutSessionModule } from './checkout-session/checkout-session.modul
     NotificationsModule,
   ],
   providers: [
-    // Rate limit first, then JWT. ThrottlerGuard uses @Throttle() overrides on auth routes.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_INTERCEPTOR, useClass: RlsInterceptor },
@@ -99,11 +97,9 @@ import { CheckoutSessionModule } from './checkout-session/checkout-session.modul
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // CSRF: все POST/PUT/PATCH/DELETE требуют заголовок x-csrf-token. Исключения — только перечисленные ниже.
     consumer
       .apply(CsrfMiddleware)
       .exclude(
-        // Авторизация
         { path: 'auth/login', method: RequestMethod.POST },
         { path: 'auth/register', method: RequestMethod.POST },
         { path: 'auth/refresh', method: RequestMethod.POST },
@@ -113,21 +109,15 @@ export class AppModule implements NestModule {
         { path: 'auth/verify-otp', method: RequestMethod.POST },
         { path: 'auth/telegram', method: RequestMethod.POST },
         { path: 'auth/telegram/request-login', method: RequestMethod.POST },
-        // Разработка
         { path: 'auth/dev-reset-seed-users', method: RequestMethod.POST },
-        // Пользователи
         { path: 'users/me', method: RequestMethod.PATCH },
-        // Платежи (callback от провайдеров)
         { path: 'payments/click/callback', method: RequestMethod.POST },
         { path: 'payments/payme/callback', method: RequestMethod.POST },
-        // Корзина — все эндпоинты
         { path: 'cart', method: RequestMethod.GET },
         { path: 'cart/items', method: RequestMethod.POST },
         { path: 'cart/items/:productId', method: RequestMethod.PATCH },
         { path: 'cart/items/:productId', method: RequestMethod.DELETE },
-        // Заказы
         { path: 'orders', method: RequestMethod.POST },
-        // Сессия чекаута (Click/Payme — оплата до создания заказа)
         { path: 'checkout-session', method: RequestMethod.POST },
       )
       .forRoutes('*');

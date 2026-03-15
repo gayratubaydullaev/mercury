@@ -59,11 +59,6 @@ export class PaymentsService {
     return { redirectUrl: `https://my.click.uz/services/pay?${params.toString()}` };
   }
 
-  /**
-   * Verify Click callback sign_string.
-   * Prepare (action=0): MD5(click_trans_id + service_id + secret_key + merchant_trans_id + amount + action + sign_time)
-   * Complete (action=1): MD5(click_trans_id + service_id + secret_key + merchant_trans_id + merchant_prepare_id + amount + action + sign_time)
-   */
   private verifyClickSign(body: Record<string, string>, secretKey: string): boolean {
     const { click_trans_id, service_id, merchant_trans_id, merchant_prepare_id, amount, action, sign_string, sign_time } = body;
     if (!sign_string || !sign_time) return false;

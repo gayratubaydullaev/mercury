@@ -12,7 +12,6 @@ export class CacheService implements OnModuleDestroy {
     if (this.redis) await this.redis.quit().catch(() => {});
   }
 
-  /** Get JSON value. Returns null if key missing or Redis unavailable. */
   async get<T>(key: string): Promise<T | null> {
     if (!this.redis) return null;
     try {
@@ -24,7 +23,6 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
-  /** Set JSON value with TTL in seconds. No-op if Redis unavailable. */
   async set(key: string, value: unknown, ttlSec = DEFAULT_TTL_SEC): Promise<void> {
     if (!this.redis) return;
     try {
@@ -35,13 +33,11 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
-  /** Invalidate key. No-op if Redis unavailable. */
   async del(key: string): Promise<void> {
     if (!this.redis) return;
     try {
       await this.redis.del(key);
     } catch {
-      // ignore
     }
   }
 }

@@ -1,6 +1,3 @@
-// MyShopUZ Marketplace - Prisma Schema
-// PostgreSQL with Row Level Security (RLS) policies applied via migrations
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,8 +10,8 @@ datasource db {
 enum UserRole {
   BUYER
   SELLER
-  ADMIN             // главный админ: пользователи, роли, настройки платформы, выплаты
-  ADMIN_MODERATOR   // модератор: товары, отзывы, заявки продавцов, изменения магазинов
+  ADMIN
+  ADMIN_MODERATOR
 }
 
 enum OrderStatus {
@@ -50,30 +47,27 @@ model User {
   email         String    @unique
   passwordHash  String?   @map("password_hash")
   phone         String?   @unique
-  telegramId    String?   @unique @map("telegram_id") // для входа через Telegram Web App
+  telegramId    String?   @unique @map("telegram_id")
   firstName     String    @map("first_name")
   lastName      String    @map("last_name")
   role          UserRole  @default(BUYER)
-  moderatorPermissions Json?   @map("moderator_permissions") // only for ADMIN_MODERATOR: { canModerateProducts, canModerateReviews, canApproveSellerApplications, canApproveShopUpdates }
+  moderatorPermissions Json?   @map("moderator_permissions")
   avatarUrl     String?   @map("avatar_url")
   isBlocked     Boolean   @default(false) @map("is_blocked")
   emailVerified Boolean   @default(false) @map("email_verified")
-  isGuest       Boolean   @default(false) @map("is_guest") // гостевой аккаунт (по телефону); можно «апгрейднуть» через Telegram/пароль
+  isGuest       Boolean   @default(false) @map("is_guest")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Auth
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
 
-  // Buyer
   orders        Order[]         @relation("OrderBuyer")
   cart          Cart?
   reviews       Review[]
   favorites     Favorite[]
   buyerChatSessions  ChatSession[] @relation("ChatBuyer")
 
-  // Seller (products via shop: user.shop?.products)
   sellerOrders       Order[]         @relation("OrderSeller")
   shop               Shop?
   sellerChatSessions ChatSession[]   @relation("ChatSeller")
@@ -137,17 +131,17 @@ model Shop {
   logoUrl         String?  @map("logo_url")
   userId          String   @unique @map("user_id")
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pickupAddress   Json?    @map("pickup_address") // { city, district?, street, house?, phone? } for self-pickup
+  pickupAddress   Json?    @map("pickup_address")
   isActive        Boolean  @default(true) @map("is_active")
-  chatEnabled     Boolean  @default(true) @map("chat_enabled") // sotuvchi chatni yoqishi/o'chirishi mumkin
-  commissionRate  Decimal? @map("commission_rate") @db.Decimal(5, 2) // seller-specific %; null = use platform default
-  telegramChatId  String?  @map("telegram_chat_id") // ID чата/группы/канала для уведомлений
-  telegramType    String?  @map("telegram_type")   // PERSONAL | GROUP | CHANNEL
-  legalType       String?  @map("legal_type")       // IP | OOO — ИП или ООО
-  legalName       String?  @map("legal_name")      // полное название ИП/юрлица
-  ogrn            String?  @map("ogrn")            // ОГРН
-  inn             String?  @map("inn")             // ИНН
-  documentUrls    Json?    @map("document_urls")    // массив URL фото документов (загружаются через upload)
+  chatEnabled     Boolean  @default(true) @map("chat_enabled")
+  commissionRate  Decimal? @map("commission_rate") @db.Decimal(5, 2)
+  telegramChatId  String?  @map("telegram_chat_id")
+  telegramType    String?  @map("telegram_type")
+  legalType       String?  @map("legal_type")
+  legalName       String?  @map("legal_name")
+  ogrn            String?  @map("ogrn")
+  inn             String?  @map("inn")
+  documentUrls    Json?    @map("document_urls")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -157,19 +151,18 @@ model Shop {
   @@map("shops")
 }
 
-// Заявка на становление продавцом — после одобрения админа создаётся Shop и role = SELLER
 model SellerApplication {
   id            String    @id @default(uuid())
-  userId        String    @unique @map("user_id") // один активный запрос на пользователя
+  userId        String    @unique @map("user_id")
   shopName      String    @map("shop_name")
   description   String?   @map("description")
-  message       String?   @map("message")   // комментарий от заявителя
-  legalType     String?   @map("legal_type")   // IP | OOO
+  message       String?   @map("message")
+  legalType     String?   @map("legal_type")
   legalName     String?   @map("legal_name")
   ogrn          String?   @map("ogrn")
   inn           String?   @map("inn")
-  documentUrls  Json?     @map("document_urls") // массив URL фото документов
-  status        String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
+  documentUrls  Json?     @map("document_urls")
+  status        String    @default("PENDING") @map("status")
   rejectReason  String?   @map("reject_reason")
   reviewedAt    DateTime? @map("reviewed_at")
   reviewedById  String?   @map("reviewed_by_id")
@@ -182,7 +175,6 @@ model SellerApplication {
   @@map("seller_applications")
 }
 
-// Изменения данных магазина (имя, slug, описание, реквизиты ИП/ООО) — вступают в силу после одобрения админа
 model PendingShopUpdate {
   id                String    @id @default(uuid())
   shopId            String    @map("shop_id")
@@ -194,7 +186,7 @@ model PendingShopUpdate {
   requestedOgrn       String?  @map("requested_ogrn")
   requestedInn        String?  @map("requested_inn")
   requestedDocumentUrls Json?  @map("requested_document_urls")
-  status            String    @default("PENDING") @map("status") // PENDING | APPROVED | REJECTED
+  status            String    @default("PENDING") @map("status")
   rejectReason      String?   @map("reject_reason")
   reviewedAt        DateTime? @map("reviewed_at")
   reviewedById      String?   @map("reviewed_by_id")
@@ -209,7 +201,7 @@ model PendingShopUpdate {
 
 model TelegramLinkCode {
   id        String   @id @default(uuid())
-  code      String   @unique // 6-символьный код для привязки
+  code      String   @unique
   chatId    String   @map("chat_id")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -218,9 +210,9 @@ model TelegramLinkCode {
 
 model TelegramLoginToken {
   id              String    @id @default(uuid())
-  token           String    @unique // одноразовый токен для входа или привязки
-  telegramChatId  String?   @map("telegram_chat_id") // заполняется ботом при /start login_TOKEN или link_TOKEN
-  linkUserId      String?   @map("link_user_id")     // при привязке: id пользователя, которому привязать Telegram
+  token           String    @unique
+  telegramChatId  String?   @map("telegram_chat_id")
+  linkUserId      String?   @map("link_user_id")
   expiresAt       DateTime  @map("expires_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
@@ -243,8 +235,8 @@ model Product {
   isActive    Boolean  @default(true) @map("is_active")
   isModerated Boolean  @default(false) @map("is_moderated")
   options     Json?    @map("options")
-  specs       Json?    @map("specs")   // Xususiyatlar: { "Material": "Paxta", "Og'irlik": "200g" }
-  unit        String?  @map("unit")    // Birlik: dona, kg, m2, m, l — ixtiyoriy
+  specs       Json?    @map("specs")
+  unit        String?  @map("unit")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -264,7 +256,7 @@ model ProductVariant {
   id          String    @id @default(uuid())
   productId   String    @map("product_id")
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  options     Json      @map("options")   // Tanlangan kombinatsiya: { "O'lcham": "M", "Rang": "Qora" }
+  options     Json      @map("options")
   stock       Int       @default(0)
   imageUrl    String?   @map("image_url")
   sku         String?   @unique
@@ -320,13 +312,13 @@ model CheckoutSession {
   guestPhone      String?  @map("guest_phone")
   guestFirstName  String?  @map("guest_first_name")
   guestLastName   String?  @map("guest_last_name")
-  cartSnapshot    Json     @map("cart_snapshot")   // [{ productId, variantId, quantity, price, sellerId }]
+  cartSnapshot    Json     @map("cart_snapshot")
   shippingAddress Json     @map("shipping_address")
-  deliveryType    String   @map("delivery_type")   // DELIVERY | PICKUP
-  paymentMethod   String   @map("payment_method")  // CLICK | PAYME
+  deliveryType    String   @map("delivery_type")
+  paymentMethod   String   @map("payment_method")
   totalAmount     Decimal  @map("total_amount")   @db.Decimal(12, 2)
   notes           String?
-  orderId         String?  @map("order_id")        // set after successful payment
+  orderId         String?  @map("order_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("checkout_sessions")
@@ -336,10 +328,10 @@ model Payment {
   id         String   @id @default(uuid())
   orderId    String   @map("order_id")
   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider   String   // CLICK | PAYME
+  provider   String   
   externalId String?  @map("external_id")
   amount     Decimal  @db.Decimal(12, 2)
-  status     String   @default("PENDING") // PENDING | PAID | FAILED
+  status     String   @default("PENDING")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("payments")
@@ -363,7 +355,7 @@ model Cart {
   id        String    @id @default(uuid())
   userId    String?   @unique @map("user_id")
   user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String?   @unique @map("session_id") // for anonymous
+  sessionId String?   @unique @map("session_id")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   items CartItem[]
@@ -390,7 +382,7 @@ model Review {
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId      String   @map("user_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating      Int      // 1-5
+  rating      Int      
   comment     String?
   sellerReply String?  @map("seller_reply")
   isModerated Boolean  @default(false) @map("is_moderated")
@@ -447,17 +439,14 @@ model PlatformSettings {
   siteName        String?  @map("site_name") // название маркетплейса (в шапке, футере, title)
   commissionRate  Decimal  @map("commission_rate") @db.Decimal(5, 2) // e.g. 5.00 = 5%
   minPayoutAmount Decimal  @map("min_payout_amount") @db.Decimal(12, 2)
-  // To'lov usullari (admin yoqadi/ochiradi)
   paymentClickEnabled       Boolean @default(true) @map("payment_click_enabled")
   paymentPaymeEnabled       Boolean @default(true) @map("payment_payme_enabled")
   paymentCashEnabled        Boolean @default(true) @map("payment_cash_enabled")
   paymentCardOnDeliveryEnabled Boolean @default(true) @map("payment_card_on_delivery_enabled")
-  // Yetkazib berish / samoviyoz
   deliveryEnabled Boolean @default(true) @map("delivery_enabled")
   pickupEnabled   Boolean @default(true) @map("pickup_enabled")
-  // Chat xaridor–sotuvchi: admin yoqadi/ochiradi; ochiq bo'lsa, har bir sotuvchi o'z do'konida chatni yoqishi/o'chirishi mumkin
   chatWithSellerEnabled Boolean @default(true) @map("chat_with_seller_enabled")
-  adminTelegramChatId String? @map("admin_telegram_chat_id") // Admin uchun to'liq buyurtma bildirishnomalari
+  adminTelegramChatId String? @map("admin_telegram_chat_id")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("platform_settings")
@@ -465,15 +454,15 @@ model PlatformSettings {
 
 model Banner {
   id             String    @id @default(uuid())
-  image          String    // image URL
-  href           String    // link URL
-  external       Boolean   @default(false) // open in new tab
+  image          String    
+  href           String    
+  external       Boolean   @default(false)
   title          String?
   sortOrder      Int       @default(0) @map("sort_order")
   isActive       Boolean   @default(true) @map("is_active")
-  displaySeconds Int?      @map("display_seconds") // время показа слайда в карусели (секунды)
-  startsAt       DateTime? @map("starts_at") // показывать с даты
-  endsAt         DateTime? @map("ends_at") // деактивировать после даты
+  displaySeconds Int?      @map("display_seconds")
+  startsAt       DateTime? @map("starts_at")
+  endsAt         DateTime? @map("ends_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -485,7 +474,7 @@ model PayoutRecord {
   sellerId  String   @map("seller_id")
   seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   amount    Decimal  @db.Decimal(12, 2)
-  method    String   // CASH, CARD, etc.
+  method    String   
   paidAt    DateTime @map("paid_at")
   note      String?
   createdAt DateTime @default(now()) @map("created_at")
@@ -497,11 +486,11 @@ model Notification {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String    @map("type")   // NEW_ORDER, NEW_SELLER_APPLICATION, PENDING_PRODUCT, NEW_REVIEW, NEW_CHAT_MESSAGE, PENDING_SHOP_UPDATE
+  type      String    @map("type")
   title     String    @map("title")
   body      String?   @map("body")
-  link      String?   @map("link")   // e.g. /admin/orders, /seller/orders, /seller/products/123
-  entityId  String?  @map("entity_id") // orderId, productId, applicationId, etc.
+  link      String?   @map("link")
+  entityId  String?  @map("entity_id")
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 

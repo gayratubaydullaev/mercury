@@ -12,7 +12,6 @@ export class SellerApplicationService {
     private notifications: NotificationsService,
   ) {}
 
-  /** Подать заявку на продавца (только BUYER, одна активная заявка). */
   async apply(userId: string, dto: ApplySellerDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -34,7 +33,6 @@ export class SellerApplicationService {
       if (existing.status === 'APPROVED') {
         throw new BadRequestException('Arizangiz allaqachon qabul qilingan.');
       }
-      // REJECTED — разрешаем подать заново, обновляем запись
       await this.prisma.sellerApplication.update({
         where: { id: existing.id },
         data: {
@@ -92,7 +90,6 @@ export class SellerApplicationService {
     return this.getMyStatus(userId);
   }
 
-  /** Отправить админу уведомление в Telegram о новой заявке (с кнопками Tasdiqlash / Rad etish). */
   private async notifyAdminNewApplication(applicationId: string): Promise<void> {
     const app = await this.prisma.sellerApplication.findUnique({
       where: { id: applicationId },
@@ -108,7 +105,6 @@ export class SellerApplicationService {
     });
   }
 
-  /** Статус заявки текущего пользователя. */
   async getMyStatus(userId: string) {
     const app = await this.prisma.sellerApplication.findUnique({
       where: { userId },

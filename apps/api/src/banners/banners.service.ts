@@ -14,7 +14,6 @@ export class BannersService {
     private cache: CacheService,
   ) {}
 
-  /** Public: active banners only, within startsAt/endsAt, ordered by sortOrder. Cached 1 min when Redis available. */
   async getActive() {
     try {
       const cached = await this.cache.get<Awaited<ReturnType<BannersService['getActiveFromDb']>>>(BANNERS_CACHE_KEY);
@@ -43,7 +42,6 @@ export class BannersService {
     });
   }
 
-  /** Invalidate banners cache (call after admin create/update/delete). */
   async invalidateCache() {
     await this.cache.del(BANNERS_CACHE_KEY);
   }

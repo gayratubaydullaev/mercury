@@ -34,7 +34,6 @@ export class NotificationsService {
     });
   }
 
-  /** Create one notification per admin user (ADMIN and ADMIN_MODERATOR). */
   async createForAdmins(dto: CreateNotificationDto) {
     const admins = await this.prisma.user.findMany({
       where: { role: { in: ['ADMIN', 'ADMIN_MODERATOR'] } },

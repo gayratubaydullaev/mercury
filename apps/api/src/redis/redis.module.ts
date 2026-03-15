@@ -19,7 +19,7 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
           connectTimeout: 5000,
           retryStrategy: (times) => (times <= 3 ? 1000 : null),
         });
-        client.on('error', () => {}); // avoid Unhandled error event when Redis is not running
+        client.on('error', () => {});
         return client;
       },
       inject: [ConfigService],

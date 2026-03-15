@@ -5,14 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SettingsService {
   constructor(private prisma: PrismaService) {}
 
-  /** Public: название маркетплейса и прочие публичные настройки (для шапки, футера, title). */
   async getPublicSettings(): Promise<{ siteName: string }> {
     const settings = await this.prisma.platformSettings.findFirst({ select: { siteName: true } });
     const siteName = settings?.siteName?.trim() || 'Oline Bozor';
     return { siteName };
   }
 
-  /** Public: enabled payment methods, delivery types, and chat with sellers. */
   async getCheckoutOptions(): Promise<{ paymentMethods: string[]; deliveryTypes: string[]; chatWithSellerEnabled: boolean }> {
     const settings = await this.prisma.platformSettings.findFirst();
     const paymentMethods: string[] = [];

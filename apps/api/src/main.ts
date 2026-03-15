@@ -21,7 +21,6 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // Local uploads (when Cloudinary is not configured): serve files from uploads/
   const uploadsDir = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
 

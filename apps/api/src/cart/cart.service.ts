@@ -23,7 +23,6 @@ type CartWithItems = Prisma.CartGetPayload<{ include: typeof cartInclude }>;
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  /** Set RLS context and run getOrCreateCart in the same connection (transaction). */
   async getOrCreateCart(userId: string | null, sessionId: string | null): Promise<CartWithItems> {
     return this.prisma.$transaction(async (tx) => {
       const effectiveSessionId =
@@ -72,7 +71,6 @@ export class CartService {
       }
 
       const variantId = dto.variantId ?? null;
-      // Prisma findUnique does not accept null in compound unique (cartId_productId_variantId)
       const existing =
         variantId != null
           ? await tx.cartItem.findUnique({

@@ -11,8 +11,6 @@ export class ReviewsService {
     private telegram: TelegramService,
     private notifications: NotificationsService,
   ) {}
-
-  /** Количество купленных единиц товара пользователем (оплаченные, не отменённые заказы). */
   async getPurchasedQuantity(productId: string, userId: string): Promise<number> {
     const agg = await this.prisma.orderItem.aggregate({
       where: {
@@ -28,12 +26,10 @@ export class ReviewsService {
     return agg._sum.quantity ?? 0;
   }
 
-  /** Сколько отзывов пользователь уже оставил по этому товару. */
   async getReviewCount(productId: string, userId: string): Promise<number> {
     return this.prisma.review.count({ where: { productId, userId } });
   }
 
-  /** Может ли пользователь оставить ещё один отзыв (купил товар и отзывов меньше, чем покупок). */
   async canLeaveReview(productId: string, userId: string): Promise<{ canReview: boolean; purchaseCount: number; reviewCount: number }> {
     const [purchaseCount, reviewCount] = await Promise.all([
       this.getPurchasedQuantity(productId, userId),
@@ -116,14 +112,12 @@ export class ReviewsService {
     return this.prisma.review.update({ where: { id: reviewId }, data: { sellerReply: text || null } });
   }
 
-  /** Admin: approve or reject review (moderation) */
   async setModerated(id: string, approve: boolean) {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) throw new NotFoundException('Review not found');
     return this.prisma.review.update({ where: { id }, data: { isModerated: approve } });
   }
 
-  /** Only for admin: delete a review by id */
   async remove(id: string) {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) throw new NotFoundException('Review not found');

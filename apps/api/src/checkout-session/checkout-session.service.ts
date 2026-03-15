@@ -9,10 +9,6 @@ const PAY_FIRST_METHODS = ['CLICK', 'PAYME'];
 export class CheckoutSessionService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Create a checkout session for CLICK/PAYME (pay-first flow).
-   * Requires single-shop cart. Caller must be authenticated (buyerId).
-   */
   async createSession(buyerId: string, dto: CreateCheckoutSessionDto): Promise<{ sessionId: string }> {
     if (!PAY_FIRST_METHODS.includes(dto.paymentMethod)) {
       throw new BadRequestException('Checkout session only for CLICK or PAYME');
@@ -78,7 +74,6 @@ export class CheckoutSessionService {
     return { sessionId: session.id };
   }
 
-  /** Get order id by session id (after payment callback has run). */
   async getOrderIdBySessionId(sessionId: string): Promise<{ orderId: string } | null> {
     const session = await this.prisma.checkoutSession.findUnique({
       where: { id: sessionId },

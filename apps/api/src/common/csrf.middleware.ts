@@ -1,16 +1,9 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 
-/**
- * CSRF защита работает вместе с JWT:
- * - Middleware (здесь) проверяет x-csrf-token для мутаций и выдаёт 403 при неверном/отсутствующем токене.
- * - JwtAuthGuard проверяет Bearer-токен для доступа к роутам (кроме помеченных @Public()).
- * Оба слоя применяются: мутация сначала должна пройти CSRF, затем роут может требовать JWT.
- */
 const CSRF_COOKIE = 'csrfToken';
 const CSRF_HEADER = 'x-csrf-token';
 
-/** Роуты без проверки CSRF (req.path с ведущим слэшем). */
 const CSRF_EXCLUDED_PATHS: { path: string; method: string }[] = [
   { path: '/auth/login', method: 'POST' },
   { path: '/auth/register', method: 'POST' },
@@ -27,7 +20,6 @@ const CSRF_EXCLUDED_PATHS: { path: string; method: string }[] = [
   { path: '/orders', method: 'POST' },
 ];
 
-/** /cart/items/:productId — PATCH/DELETE по пути с id. */
 function isCartItemRoute(path: string, method: string): boolean {
   return /^\/cart\/items\/[^/]+$/.test(path) && (method === 'PATCH' || method === 'DELETE');
 }

@@ -27,10 +27,6 @@ export class AuthService implements OnModuleInit {
     await this.ensureAdminFromEnv();
   }
 
-  /**
-   * Если в .env заданы ADMIN_EMAIL и ADMIN_PASSWORD — создаёт или обновляет пользователя с ролью ADMIN.
-   * Удобно для первого входа без запуска seed.
-   */
   async ensureAdminFromEnv() {
     const email = this.config.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
     const password = this.config.get<string>('ADMIN_PASSWORD');
@@ -69,7 +65,6 @@ export class AuthService implements OnModuleInit {
     return ok ? user : null;
   }
 
-  /** Dev only: ensure admin and seller exist with known passwords. */
   async devResetSeedUsers() {
     const adminHash = await bcrypt.hash('Admin123!', 10);
     const sellerHash = await bcrypt.hash('Seller123!', 10);
@@ -211,16 +206,6 @@ export class AuthService implements OnModuleInit {
     return this.login(user);
   }
 
-  /**
-   * Вход через Telegram: Web App (initData) и кнопка на сайте (ссылка в бота) ведут к одному аккаунту.
-   * Везде один идентификатор — user.telegramId (id пользователя в Telegram). Один Telegram = один User.
-   */
-
-  /**
-   * Login or register via Telegram Web App initData (Menu Button, /telegram-app, etc.).
-   * Verifies initData, then finds user by telegramId or creates one. No duplicate users:
-   * same telegramId always returns the same user (only firstName/lastName updated).
-   */
   async loginOrRegisterByTelegram(initData: string): Promise<{ accessToken: string; refreshToken: string; expiresAt: Date; user: { id: string; email: string; role: UserRole } }> {
     const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
     if (!botToken) {
@@ -269,9 +254,6 @@ export class AuthService implements OnModuleInit {
     return this.login(user);
   }
 
-  /**
-   * Найти или создать пользователя по Telegram ID (для входа через бота по ссылке).
-   */
   async findOrCreateUserByTelegramId(
     telegramId: string,
     firstName?: string,
@@ -293,7 +275,6 @@ export class AuthService implements OnModuleInit {
         });
         return existingUser;
       }
-      // Пользователь с этим telegramId не админ — но если это Admin Telegram из настроек, входим как админ.
       const settings = await this.prisma.platformSettings.findFirst({
         select: { adminTelegramChatId: true },
       });
@@ -322,7 +303,6 @@ export class AuthService implements OnModuleInit {
           return adminUser;
         }
       }
-      // Пользователь с этим telegramId не админ — но если это Telegram привязанного магазина, входим как продавец.
       const shopByChat = await this.prisma.shop.findFirst({
         where: { telegramChatId: telegramId },
         select: { userId: true },
@@ -359,7 +339,6 @@ export class AuthService implements OnModuleInit {
       });
       return { id: existingByEmail.id, email: existingByEmail.email, role: existingByEmail.role };
     }
-    // Если этот Telegram ID указан в настройках как Admin Telegram — входим как админ, не создаём нового BUYER.
     const settings = await this.prisma.platformSettings.findFirst({
       select: { adminTelegramChatId: true },
     });
@@ -390,7 +369,6 @@ export class AuthService implements OnModuleInit {
         return adminUser;
       }
     }
-    // Если этот Telegram привязан к магазину продавца — входим как продавец, не создаём нового BUYER.
     const shopByChat = await this.prisma.shop.findFirst({
       where: { telegramChatId: telegramId },
       select: { user: { select: { id: true, email: true, role: true, isBlocked: true } } },
@@ -417,9 +395,6 @@ export class AuthService implements OnModuleInit {
     return { id: created.id, email: created.email, role: created.role };
   }
 
-  /**
-   * Запрос на вход через Telegram: создаёт одноразовый токен и возвращает ссылку на бота.
-   */
   async requestTelegramLogin(): Promise<{ token: string; loginUrl: string }> {
     const botUsername = this.config.get<string>('TELEGRAM_BOT_USERNAME');
     if (!botUsername?.trim()) {
@@ -436,9 +411,6 @@ export class AuthService implements OnModuleInit {
     return { token, loginUrl };
   }
 
-  /**
-   * Запрос на привязку Telegram к уже залогиненному пользователю (auth/register и т.д.).
-   */
   async requestTelegramLink(userId: string): Promise<{ token: string; linkUrl: string }> {
     const botUsername = this.config.get<string>('TELEGRAM_BOT_USERNAME');
     if (!botUsername?.trim()) {
@@ -455,18 +427,10 @@ export class AuthService implements OnModuleInit {
     return { token, linkUrl };
   }
 
-  /**
-   * Проверка токена: вход (JWT) или привязка Telegram к аккаунту (linked).
-   */
-  /** Нормализация телефона для поиска/создания гостя: только цифры. */
   private normalizePhone(phone: string): string {
     return (phone || '').replace(/\D/g, '');
   }
 
-  /**
-   * Найти или создать гостевого пользователя по телефону (при заказе без авторизации).
-   * Email = guest_<normalizedPhone>@guest.local, пароля нет. При повторном заказе с тем же телефоном — возвращаем того же пользователя.
-   */
   async registerOrLoginGuest(data: {
     phone: string;
     firstName?: string;

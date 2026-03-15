@@ -5,7 +5,6 @@ import { AuthService } from '../auth/auth.service';
 import { TelegramService } from './telegram.service';
 import * as TelegramBotModule from 'node-telegram-bot-api';
 
-// node-telegram-bot-api is CJS: module.exports = TelegramBot — no .default at runtime
 const TelegramBot = (TelegramBotModule as { default?: typeof TelegramBotModule }).default ?? TelegramBotModule;
 import { OrderStatus, Prisma } from '@prisma/client';
 
@@ -13,7 +12,6 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Вариант опцияларини o'qilishi oson matnga aylantiradi (JSON o'rniga). */
 function formatVariantOptions(options: Record<string, string> | unknown): string {
   if (!options || typeof options !== 'object' || Array.isArray(options)) return '';
   const entries = Object.entries(options as Record<string, string>).filter(([, v]) => v != null && String(v).trim() !== '');
@@ -53,12 +51,10 @@ const DELIVERY_TYPE_LABELS: Record<string, string> = {
   PICKUP: 'Olib ketish',
 };
 
-/** Кнопки «назад» в главное меню (общие для продавца и админа). */
 const MENU_BACK_ROW: TelegramBotModule.InlineKeyboardButton[][] = [
   [{ text: '◀️ Asosiy menyu', callback_data: 'cmd:menu' }],
 ];
 
-/** Меню продавца: заказы, статистика, сегодня, ожидание, помощь. */
 const SELLER_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
   [
     { text: '📋 Buyurtmalar', callback_data: 'cmd:orders', style: 'primary' },
@@ -72,7 +68,6 @@ const SELLER_MENU_ROWS: TelegramBotModule.InlineKeyboardButton[][] = [
   ...MENU_BACK_ROW,
 ];
 
-/** Меню админа: то же + строка «Модерация» (ссылки на товары/отзывы). */
 function getAdminMenuRows(baseUrl: string | null): TelegramBotModule.InlineKeyboardButton[][] {
   const rows: TelegramBotModule.InlineKeyboardButton[][] = [
     [
@@ -96,7 +91,6 @@ function getAdminMenuRows(baseUrl: string | null): TelegramBotModule.InlineKeybo
 }
 
 
-/** Меню покупателя: только каталог, мои заказы, помощь. */
 function getBuyerMenuRows(webAppUrl: string | null): TelegramBotModule.InlineKeyboardButton[][] {
   const rows: TelegramBotModule.InlineKeyboardButton[][] = [];
   if (webAppUrl) {
@@ -139,7 +133,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     this.bot = new TelegramBot(token, { polling: true });
     this.bot.on('message', (msg: TelegramBotModule.Message) => this.handleMessage(msg).catch((e) => this.logger.warn(e)));
     this.bot.on('callback_query', (query: TelegramBotModule.CallbackQuery) => this.handleCallback(query).catch((e) => this.logger.warn(e)));
-    // Umumiy buyruqlar ro'yxati — barcha rollar uchun bir xil; menyu tugmalari roldan qat'iy nazar boshqacha.
     this.bot.setMyCommands([
       { command: 'start', description: 'Botni ishga tushirish' },
       { command: 'code', description: 'Ulash kodi olish (Admin / Sotuvchi)' },
@@ -169,12 +162,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Admin Telegram chat ID: из настроек (БД) или .env ADMIN_TELEGRAM_CHAT_ID */
   private async getAdminTelegramChatId(): Promise<string | null> {
     return this.telegram.getAdminChatId();
   }
 
-  /** Покупатель по Telegram chat ID (в личке chat.id = user id). */
   private async getBuyerByTelegramChatId(chatId: string): Promise<{ id: string; firstName: string; lastName: string } | null> {
     const user = await this.prisma.user.findFirst({
       where: { telegramId: chatId },
@@ -183,7 +174,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     return user;
   }
 
-  /** Send new message or edit existing (when messageId provided) to avoid spamming. */
   private async sendOrEdit(
     chatId: string,
     text: string,
@@ -205,14 +195,12 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Строки «назад в меню» для ответов (заказы, статистика): для админа — с модерацией, для продавца — без. */
   private async getBackMenuRows(chatId: string): Promise<TelegramBotModule.InlineKeyboardButton[][]> {
     const adminChatId = await this.getAdminTelegramChatId();
     if (adminChatId === chatId) return getAdminMenuRows(this.telegram.getBaseUrl());
     return SELLER_MENU_ROWS;
   }
 
-  /** Меню по ролям: покупатель — каталог и заказы; продавец — заказы, статистика, панель; админ — то же + модерация и админ-панель. */
   private async getMenuWithPanel(chatId: string): Promise<TelegramBotModule.InlineKeyboardMarkup> {
     const baseUrl = this.telegram.getBaseUrl();
     const webAppUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/telegram-app` : null;
@@ -244,13 +232,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleMessage(msg: TelegramBotModule.Message) {
-    // Текст команды может быть в msg.text или в подписи к медиа (caption у фото/видео)
     const msgWithCaption = msg as TelegramBotModule.Message & { caption?: string };
     const rawText = (msg.text ?? msgWithCaption.caption ?? '').trim();
     const text = rawText.toLowerCase();
     const chatId = String(msg.chat.id);
 
-    // Привязка Telegram к аккаунту (пользователь уже зарегистрирован на сайте): /start link_<token>
     const linkStartMatch = rawText.match(/^\/start\s+link_(.+)$/i);
     if (linkStartMatch) {
       const token = linkStartMatch[1].trim();
@@ -281,7 +267,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // Вход по ссылке с сайта: /start login_<token>
     const loginStartMatch = rawText.match(/^\/start\s+login_(.+)$/i);
     if (loginStartMatch) {
       const token = loginStartMatch[1].trim();
@@ -325,8 +310,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const shop = await this.prisma.shop.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
     const buyer = await this.getBuyerByTelegramChatId(chatId);
 
-    // Отдельная команда для получения кода привязки — всегда выдаёт код
-    // Telegram может присылать: /code, /code@BotName, /code или /code с пробелом/аргументом
     const isCodeCommand =
       text === '/code' || text.startsWith('/code@') || (text.startsWith('/code') && (text.length === 6 || text[6] === ' '));
     if (isCodeCommand) {
@@ -691,9 +674,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     await this.sendOrEdit(chatId, text, { parse_mode: 'HTML', reply_markup: menuMarkup }, messageId);
   }
 
-  /**
-   * Chat → shop (by telegramChatId) → only that seller's orders.
-   */
   private async handleCallback(query: TelegramBotModule.CallbackQuery) {
     const data = query.data;
     const chatId = query.message?.chat?.id;

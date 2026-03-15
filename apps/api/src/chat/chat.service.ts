@@ -83,7 +83,6 @@ export class ChatService {
     if (!session) throw new NotFoundException('Session not found');
     if (session.buyerId !== senderId && session.sellerId !== senderId) throw new ForbiddenException();
     if (!content?.trim()) throw new ForbiddenException('Content is required');
-    // Agar xaridor yozayotgan bo'lsa — platforma va sotuvchi chatni tekshirish
     if (session.buyerId === senderId) {
       const platformEnabled = await this.isPlatformChatWithSellerEnabled();
       if (!platformEnabled) throw new ForbiddenException('Chat xaridor–sotuvchi hozircha platforma administratori tomonidan o‘chirilgan');

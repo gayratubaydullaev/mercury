@@ -42,10 +42,6 @@ export class SellerService {
     };
   }
 
-  /**
-   * Изменения имени, slug, описания и реквизитов (ИП/ООО, ОГРН, ИНН, документы) попадают в PendingShopUpdate
-   * и вступают в силу только после одобрения админа. pickupAddress и chatEnabled обновляются сразу.
-   */
   async createOrUpdateShop(
     userId: string,
     data: {
@@ -195,7 +191,6 @@ export class SellerService {
     };
   }
 
-  /** Sales by day (PAID orders) for seller chart. Last N days; returns all days in range (zeros for no sales). */
   async getSalesChart(userId: string, days = 30): Promise<{ date: string; total: number; ordersCount: number }[]> {
     const n = Math.min(90, Math.max(1, Number(days) || 30));
     const to = new Date();
@@ -262,7 +257,6 @@ export class SellerService {
     return { ok: true };
   }
 
-  /** Reviews for all products of the seller's shop (for reply UI) */
   async getReviewsForShop(userId: string) {
     const shop = await this.prisma.shop.findFirst({ where: { userId } });
     if (!shop) return [];

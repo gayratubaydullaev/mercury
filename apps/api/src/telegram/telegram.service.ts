@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as TelegramBotModule from 'node-telegram-bot-api';
 
-// node-telegram-bot-api is CJS: module.exports = TelegramBot — no .default at runtime
 const TelegramBot = (TelegramBotModule as { default?: typeof TelegramBotModule }).default ?? TelegramBotModule;
 
 const LINK_CODE_EXPIRE_MS = 15 * 60 * 1000;
@@ -55,7 +54,6 @@ function escapeHtml(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Вариант опцияларини o'qilishi oson matnga aylantiradi (JSON o'rniga). */
 function formatVariantOptions(options: Record<string, string> | unknown): string {
   if (!options || typeof options !== 'object' || Array.isArray(options)) return '';
   const entries = Object.entries(options as Record<string, string>).filter(([, v]) => v != null && String(v).trim() !== '');
@@ -67,7 +65,6 @@ function canChangeStatus(current: string): boolean {
   return !['DELIVERED', 'CANCELLED'].includes(current);
 }
 
-/** Prepaid (Click/Payme) — кнопки «Yuborildi»/«Yetkazildi» показываем только после оплаты. */
 function orderStatusKeyboard(
   orderId: string,
   currentStatus: string,
@@ -110,14 +107,12 @@ export class TelegramService {
     }
   }
 
-  /** Один URL для кнопок Telegram (APP_URL может содержать несколько через запятую — берём первый). */
   getBaseUrl(): string {
     const raw = this.config.get<string>('APP_URL')?.trim() ?? '';
     const url = raw.includes(',') ? raw.split(',')[0].trim() : raw;
     return url ? url.replace(/\/$/, '') : '';
   }
 
-  /** Admin chat ID: сначала из БД (platform_settings), иначе из .env ADMIN_TELEGRAM_CHAT_ID */
   async getAdminChatId(): Promise<string | null> {
     const row = await this.prisma.platformSettings.findFirst({
       select: { adminTelegramChatId: true },
@@ -143,10 +138,6 @@ export class TelegramService {
     }
   }
 
-  /**
-   * Sends order notification only to the shop that owns this order.
-   * Resolution: sellerId → shop (by userId) → telegramChatId. Each seller has one shop, so no mix-up.
-   */
   async sendOrderNotification(
     sellerId: string,
     order: {
@@ -167,7 +158,7 @@ export class TelegramService {
       where: { userId: sellerId },
       select: { telegramChatId: true },
     });
-    if (!shop?.telegramChatId) return; // only this seller's chat, no broadcast
+    if (!shop?.telegramChatId) return;
 
     const baseUrl = this.getBaseUrl();
     const amount = Number(order.totalAmount).toLocaleString('uz-UZ');
@@ -221,10 +212,6 @@ export class TelegramService {
     await this.sendMessage(shop.telegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
-  /**
-   * Xaridor (buyer) ga: buyurtma yaratilganda yoki holat o'zgarganda.
-   * Faqat agar foydalanuvchi Telegram orqali kirgan bo'lsa (user.telegramId to'ldirilgan).
-   */
   async sendBuyerOrderNotification(
     buyerId: string,
     order: {
@@ -298,7 +285,6 @@ export class TelegramService {
         await this.prisma.telegramLinkCode.create({ data: { code, chatId } });
         return code;
       } catch (e: unknown) {
-        // P2002 = unique constraint (редкая коллизия кода)
         if (attempt < maxAttempts - 1 && typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2002') {
           continue;
         }
@@ -326,9 +312,6 @@ export class TelegramService {
     await this.prisma.telegramLinkCode.deleteMany({ where: { createdAt: { lt: cutoff } } });
   }
 
-  /**
-   * Admin: to'liq buyurtma ma'lumotlari — xaridor, sotuvchi, manzil, to'lov, mahsulotlar.
-   */
   async sendAdminOrderNotification(
     order: {
       id?: string;
@@ -414,7 +397,6 @@ export class TelegramService {
     await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
-  /** Sotuvchiga: yangi sharh yozilganda */
   async sendSellerReviewNotification(
     sellerId: string,
     data: { rating: number; comment: string | null; productTitle: string; userName: string },
@@ -438,7 +420,6 @@ export class TelegramService {
     await this.sendMessage(shop.telegramChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
-  /** Admin: yangi mahsulot moderatsiya kutilmoqda */
   async sendAdminPendingProductNotification(product: { id: string; title: string; shop?: { name: string } | null }): Promise<void> {
     const adminChatId = await this.getAdminChatId();
     if (!adminChatId) return;
@@ -454,7 +435,6 @@ export class TelegramService {
     await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: replyMarkup });
   }
 
-  /** Admin: yangi ariza — sotuvchi bo'lish (tasdiqlash/rad etish tugmalari orqali). */
   async sendAdminNewSellerApplicationNotification(data: {
     applicationId: string;
     shopName: string;
@@ -481,7 +461,6 @@ export class TelegramService {
     await this.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   }
 
-  /** Admin: yangi sharh moderatsiya kutilmoqda */
   async sendAdminPendingReviewNotification(data: {
     id: string;
     rating: number;

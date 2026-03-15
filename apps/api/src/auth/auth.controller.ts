@@ -163,7 +163,6 @@ export class AuthController {
     return { accessToken: loginResult.accessToken, expiresAt: loginResult.expiresAt, user: loginResult.user };
   }
 
-  /** Only in development: reset admin & seller passwords to Admin123! / Seller123! so login works. */
   @Post('dev-reset-seed-users')
   @Public()
   @ApiOperation({ summary: '[DEV] Reset seed users passwords' })

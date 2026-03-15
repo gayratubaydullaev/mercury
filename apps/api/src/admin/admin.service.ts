@@ -44,7 +44,6 @@ export class AdminService {
     });
   }
 
-  /** Get one user by id with profile details; for SELLER includes shop and stats. */
   async getUserById(req: Request, id: string) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
@@ -119,7 +118,6 @@ export class AdminService {
     });
   }
 
-  /** Set moderator permissions (only for users with role ADMIN_MODERATOR). Main admin only. */
   async setModeratorPermissions(
     userId: string,
     callerRole: UserRole,
@@ -190,7 +188,6 @@ export class AdminService {
     });
   }
 
-  /** Get orders in a transaction with RLS context set on the same connection. */
   async getOrders(req: Request, page = 1, limit = 20) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
@@ -243,7 +240,6 @@ export class AdminService {
     };
   }
 
-  /** Sales by day (PAID orders) for chart. Last N days; returns all days in range (zeros for no sales). */
   async getSalesChart(days = 30): Promise<{ date: string; total: number; ordersCount: number }[]> {
     const n = Math.min(90, Math.max(1, Number(days) || 30));
     const to = new Date();
@@ -384,7 +380,6 @@ export class AdminService {
     return { ok: true };
   }
 
-  /** Sellers list with stats (products count, orders count, revenue). Run in transaction with RLS. */
   async getSellers(req: Request, page = 1, limit = 20) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
@@ -447,10 +442,6 @@ export class AdminService {
     });
   }
 
-  /**
-   * Commission accounting by seller. Buyer pays seller directly (cash/card on receipt).
-   * We track: sales (order total), our commission (platform %), amount seller has paid to us (cash/card), balance = commission - paid.
-   */
   async getPayouts(req: Request, page = 1, limit = 20) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
@@ -536,7 +527,6 @@ export class AdminService {
     }
   }
 
-  /** Admin records payment received from seller (cash/card). Reduces commission balance. If amount > commission, balance becomes negative (seller credit for next period). */
   async recordPayout(sellerId: string, amount: number, method: string, paidAt?: Date, note?: string) {
     return this.prisma.payoutRecord.create({
       data: {
@@ -549,7 +539,6 @@ export class AdminService {
     });
   }
 
-  /** Set commission rate for a seller's shop (individual). Null = use platform default. */
   async setSellerCommissionRate(sellerId: string, commissionRate: number | null) {
     const shop = await this.prisma.shop.findUnique({ where: { userId: sellerId } });
     if (!shop) throw new Error('Shop not found for this seller');
@@ -627,7 +616,6 @@ export class AdminService {
     return result;
   }
 
-  /** Заявки на продавца: список с фильтром по status (PENDING | APPROVED | REJECTED). */
   async getSellerApplications(page = 1, limit = 20, status?: string) {
     const skip = (Math.max(1, Number(page)) - 1) * Math.max(1, Math.min(50, Number(limit) || 20));
     const take = Math.max(1, Math.min(50, Number(limit) || 20));
@@ -645,7 +633,6 @@ export class AdminService {
     return { data, total, page: Math.max(1, Number(page)), limit: take, totalPages: Math.ceil(total / take) };
   }
 
-  /** Одобрить заявку: создать Shop, выставить role = SELLER. */
   async approveSellerApplication(applicationId: string, adminUserId: string) {
     const app = await this.prisma.sellerApplication.findUnique({
       where: { id: applicationId },
@@ -692,7 +679,6 @@ export class AdminService {
     return { ok: true, message: 'Ariza qabul qilindi. Foydalanuvchi endi sotuvchi.' };
   }
 
-  /** Отклонить заявку. */
   async rejectSellerApplication(applicationId: string, adminUserId: string, rejectReason?: string) {
     const app = await this.prisma.sellerApplication.findUnique({ where: { id: applicationId } });
     if (!app) throw new BadRequestException('Ariza topilmadi.');
@@ -704,7 +690,6 @@ export class AdminService {
     return { ok: true, message: 'Ariza rad etildi.' };
   }
 
-  /** Список запросов на изменение данных магазина (ожидают одобрения). */
   async getPendingShopUpdates(page = 1, limit = 20) {
     const skip = (Math.max(1, Number(page)) - 1) * Math.max(1, Math.min(50, Number(limit) || 20));
     const take = Math.max(1, Math.min(50, Number(limit) || 20));
@@ -721,7 +706,6 @@ export class AdminService {
     return { data, total, page: Math.max(1, Number(page)), limit: take, totalPages: Math.ceil(total / take) };
   }
 
-  /** Одобрить изменение данных магазина: применить requested* к Shop. */
   async approvePendingShopUpdate(pendingId: string, adminUserId: string) {
     const pending = await this.prisma.pendingShopUpdate.findUnique({
       where: { id: pendingId },
@@ -762,7 +746,6 @@ export class AdminService {
     return { ok: true, message: 'O‘zgarishlar qabul qilindi.' };
   }
 
-  /** Отклонить изменение данных магазина. */
   async rejectPendingShopUpdate(pendingId: string, adminUserId: string, rejectReason?: string) {
     const pending = await this.prisma.pendingShopUpdate.findUnique({ where: { id: pendingId } });
     if (!pending) throw new BadRequestException('So‘rov topilmadi.');
@@ -774,7 +757,6 @@ export class AdminService {
     return { ok: true, message: 'So‘rov rad etildi.' };
   }
 
-  /** List all reviews for admin (with product and user info); optional filter by isModerated */
   async getReviews(page = 1, limit = 20, isModerated?: boolean) {
     const skip = Math.max(0, (Number(page) || 1) - 1) * Math.max(1, Math.min(100, Number(limit) || 20));
     const take = Math.max(1, Math.min(100, Number(limit) || 20));

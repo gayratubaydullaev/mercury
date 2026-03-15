@@ -1,9 +1,5 @@
 import { createHmac } from 'crypto';
 
-/**
- * Telegram Web App initData — query string with hash.
- * Verification: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
- */
 export function verifyTelegramWebAppInitData(initData: string, botToken: string): boolean {
   if (!initData?.trim() || !botToken) return false;
   const params = new URLSearchParams(initData);
@@ -27,10 +23,6 @@ export interface TelegramWebAppUser {
   photo_url?: string;
 }
 
-/**
- * Parse user from initData query string (after verification).
- * initData contains user=... as URL-encoded JSON.
- */
 export function parseTelegramUserFromInitData(initData: string): TelegramWebAppUser | null {
   const params = new URLSearchParams(initData);
   const userStr = params.get('user');

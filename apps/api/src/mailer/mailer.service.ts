@@ -22,7 +22,6 @@ export class MailerService {
     }
   }
 
-  /** Send email. If SMTP is not configured, logs to console in non-test env and resolves. */
   async sendMail(options: { to: string; subject: string; text: string; html?: string }): Promise<void> {
     const from = this.config.get('MAIL_FROM') || this.config.get('SMTP_USER') || 'noreply@myshop.uz';
     if (this.transporter) {

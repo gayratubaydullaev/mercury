@@ -24,7 +24,6 @@ export class UploadService {
   private cloudinaryConfigured = false;
 
   constructor(private config: ConfigService) {
-    // Cloudinary: checked once at startup. After setting CLOUDINARY_* in .env, restart API to use Cloudinary.
     const cloudName = this.config.get('CLOUDINARY_CLOUD_NAME');
     this.cloudinaryConfigured = !!cloudName?.trim();
     if (this.cloudinaryConfigured) {
@@ -61,7 +60,6 @@ export class UploadService {
     }
   }
 
-  /** Public base URL for local uploads (e.g. https://jomboy.online/api-proxy). */
   private getLocalUploadBaseUrl(): string {
     const apiPublic = this.config.get('API_PUBLIC_URL');
     if (apiPublic?.trim()) return apiPublic.replace(/\/$/, '');
@@ -70,7 +68,6 @@ export class UploadService {
     return 'http://localhost:3000/api-proxy';
   }
 
-  /** Save file to uploads/ and return public URL. */
   private async saveLocally(file: Express.Multer.File): Promise<string> {
     await mkdir(this.uploadsDir, { recursive: true });
     const ext = MIME_EXT[file.mimetype?.toLowerCase() ?? ''] ?? '.jpg';

@@ -44,7 +44,6 @@ async function main() {
     console.log('Platform settings created');
   }
 
-  // Родительские категории (без parentId)
   const parentCats = await Promise.all([
     prisma.category.upsert({ where: { slug: 'elektronika' }, update: {}, create: { name: 'Elektronika', slug: 'elektronika', description: 'Telefonlar, planshetlar, kompyuterlar' } }),
     prisma.category.upsert({ where: { slug: 'kiyim' }, update: {}, create: { name: 'Kiyim', slug: 'kiyim', description: 'Erkaklar va ayollar kiyimi' } }),
@@ -53,7 +52,6 @@ async function main() {
   ]);
   const parentBySlug = Object.fromEntries(parentCats.map((c) => [c.slug, c.id]));
 
-  // Подкатегории (parent_id задан) — товары только в подкатегориях, чтобы попадали на главную (random)
   const subcatData: Array<{ name: string; slug: string; parentSlug: string }> = [
     { name: 'Telefonlar', slug: 'elektronika-telefonlar', parentSlug: 'elektronika' },
     { name: 'Noutbuklar', slug: 'elektronika-noutbuklar', parentSlug: 'elektronika' },
@@ -92,7 +90,6 @@ async function main() {
     console.log('Shop created:', shop.name);
   }
 
-  // categorySlug — слаг подкатегории (товары только в подкатегориях, чтобы отображались на главной)
   const productData: Array<{
     title: string;
     slug: string;
@@ -155,7 +152,6 @@ async function main() {
   }
   console.log('Products seeded:', productData.length);
 
-  // Тестовые товары с 4–5 фото и вариантами; товары с опциями без вариантов — по 1 фото и варианты по всем комбинациям
   const richProductSlugs = ['samsung-a54', 'airpods', 'futbolka-erkak', 'hp-15', 'lampa-stol', 'shim-yengil', 'koylak-ofis', 'choy-qora', 'soat-qol'];
   const richImages: Record<string, { url: string; alt?: string }[]> = {
     'samsung-a54': [
@@ -348,7 +344,6 @@ async function main() {
     console.log('Banners seeded: 3');
   }
 
-  // Тестовые покупатели для отзывов (30 шт., чтобы по одному отзыву на пару товар+покупатель = до 30 отзывов на товар)
   const buyerPass = await bcrypt.hash('Buyer123!', 10);
   const buyerEmails: string[] = [];
   const buyerNames: Array<[string, string]> = [];
@@ -374,7 +369,6 @@ async function main() {
   }
   console.log('Buyers for reviews:', buyers.length);
 
-  // По 20–30 отзывов на каждый товар. В БД может быть уникальность (productId, userId), поэтому один отзыв на пару (товар, покупатель).
   const deleted = await prisma.review.deleteMany({});
   if (deleted.count > 0) console.log('Deleted existing reviews:', deleted.count);
   const products = await prisma.product.findMany({ where: { shopId: shop!.id }, select: { id: true } });

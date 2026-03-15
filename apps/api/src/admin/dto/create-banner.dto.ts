@@ -32,7 +32,6 @@ export class CreateBannerDto {
   @Type(() => Number)
   sortOrder?: number;
 
-  /** Время показа слайда в карусели (секунды), 1–60. */
   @ApiPropertyOptional({ minimum: 1, maximum: 60 })
   @IsOptional()
   @IsNumber()
@@ -41,13 +40,11 @@ export class CreateBannerDto {
   @Type(() => Number)
   displaySeconds?: number;
 
-  /** Показывать баннер с этой даты (ISO string). */
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
   startsAt?: string;
 
-  /** Деактивировать баннер после этой даты (ISO string). */
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
