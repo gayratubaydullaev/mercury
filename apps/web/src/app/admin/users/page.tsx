@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   const isSuperAdmin = currentUserRole === 'ADMIN';
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     const params = new URLSearchParams();
     if (roleFilter) params.set('role', roleFilter);
@@ -69,7 +69,7 @@ export default function AdminUsersPage() {
     params.set('limit', String(PAGE_SIZE));
     const q = `?${params.toString()}`;
     apiGetJson<AdminUsersResponse>(`${API_URL}/admin/users${q}`, { headers: { Authorization: `Bearer ${token}` } }).then(setData).catch(() => setData(null));
-  };
+  }, [token, roleFilter, page]);
 
   useEffect(() => {
     if (token) {
@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
   }, [token]);
   useEffect(() => {
     load();
-  }, [token, roleFilter, page]);
+  }, [load]);
 
   const block = (id: string, block: boolean) => {
     if (!token) return;

@@ -93,8 +93,11 @@ export function ProductSelectionProvider({
   product: Product;
   children: React.ReactNode;
 }) {
-  const options = (product.options as Record<string, string[]> | null) ?? {};
-  const variants = (product.variants ?? []) as Variant[];
+  const options = useMemo(
+    () => (product.options as Record<string, string[]> | null) ?? {},
+    [product.options],
+  );
+  const variants = useMemo(() => (product.variants ?? []) as Variant[], [product.variants]);
   const optionKeys = useMemo(() => Object.keys(options), [options]);
 
   // По умолчанию ничего не выбрано — пользователь сам выбирает вариант; повторный клик снимает выбор
@@ -108,8 +111,7 @@ export function ProductSelectionProvider({
   const handleVariantChange = useCallback((groupId: string, value: string | null) => {
     setSelected((prev) => {
       if (value === null) {
-        const { [groupId]: _omit, ...rest } = prev;
-        return rest;
+        return Object.fromEntries(Object.entries(prev).filter(([k]) => k !== groupId));
       }
       return { ...prev, [groupId]: value };
     });

@@ -62,7 +62,7 @@ export function ReviewsSection({
   const dragStart = useRef({ x: 0, scrollLeft: 0 });
   const isDraggingRef = useRef(false);
   const CARD_GAP = 16;
-  const stepMobile = 356; // ~одна карточка на мобиле (340 + gap)
+  const stepMobile = 340 + CARD_GAP; // одна карточка на мобиле (~340px + gap)
 
   const stopDrag = useRef(() => {});
   useEffect(() => {

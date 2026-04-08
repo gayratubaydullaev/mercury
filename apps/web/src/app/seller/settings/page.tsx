@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,13 +59,13 @@ export default function SellerSettingsPage() {
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const loadTelegramStatus = () => {
+  const loadTelegramStatus = useCallback(() => {
     if (!token) return;
     apiFetch(`${API_URL}/seller/telegram`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setTelegramStatus)
       .catch(() => setTelegramStatus({ connected: false }));
-  };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -93,7 +94,7 @@ export default function SellerSettingsPage() {
       })
       .catch(() => setShop(null));
     loadTelegramStatus();
-  }, [token]);
+  }, [token, loadTelegramStatus]);
 
   const linkTelegram = (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,8 +307,8 @@ export default function SellerSettingsPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {documentUrls.map((url, i) => (
                     <div key={i} className="relative group">
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-lg border bg-muted overflow-hidden">
-                        <img src={url} alt="" className="object-cover w-full h-full" />
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-lg border bg-muted overflow-hidden relative">
+                        <Image src={url} alt="" fill className="object-cover" sizes="80px" unoptimized />
                       </a>
                       <button
                         type="button"

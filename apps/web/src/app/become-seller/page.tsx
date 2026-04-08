@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -261,7 +262,6 @@ export default function BecomeSellerPage() {
                       e.target.value = '';
                       setDocUploading(true);
                       const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-                      let added = 0;
                       for (const file of Array.from(files).slice(0, 10)) {
                         const form = new FormData();
                         form.append('file', file);
@@ -270,10 +270,9 @@ export default function BecomeSellerPage() {
                           const data = await r.json();
                           if (data?.url) {
                             setDocumentUrls((prev) => [...prev, data.url]);
-                            added++;
                           }
                         } catch {
-                          // skip
+                          // skip failed upload for this file
                         }
                       }
                       setDocUploading(false);
@@ -284,7 +283,7 @@ export default function BecomeSellerPage() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {documentUrls.map((url, i) => (
                         <div key={i} className="relative inline-block">
-                          <img src={url} alt="" className="h-16 w-16 object-cover rounded border" />
+                          <Image src={url} alt="" width={64} height={64} className="h-16 w-16 object-cover rounded border" unoptimized />
                           <button
                             type="button"
                             className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground w-5 h-5 text-xs"

@@ -48,33 +48,6 @@ export default function FavoritesPage() {
   const { token, setToken } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [list, setList] = useState<FavItem[] | null>(null);
-  const [guestIds, setGuestIds] = useState<string[]>([]);
-
-  const fetchFavs = (t: string | null) => {
-    if (!t || isTokenExpired(t)) {
-      if (t) setToken(null);
-      return;
-    }
-    apiGetJson<FavItem[]>(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${t}` } })
-      .then(setList)
-      .catch(() => setList([]));
-  };
-
-  const fetchGuestFavs = () => {
-    const ids = getGuestFavoriteIds();
-    setGuestIds(ids);
-    if (ids.length === 0) {
-      setList([]);
-      return;
-    }
-    Promise.all(ids.map((id) => fetchProductOrNull(id)))
-      .then((products) => {
-        setList(
-          products.filter((p): p is ApiProduct => p != null).map((p) => ({ id: p.id, product: p }))
-        );
-      })
-      .catch(() => setList([]));
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -86,7 +59,6 @@ export default function FavoritesPage() {
     if (t && isTokenExpired(t)) {
       setToken(null);
       const ids = getGuestFavoriteIds();
-      setGuestIds(ids);
       if (ids.length === 0) setList([]);
       else {
         Promise.all(ids.map((id) => fetchProductOrNull(id)))
@@ -105,7 +77,6 @@ export default function FavoritesPage() {
         .catch(() => setList([]));
     } else {
       const ids = getGuestFavoriteIds();
-      setGuestIds(ids);
       if (ids.length === 0) setList([]);
       else {
         Promise.all(ids.map((id) => fetchProductOrNull(id)))
@@ -123,7 +94,6 @@ export default function FavoritesPage() {
     if (!mounted || token) return;
     const handler = () => {
       const ids = getGuestFavoriteIds();
-      setGuestIds(ids);
       if (ids.length === 0) {
         setList([]);
         return;

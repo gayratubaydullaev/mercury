@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch, getCsrfToken } from '@/lib/api';
-import { ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, Upload } from 'lucide-react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
@@ -66,18 +66,18 @@ export default function AdminBannersPage() {
   const [form, setForm] = useState(defaultForm);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     setLoadError('');
     apiFetch(`${API_URL}/admin/banners`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => { setList(Array.isArray(d) ? d : []); setLoadError(''); })
       .catch(() => { setList([]); setLoadError('API ga ulanishda xatolik.'); });
-  };
+  }, [token]);
 
   useEffect(() => {
     load();
-  }, [token]);
+  }, [load]);
 
   const uploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

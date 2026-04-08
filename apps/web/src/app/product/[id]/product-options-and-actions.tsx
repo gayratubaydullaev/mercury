@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { ProductVariants, type VariantGroup } from '@/components/product/product-variants';
 import { ProductPageClient } from './product-page-client';
 
@@ -47,8 +47,11 @@ function buildVariantGroups(options: Record<string, string[]>): VariantGroup[] {
 }
 
 export function ProductOptionsAndActions({ product, isMobile = false }: { product: Product; isMobile?: boolean }) {
-  const options = (product.options as Record<string, string[]> | null) ?? {};
-  const variants = (product.variants ?? []) as Variant[];
+  const options = useMemo(
+    () => (product.options as Record<string, string[]> | null) ?? {},
+    [product.options],
+  );
+  const variants = useMemo(() => (product.variants ?? []) as Variant[], [product.variants]);
   const hasOptions = Object.keys(options).length > 0;
   const variantGroups = useMemo(() => buildVariantGroups(options), [options]);
 
@@ -58,15 +61,14 @@ export function ProductOptionsAndActions({ product, isMobile = false }: { produc
   const stock = currentVariant != null ? currentVariant.stock : product.stock;
   const variantId = currentVariant?.id;
 
-  const handleVariantChange = (groupId: string, value: string | null) => {
+  const handleVariantChange = useCallback((groupId: string, value: string | null) => {
     setSelected((prev) => {
       if (value === null) {
-        const { [groupId]: _omit, ...rest } = prev;
-        return rest;
+        return Object.fromEntries(Object.entries(prev).filter(([k]) => k !== groupId));
       }
       return { ...prev, [groupId]: value };
     });
-  };
+  }, []);
 
   const optionsBlock = hasOptions ? (
     <div className={isMobile ? 'rounded-lg border border-border bg-muted/50 p-3' : 'rounded-xl border border-border bg-card p-4 shadow-sm'}>

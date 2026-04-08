@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
@@ -38,7 +38,7 @@ export default function AdminProductsPage() {
     if (searchParams.get('filter') === 'pending') setFilter('false');
   }, [searchParams]);
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     setLoadError('');
     const q = filter ? `?page=1&limit=50&isModerated=${filter}` : '?page=1&limit=50';
@@ -46,11 +46,11 @@ export default function AdminProductsPage() {
       .then((r) => r.json())
       .then((d) => { setData(d); setLoadError(''); })
       .catch(() => { setData({ data: [], total: 0, page: 1, totalPages: 0 }); setLoadError('API ga ulanishda xatolik. Serverni ishga tushiring (pnpm run dev).'); });
-  };
+  }, [token, filter]);
 
   useEffect(() => {
     load();
-  }, [token, filter]);
+  }, [load]);
 
   const moderate = (productId: string, approve: boolean) => {
     if (!token) return;

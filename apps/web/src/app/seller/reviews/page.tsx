@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,17 +29,17 @@ export default function SellerReviewsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     apiFetch(`${API_URL}/seller/reviews`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setReviews)
       .catch(() => setReviews([]));
-  };
+  }, [token]);
 
   useEffect(() => {
     load();
-  }, [token]);
+  }, [load]);
 
   const handleReply = (reviewId: string) => {
     const text = (drafts[reviewId] ?? '').trim();
@@ -52,7 +52,9 @@ export default function SellerReviewsPage() {
     })
       .then(() => {
         toast.success('Javob yuborildi');
-        setDrafts((prev) => { const { [reviewId]: _omit, ...rest } = prev; return rest; });
+        setDrafts((prev) =>
+          Object.fromEntries(Object.entries(prev).filter(([k]) => k !== reviewId)),
+        );
         setReplyingId(null);
         load();
       })

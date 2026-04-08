@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -44,13 +45,18 @@ export default function NewProductPage() {
       .then((r) => r.json())
       .then((roots: Category[]) => {
         setCategories(roots ?? []);
-        if (roots?.length && !categoryId) {
-          const firstChild = roots.flatMap((r) => r.children ?? []).find(Boolean);
-          if (firstChild) setCategoryId(firstChild.id);
-        }
       })
       .catch(() => setCategories([]));
   }, [token]);
+
+  useEffect(() => {
+    if (!categories.length) return;
+    setCategoryId((prev) => {
+      if (prev) return prev;
+      const firstChild = categories.flatMap((r) => r.children ?? []).find(Boolean);
+      return firstChild?.id ?? '';
+    });
+  }, [categories]);
 
   const leafCategories = categories.flatMap((c) => (c.children ?? []));
 
@@ -80,35 +86,6 @@ export default function NewProductPage() {
     });
     setVariantRows(newRows);
     toast.success(`${newRows.length} ta variant yaratildi. Har biriga qoldiq kiriting.`);
-  };
-
-  const uploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
-    setUploading(true);
-    const form = new FormData();
-    form.append('file', file);
-    try {
-      const csrf = await getCsrfToken();
-      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-      if (csrf) headers['x-csrf-token'] = csrf;
-      const r = await fetch(`${API_URL}/upload/image`, {
-        method: 'POST',
-        headers,
-        body: form,
-        credentials: 'include',
-      });
-      const data = await r.json().catch(() => ({}));
-      if (data?.url) {
-        setImageUrls((prev) => [...prev, data.url]);
-        toast.success('Rasm yuklandi');
-      } else toast.error(data?.message ?? 'Rasm yuklanmadi');
-    } catch {
-      toast.error('Rasm yuklashda xatolik');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
   };
 
   const uploadVariantImage = async (e: React.ChangeEvent<HTMLInputElement>, variantIndex: number) => {
@@ -372,7 +349,7 @@ export default function NewProductPage() {
             <div className="flex flex-wrap gap-2 items-start">
               {imageUrls.map((url, i) => (
                 <div key={i} className="relative group w-24 h-24 rounded-lg border overflow-hidden bg-muted shrink-0">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <Image src={url} alt="" width={96} height={96} className="w-full h-full object-cover" unoptimized />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-0.5">
                     <button
                       type="button"

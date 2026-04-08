@@ -70,9 +70,16 @@ export function CheckoutForm() {
   const allowedPayment = checkoutOptions?.paymentMethods ?? ['CASH', 'CARD_ON_DELIVERY', 'CLICK', 'PAYME'];
   useEffect(() => {
     if (!checkoutOptions) return;
-    if (!allowedDelivery.includes(deliveryType) && allowedDelivery[0]) setDeliveryType(allowedDelivery[0] as 'DELIVERY' | 'PICKUP');
-    if (!allowedPayment.includes(paymentMethod) && allowedPayment[0]) setPaymentMethod(allowedPayment[0] as 'CLICK' | 'PAYME' | 'CASH' | 'CARD_ON_DELIVERY');
-  }, [checkoutOptions]);
+    const deliveryTypes = checkoutOptions.deliveryTypes?.length
+      ? checkoutOptions.deliveryTypes
+      : (['DELIVERY', 'PICKUP'] as const);
+    const paymentMethods = checkoutOptions.paymentMethods?.length
+      ? checkoutOptions.paymentMethods
+      : (['CASH', 'CARD_ON_DELIVERY', 'CLICK', 'PAYME'] as const);
+    if (!deliveryTypes.includes(deliveryType) && deliveryTypes[0]) setDeliveryType(deliveryTypes[0] as 'DELIVERY' | 'PICKUP');
+    if (!paymentMethods.includes(paymentMethod) && paymentMethods[0])
+      setPaymentMethod(paymentMethods[0] as 'CLICK' | 'PAYME' | 'CASH' | 'CARD_ON_DELIVERY');
+  }, [checkoutOptions, deliveryType, paymentMethod]);
 
   const { token, setToken } = useAuth();
   const isGuest = !token;
@@ -93,7 +100,6 @@ export function CheckoutForm() {
   });
 
   const total = cart.items.reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
-  const returnUrl = typeof window !== 'undefined' ? `${window.location.origin}/checkout/success` : '';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

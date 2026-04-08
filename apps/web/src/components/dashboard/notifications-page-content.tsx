@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,18 +35,19 @@ export function NotificationsPageContent({
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
+    const h = { Authorization: `Bearer ${token}` };
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-    apiFetch(`${API_URL}/notifications?${params}`, { headers })
+    apiFetch(`${API_URL}/notifications?${params}`, { headers: h })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ data: [], total: 0, page: 1, totalPages: 0 }));
-  };
+  }, [token, page]);
 
   useEffect(() => {
     load();
-  }, [token, page]);
+  }, [load]);
 
   const markAsRead = (id: string) => {
     if (!token) return;

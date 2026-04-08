@@ -4,7 +4,6 @@ let apiServerUrl = rawApiUrl.includes(',') ? rawApiUrl.split(',')[0].trim() : ra
 if (apiServerUrl && !/^https?:\/\//i.test(apiServerUrl)) apiServerUrl = 'https://' + apiServerUrl;
 const nextConfig = {
   reactStrictMode: true,
-  eslint: { ignoreDuringBuilds: true },
   // BUILD_ID: set in CI so all instances share same build (avoids "Failed to find Server Action" / workers undefined).
   // NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: set at BUILD TIME in production (base64, 32 bytes). Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
   generateBuildId: async () => {

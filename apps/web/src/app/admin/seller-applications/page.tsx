@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +48,7 @@ export default function AdminSellerApplicationsPage() {
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
@@ -58,12 +58,12 @@ export default function AdminSellerApplicationsPage() {
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData(null));
-  };
+  }, [token, statusFilter, page]);
 
   useEffect(() => {
     if (!token) return;
     load();
-  }, [token, statusFilter, page]);
+  }, [token, load]);
 
   const approve = (id: string) => {
     if (!token) return;

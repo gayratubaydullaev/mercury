@@ -20,7 +20,6 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
   const router = useRouter();
   const ctx = useProductSelectionOptional();
   const [variantModalOpen, setVariantModalOpen] = useState(false);
-  const [pendingVariantAction, setPendingVariantAction] = useState<'cart' | 'buy' | null>(null);
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -49,7 +48,6 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
         toast.success('Savatchaga qoʻshildi');
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cart-updated'));
         setVariantModalOpen(false);
-        setPendingVariantAction(null);
       } else {
         toast.error('Qoʻshishda xatolik');
       }
@@ -58,7 +56,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
     } finally {
       setAdding(false);
     }
-  }, [ctx?.product.id, ctx?.variantId, ctx?.stock]);
+  }, [ctx]);
 
   const buyNow = useCallback(async () => {
     if (!ctx) return;
@@ -80,7 +78,6 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
         toast.success('Savatchaga qoʻshildi');
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cart-updated'));
         setVariantModalOpen(false);
-        setPendingVariantAction(null);
         router.push('/checkout');
       } else {
         toast.error('Qoʻshishda xatolik');
@@ -90,17 +87,15 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
     } finally {
       setBuying(false);
     }
-  }, [ctx?.product.id, ctx?.variantId, ctx?.stock, router]);
+  }, [ctx, router]);
 
-  const openVariantModal = useCallback((action: 'cart' | 'buy') => {
+  const openVariantModal = useCallback((_action: 'cart' | 'buy') => {
     ctx?.resetSelected?.();
-    setPendingVariantAction(action);
     setVariantModalOpen(true);
   }, [ctx]);
 
   useTelegramBackHandler(variantModalOpen, () => {
     setVariantModalOpen(false);
-    setPendingVariantAction(null);
   });
 
   if (!ctx) return null;
@@ -134,7 +129,7 @@ export function ProductActionsSection({ isMobile = false }: { isMobile?: boolean
         buttons
       )}
 
-      <Dialog open={variantModalOpen} onOpenChange={(open) => { if (!open) { setPendingVariantAction(null); } else { ctx?.resetSelected?.(); } setVariantModalOpen(open); }}>
+      <Dialog open={variantModalOpen} onOpenChange={(open) => { if (open) ctx?.resetSelected?.(); setVariantModalOpen(open); }}>
         <DialogContent
           showClose={false}
           className="max-w-4xl w-full p-0 gap-0 overflow-hidden md:rounded-2xl rounded-t-2xl rounded-b-none md:h-[600px] h-[90vh] flex flex-col [&>button:last-child]:hidden"

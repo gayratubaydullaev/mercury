@@ -198,18 +198,21 @@ export function Header() {
     setSearchOpen(false);
   };
 
-  const openCatalogWithSearch = (q: string) => {
-    const trimmed = q.trim();
-    if (trimmed) {
-      addRecentSearch(trimmed);
-      const forApi = transliterateCyrillicToLatin(trimmed);
-      router.push(`/catalog?search=${encodeURIComponent(forApi)}`);
-    } else {
-      router.push('/catalog');
-    }
-    setSearchOpen(false);
-    setSearchQuery('');
-  };
+  const openCatalogWithSearch = useCallback(
+    (q: string) => {
+      const trimmed = q.trim();
+      if (trimmed) {
+        addRecentSearch(trimmed);
+        const forApi = transliterateCyrillicToLatin(trimmed);
+        router.push(`/catalog?search=${encodeURIComponent(forApi)}`);
+      } else {
+        router.push('/catalog');
+      }
+      setSearchOpen(false);
+      setSearchQuery('');
+    },
+    [router],
+  );
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -280,7 +283,7 @@ export function Header() {
         }
       }
     },
-    [searchOpen, highlightedIndex, totalOptions, suggestionCount, searchSuggestions, searchQuery, router],
+    [searchOpen, highlightedIndex, totalOptions, suggestionCount, searchSuggestions, searchQuery, router, openCatalogWithSearch],
   );
 
   const { siteName } = usePublicSettings();

@@ -35,7 +35,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [mounted, setMounted] = useState(false);
   const [tgLoading, setTgLoading] = useState(false);
   const [tgWaiting, setTgWaiting] = useState(false);
   const [tgError, setTgError] = useState('');
@@ -45,8 +44,6 @@ function LoginForm() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
-
-  useEffect(() => setMounted(true), []);
 
   const startTelegramLogin = () => {
     setTgError('');

@@ -21,7 +21,6 @@ interface ProductVariantsProps {
   selected: Record<string, string>;
   onChange: (groupId: string, value: string | null) => void;
   showError?: boolean;
-  isModal?: boolean;
 }
 
 export function ProductVariants({
@@ -29,7 +28,6 @@ export function ProductVariants({
   selected,
   onChange,
   showError = false,
-  isModal = false,
 }: ProductVariantsProps) {
   const handleSelect = (groupId: string, optionId: string) => {
     if (selected[groupId] === optionId) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,18 +43,18 @@ export default function AdminPendingShopUpdatesPage() {
   const [page, setPage] = useState(1);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     fetch(`${API_URL}/admin/pending-shop-updates?page=${page}&limit=20`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData(null));
-  };
+  }, [token, page]);
 
   useEffect(() => {
     if (!token) return;
     load();
-  }, [token, page]);
+  }, [token, load]);
 
   const approve = (id: string) => {
     if (!token) return;

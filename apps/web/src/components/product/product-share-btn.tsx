@@ -65,7 +65,8 @@ export function ProductShareBtn({
       size={size}
       onClick={handleShare}
       className={cn('rounded-full', className)}
-      title={copied ? 'Link nusxalandi' : 'Ulashish'}
+      title={copied ? 'Link nusxalandi' : `Ulashish: ${productName}`}
+      aria-label={copied ? 'Link nusxalandi' : `${productName} — havolani nusxalash`}
     >
       <Share2 className={cn('h-5 w-5', iconClassName)} />
     </Button>

@@ -38,7 +38,6 @@ export default async function ProductPage(props: { params: Promise<{ id: string 
     comparePrice != null && comparePrice > price
       ? Math.round((1 - price / comparePrice) * 100)
       : null;
-  const options = (product.options as Record<string, string[]> | null) ?? null;
   const shop = product.shop;
   const stock = product.stock ?? 0;
   const reviews = (product.reviews as Array<{ id: string; rating: number; comment?: string | null; sellerReply?: string | null; createdAt?: string; user: { firstName: string; lastName: string } }>) ?? [];

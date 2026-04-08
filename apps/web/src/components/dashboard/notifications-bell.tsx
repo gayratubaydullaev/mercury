@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Bell, CheckCheck, Loader2, ChevronRight } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
@@ -36,33 +36,35 @@ export function NotificationsBell({ basePath, className }: NotificationsBellProp
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
-  const fetchUnreadCount = () => {
+  const fetchUnreadCount = useCallback(() => {
     if (!token) return;
-    apiFetch(`${API_URL}/notifications/unread-count`, { headers })
+    const h = { Authorization: `Bearer ${token}` };
+    apiFetch(`${API_URL}/notifications/unread-count`, { headers: h })
       .then((r) => r.json())
       .then((data: { count?: number }) => setUnreadCount(data?.count ?? 0))
       .catch(() => {});
-  };
+  }, [token]);
 
-  const fetchList = () => {
+  const fetchList = useCallback(() => {
     if (!token) return;
+    const h = { Authorization: `Bearer ${token}` };
     setLoading(true);
-    apiFetch(`${API_URL}/notifications?limit=10`, { headers })
+    apiFetch(`${API_URL}/notifications?limit=10`, { headers: h })
       .then((r) => r.json())
       .then((data: { data?: NotificationItem[] }) => setList(data?.data ?? []))
       .catch(() => setList([]))
       .finally(() => setLoading(false));
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchUnreadCount();
     const t = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(t);
-  }, [token]);
+  }, [fetchUnreadCount]);
 
   useEffect(() => {
     if (open && token) fetchList();
-  }, [open, token]);
+  }, [open, token, fetchList]);
 
   useEffect(() => {
     if (!open) return;

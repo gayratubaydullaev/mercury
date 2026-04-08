@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { FolderTree, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
@@ -29,18 +29,18 @@ export default function AdminCategoriesPage() {
   const [newCat, setNewCat] = useState<{ name: string; slug: string; description: string; parentId: string }>({ name: '', slug: '', description: '', parentId: '' });
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     setLoadError('');
     apiFetch(`${API_URL}/admin/categories`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => { setList(Array.isArray(data) ? data : []); setLoadError(''); })
       .catch(() => { setList([]); setLoadError('API ga ulanishda xatolik. Serverni ishga tushiring (pnpm run dev).'); });
-  };
+  }, [token]);
 
   useEffect(() => {
     load();
-  }, [token]);
+  }, [load]);
 
   const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 

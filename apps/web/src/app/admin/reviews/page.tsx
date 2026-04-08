@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -40,7 +40,7 @@ export default function AdminReviewsPage() {
     if (searchParams.get('filter') === 'pending') setFilter('false');
   }, [searchParams]);
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!token) return;
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (filter) params.set('isModerated', filter);
@@ -48,11 +48,11 @@ export default function AdminReviewsPage() {
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ data: [], total: 0, page: 1, totalPages: 0 }));
-  };
+  }, [token, filter, page]);
 
   useEffect(() => {
     load();
-  }, [token, filter, page]);
+  }, [load]);
 
   const handleModerate = (id: string, approve: boolean) => {
     if (!token) return;

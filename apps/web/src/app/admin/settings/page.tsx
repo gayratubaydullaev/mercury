@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,13 +53,13 @@ export default function AdminSettingsPage() {
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const loadTelegramStatus = () => {
+  const loadTelegramStatus = useCallback(() => {
     if (!token) return;
     apiFetch(`${API_URL}/admin/telegram`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setTelegramStatus)
       .catch(() => setTelegramStatus({ connected: false }));
-  };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -87,7 +87,7 @@ export default function AdminSettingsPage() {
         setSettings({ siteName: null, commissionRate: '5', minPayoutAmount: '100000' });
       });
     loadTelegramStatus();
-  }, [token]);
+  }, [token, loadTelegramStatus]);
 
   const linkTelegram = (e: React.FormEvent) => {
     e.preventDefault();
