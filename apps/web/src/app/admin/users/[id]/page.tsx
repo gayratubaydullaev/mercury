@@ -10,7 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, cn, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Mail, Phone, Store, Package, ShoppingBag, Banknote, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Store, Package, ShoppingBag, Banknote, Calendar, UserX } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
 
 const ROLE_LABELS: Record<string, string> = {
   BUYER: 'Xaridor',
@@ -130,26 +133,62 @@ export default function AdminUserProfilePage() {
       .finally(() => setPermissionSaving(null));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
-  if (user === undefined) return <Skeleton className="h-64 w-full" />;
+  if (!token) return <DashboardAuthGate />;
+  if (user === undefined) {
+    return (
+      <div className="min-w-0 max-w-2xl space-y-6">
+        <DashboardPageHeader eyebrow="Platforma" title="Foydalanuvchi" description="Maʼlumot yuklanmoqda…" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
   if (user === null) {
     return (
-      <div>
-        <Button variant="ghost" size="sm" asChild><Link href="/admin/users"><ArrowLeft className="h-4 w-4 mr-1" /> Orqaga</Link></Button>
-        <p className="mt-4 text-destructive">Foydalanuvchi topilmadi.</p>
+      <div className="min-w-0 max-w-2xl space-y-6">
+        <DashboardPageHeader
+          eyebrow="Platforma"
+          title="Foydalanuvchi"
+          description="Profil topilmadi yoki ruxsat yoʻq."
+        >
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+            <Link href="/admin/users">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Roʻyxatga qaytish
+            </Link>
+          </Button>
+        </DashboardPageHeader>
+        <DashboardEmptyState
+          icon={UserX}
+          title="Foydalanuvchi topilmadi"
+          description="ID notoʻgʻri yoki bu foydalanuvchini koʻrish huquqi yoʻq."
+        >
+          <Button asChild>
+            <Link href="/admin/users">Foydalanuvchilar</Link>
+          </Button>
+        </DashboardEmptyState>
       </div>
     );
   }
 
   const isSeller = user.role === 'SELLER';
 
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+
   return (
-    <div className="space-y-6 max-w-2xl min-w-0">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="min-h-[40px] touch-manipulation" asChild>
-          <Link href="/admin/users"><ArrowLeft className="h-4 w-4 mr-1" /> Foydalanuvchilar</Link>
+    <div className="min-w-0 max-w-2xl space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title={displayName}
+        subtitle={user.email}
+        description="Profil, rol va (sotuvchi uchun) statistika."
+      >
+        <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+          <Link href="/admin/users">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Foydalanuvchilar
+          </Link>
         </Button>
-      </div>
+      </DashboardPageHeader>
 
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FolderTree, Package, ShoppingBag, Settings, BarChart3, ArrowLeft, Shield, Store, Banknote, ImageIcon, MessageSquare, Menu, X, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, FolderTree, Package, ShoppingBag, Settings, BarChart3, ArrowLeft, Shield, Store, Banknote, ImageIcon, MessageSquare, Menu, X, Bell, FileCheck, FileEdit } from 'lucide-react';
+import { DashboardNavFooter } from '@/components/dashboard/dashboard-nav-footer';
 import { cn, API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -16,6 +17,8 @@ const mainItems: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell },
   { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
   { href: '/admin/sellers', label: 'Sotuvchilar', icon: Store },
+  { href: '/admin/seller-applications', label: 'Sotuvchi arizalari', icon: FileCheck, moderatorPermission: 'canApproveSellerApplications' },
+  { href: '/admin/pending-shop-updates', label: 'Doʻkon oʻzgarishlari', icon: FileEdit, moderatorPermission: 'canApproveShopUpdates' },
   { href: '/admin/orders', label: 'Buyurtmalar', icon: ShoppingBag },
   { href: '/admin/products', label: 'Tovarlar (moderatsiya)', icon: Package, moderatorPermission: 'canModerateProducts' },
   { href: '/admin/reviews', label: 'Sharhlar', icon: MessageSquare, moderatorPermission: 'canModerateReviews' },
@@ -171,34 +174,37 @@ export function AdminNav() {
       {/* Выдвижная панель меню (мобильная) */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-[min(300px,100vw-2rem)] max-w-[85vw] bg-card border-r border-border/60 shadow-xl flex flex-col transition-transform duration-200 ease-out md:translate-x-0 md:shadow-none md:static md:h-auto md:w-60 md:max-w-none',
+          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/60 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-60 md:max-w-none md:shrink-0 md:bg-muted/25 md:shadow-none md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
         aria-label="Admin panel navigatsiyasi"
       >
-        <div className="p-3 md:p-4 border-b border-border/60 flex items-center justify-between md:justify-start">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-card/80 p-3 backdrop-blur-sm md:p-4">
           <Link
             href="/admin"
-            className="flex items-center gap-2 px-2 py-1.5 -mx-2 -my-1.5 rounded-lg hover:bg-muted/50 transition-colors md:mx-0 md:my-0 min-w-0"
+            className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 -my-1.5 transition-colors hover:bg-muted/50 md:mx-0 md:my-0"
             aria-label="Admin bosh sahifasi"
             onClick={() => setMobileOpen(false)}
           >
-            <Shield className="h-5 w-5 text-primary shrink-0" aria-hidden />
-            <span className="font-semibold text-sm truncate">Admin panel</span>
+            <Shield className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            <span className="truncate text-sm font-semibold">Admin panel</span>
           </Link>
-          <NotificationsBell basePath="/admin" />
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg hover:bg-muted text-muted-foreground touch-manipulation"
-            aria-label="Menyuni yopish"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <NotificationsBell basePath="/admin" />
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
+              aria-label="Menyuni yopish"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-        <nav className="p-3 md:p-4 flex flex-col gap-0.5 overflow-y-auto flex-1 overscroll-contain" aria-label="Asosiy menyu">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain p-3 md:p-4" aria-label="Asosiy menyu">
           <NavContent pathname={pathname} onNavClick={() => setMobileOpen(false)} adminUser={adminUser} />
         </nav>
+        <DashboardNavFooter />
       </aside>
     </>
   );

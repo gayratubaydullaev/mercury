@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { MessageCircle, Send, Unplug, FileText, X } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
@@ -216,15 +218,16 @@ export default function SellerSettingsPage() {
       .finally(() => setLoading(false));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (shop === undefined) return <Skeleton className="h-32 w-full" />;
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold">Doʻkon sozlamalari</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Nomi, tavsif va oʻzim olib ketish manzili</p>
-      </div>
+    <div className="w-full max-w-2xl space-y-6">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Doʻkon sozlamalari"
+        description="Nomi, tavsif, olib ketish manzili, chat va yuridik maʼlumotlar."
+      />
       <Card>
         <CardHeader>
           <CardTitle>Maʼlumot</CardTitle>

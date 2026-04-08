@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { FolderTree, Plus, Pencil, Trash2 } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Category = {
   id: string;
@@ -97,16 +99,17 @@ export default function AdminCategoriesPage() {
       .catch((err) => toast.error(err?.message ?? 'Oʻchirishda xatolik'));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (list === null) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="space-y-6 min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <FolderTree className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Toifalar
-      </h1>
-      {loadError && <p className="text-destructive text-sm">{loadError}</p>}
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Toifalar"
+        description="Katalog ierarxiyasi: asosiy va ostkategoriyalar."
+      />
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base sm:text-lg"><Plus className="h-5 w-5 shrink-0" /> Yangi toifa</CardTitle></CardHeader>

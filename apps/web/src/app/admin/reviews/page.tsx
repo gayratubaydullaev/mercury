@@ -10,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { MessageSquare, Star, Trash2, Check, X } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 const PAGE_SIZE = 20;
 
@@ -82,36 +85,44 @@ export default function AdminReviewsPage() {
       .finally(() => setDeletingId(null));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (data === null) return <Skeleton className="h-64 w-full" />;
 
   const reviews = data.data ?? [];
 
   return (
-    <div className="space-y-6 min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Sharhlar (moderatsiya)
-      </h1>
-
-      <div className="flex gap-2 flex-wrap items-center">
-        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter(''); setPage(1); }}>Barchasi</Button>
-        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('false'); setPage(1); }}>Kutilmoqda</Button>
-        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('true'); setPage(1); }}>Tasdiqlangan</Button>
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center gap-2 sm:ml-4 flex-wrap">
-            <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
-            <span className="text-sm text-muted-foreground">Sahifa {data.page} / {data.totalPages}</span>
-            <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page >= data.totalPages} onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}>Keyingi</Button>
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Sharhlar (moderatsiya)"
+        description="Foydalanuvchi sharhlarini koʻrib chiqing va tasdiqlang."
+      >
+        <div className="flex max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-wrap gap-2">
+            <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter(''); setPage(1); }}>Barchasi</Button>
+            <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('false'); setPage(1); }}>Kutilmoqda</Button>
+            <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setFilter('true'); setPage(1); }}>Tasdiqlangan</Button>
           </div>
-        )}
-      </div>
+          {data && data.totalPages > 1 && (
+            <div className="flex flex-wrap items-center gap-2 sm:ml-2">
+              <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+              <span className="text-sm text-muted-foreground">Sahifa {data.page} / {data.totalPages}</span>
+              <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" disabled={data.page >= data.totalPages} onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}>Keyingi</Button>
+            </div>
+          )}
+        </div>
+      </DashboardPageHeader>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Sharhlar ({data.total})</CardTitle></CardHeader>
-        <CardContent>
+        <CardHeader className="border-b border-border/60 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <MessageSquare className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            Sharhlar ({data.total})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5">
           {reviews.length === 0 ? (
-            <p className="text-muted-foreground py-4">Sharhlar yoʻq.</p>
+            <DashboardEmptyState icon={MessageSquare} title="Sharhlar yoʻq" description="Tanlangan filtr boʻyicha natija topilmadi." />
           ) : (
             <ul className="space-y-4">
               {reviews.map((r) => (

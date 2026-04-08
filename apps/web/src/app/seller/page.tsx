@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Package, ShoppingBag, BarChart3, Settings, Plus, ExternalLink, ArrowRight } from 'lucide-react';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Stats = {
   ordersCount: number;
@@ -15,6 +17,7 @@ type Stats = {
   totalRevenue: string;
   productsCount?: number;
   shopSlug?: string | null;
+  shopName?: string | null;
   commission?: number;
   totalPaidToPlatform?: number;
   balance?: number;
@@ -64,32 +67,31 @@ export default function SellerDashboardPage() {
       .catch(() => setRecentOrders([]));
   }, [token]);
 
-  if (!token) return <p className="text-muted-foreground">Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
 
   return (
     <div className="min-w-0 space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Sotuvchi kabineti</h1>
-          <p className="text-muted-foreground">Doʻkoningiz va buyurtmalarni boshqarish</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <Link href="/seller/products/new" className="inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Yangi tovar
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        subtitle={stats?.shopName?.trim() || undefined}
+        title="Bosh sahifa"
+        description="Doʻkoningiz, buyurtmalar va statistikani shu yerdan boshqaring."
+      >
+        <Button asChild>
+          <Link href="/seller/products/new" className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Yangi tovar
+          </Link>
+        </Button>
+        {stats?.shopSlug ? (
+          <Button variant="outline" asChild>
+            <Link href={`/catalog?shop=${encodeURIComponent(stats.shopSlug)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Doʻkonimni koʻrish
             </Link>
           </Button>
-          {stats?.shopSlug && (
-            <Button variant="outline" asChild>
-              <Link href={`/catalog?shop=${encodeURIComponent(stats.shopSlug)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Doʻkonimni koʻrish
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
+        ) : null}
+      </DashboardPageHeader>
 
       {stats ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

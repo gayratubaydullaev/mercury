@@ -8,6 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { Store, Percent } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 import {
   Dialog,
   DialogContent,
@@ -97,23 +101,24 @@ export default function AdminSellersPage() {
       });
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-64 w-full" />;
 
   const sellers = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div className="min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-        <Store className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Sotuvchilar
-      </h1>
-      <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Tovarlar, buyurtmalar va daromad boʻyicha</p>
-      {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
-      <div className="overflow-x-auto -mx-0 rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm border-collapse min-w-[640px]">
+    <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Sotuvchilar"
+        description="Doʻkonlar, komissiya foizi, tovarlar va buyurtmalar boʻyicha koʻrinish."
+      />
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
+      <DashboardPanel className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
-            <tr className="border-b">
+            <tr className="border-b border-border/80 bg-muted/40">
               <th className="text-left py-2 px-2 font-medium">F.I.O / Email</th>
               <th className="text-left py-2 px-2 font-medium">Doʻkon</th>
               <th className="text-right py-2 px-2 font-medium">Komissiya %</th>
@@ -147,8 +152,13 @@ export default function AdminSellersPage() {
             ))}
           </tbody>
         </table>
-      </div>
-      {sellers.length === 0 && !loadError && <p className="text-muted-foreground py-8">Sotuvchilar yoʻq</p>}
+        </div>
+        {sellers.length === 0 && !loadError && (
+          <div className="p-6">
+            <DashboardEmptyState icon={Store} title="Sotuvchilar yoʻq" description="Hozircha roʻyxat boʻsh." />
+          </div>
+        )}
+      </DashboardPanel>
 
       <Dialog open={commissionModal.open} onOpenChange={(open) => !open && closeCommissionModal()}>
         <DialogContent>

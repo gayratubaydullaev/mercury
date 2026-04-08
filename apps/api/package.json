@@ -13,6 +13,7 @@
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migrate:deploy": "npx prisma migrate deploy",
     "prisma:push": "npx prisma db push",
+    "prisma:push:schema-only": "npx prisma db push --skip-generate",
     "prisma:studio": "npx prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts"
   },

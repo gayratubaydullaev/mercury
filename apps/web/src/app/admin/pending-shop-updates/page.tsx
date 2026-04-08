@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { FileEdit } from 'lucide-react';
 
 type PendingUpdate = {
   id: string;
@@ -35,7 +39,6 @@ type PendingUpdate = {
 type Response = { data: PendingUpdate[]; total: number; page: number; limit: number; totalPages: number };
 
 export default function AdminPendingShopUpdatesPage() {
-  const router = useRouter();
   const [data, setData] = useState<Response | null>(null);
   const [page, setPage] = useState(1);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -49,10 +52,7 @@ export default function AdminPendingShopUpdatesPage() {
   };
 
   useEffect(() => {
-    if (!token) {
-      router.replace('/auth/login?next=/admin/pending-shop-updates');
-      return;
-    }
+    if (!token) return;
     load();
   }, [token, page]);
 
@@ -80,21 +80,24 @@ export default function AdminPendingShopUpdatesPage() {
       .catch(() => toast.error('Xatolik'));
   };
 
-  if (!token) return null;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-64 w-full rounded-xl" />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold">Do‘kon o‘zgarishlari (tasdiqlash)</h1>
-        <Link href="/admin"><Button variant="outline" size="sm">← Bosh sahifa</Button></Link>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        Sotuvchilar do‘kon nomi, slug, tavsif yoki yuridik maʼlumotlarni o‘zgartirganda o‘zgarishlar shu yerda ko‘rinadi. Tasdiqlang yoki rad eting.
-      </p>
-      <div className="space-y-3">
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Doʻkon oʻzgarishlari"
+        description="Sotuvchilar nom, slug, tavsif yoki yuridik maʼlumotlarni oʻzgartirganda soʻrovlar shu yerda. Tasdiqlang yoki rad eting."
+      >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin">← Bosh sahifa</Link>
+        </Button>
+      </DashboardPageHeader>
+      <DashboardPanel className="p-4 sm:p-5 md:p-6">
+        <div className="space-y-3">
         {data.data.length === 0 ? (
-          <p className="text-muted-foreground">Kutilayotgan so‘rovlar yo‘q</p>
+          <DashboardEmptyState icon={FileEdit} title="Kutilayotgan soʻrovlar yoʻq" description="Yangi oʻzgartirishlar kelganda ular shu yerda chiqadi." />
         ) : (
           data.data.map((row) => (
             <Card key={row.id}>
@@ -132,14 +135,15 @@ export default function AdminPendingShopUpdatesPage() {
             </Card>
           ))
         )}
-      </div>
-      {data.totalPages > 1 && (
-        <div className="flex gap-2 justify-center">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Oldingi</Button>
-          <span className="py-2 text-sm text-muted-foreground">{page} / {data.totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>Keyingi</Button>
         </div>
-      )}
+        {data.totalPages > 1 && (
+          <div className="mt-4 flex justify-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Oldingi</Button>
+            <span className="py-2 text-sm text-muted-foreground">{page} / {data.totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>Keyingi</Button>
+          </div>
+        )}
+      </DashboardPanel>
     </div>
   );
 }

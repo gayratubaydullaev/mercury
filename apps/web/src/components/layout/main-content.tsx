@@ -4,6 +4,14 @@ import { usePathname } from 'next/navigation';
 
 export function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isDashboard = pathname?.startsWith('/admin') || pathname?.startsWith('/seller');
+  if (isDashboard) {
+    return (
+      <main className="flex min-h-dvh w-full max-w-full min-w-0 flex-1 flex-col overflow-x-hidden">
+        {children}
+      </main>
+    );
+  }
   const isProductPage = pathname?.startsWith('/product/');
   return (
     <main

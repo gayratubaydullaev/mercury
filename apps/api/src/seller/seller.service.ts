@@ -146,7 +146,10 @@ export class SellerService {
   }
 
   async getStats(userId: string) {
-    const shop = await this.prisma.shop.findFirst({ where: { userId }, select: { id: true, slug: true, commissionRate: true } });
+    const shop = await this.prisma.shop.findFirst({
+      where: { userId },
+      select: { id: true, slug: true, name: true, commissionRate: true },
+    });
     if (!shop) {
       return {
         ordersCount: 0,
@@ -154,6 +157,7 @@ export class SellerService {
         totalRevenue: '0',
         productsCount: 0,
         shopSlug: null,
+        shopName: null,
         commissionRate: null,
         commission: 0,
         totalPaidToPlatform: 0,
@@ -184,6 +188,7 @@ export class SellerService {
       totalRevenue: String(totalRevenue),
       productsCount,
       shopSlug: shop.slug,
+      shopName: shop.name,
       commissionRate: shop.commissionRate != null ? Number(shop.commissionRate) : (settings ? Number(settings.commissionRate) : null),
       commission,
       totalPaidToPlatform,

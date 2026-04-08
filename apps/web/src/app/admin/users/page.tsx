@@ -10,7 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, cn } from '@/lib/utils';
 import { apiFetch, apiGetJson } from '@/lib/api';
 import { isApiError } from '@/types/api';
-import { User } from 'lucide-react';
+import { User, Users } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 const ROLES = ['BUYER', 'SELLER', 'ADMIN', 'ADMIN_MODERATOR'] as const;
 const ROLE_LABELS: Record<string, string> = {
@@ -116,7 +120,7 @@ export default function AdminUsersPage() {
       .catch((err: Error) => toast.error(err.message ?? 'Rol saqlanmadi'));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-64 w-full" />;
 
   const users = Array.isArray(data?.data) ? data.data : [];
@@ -127,29 +131,39 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold mb-2">Foydalanuvchilar</h1>
-      <p className="text-muted-foreground mb-4 text-sm sm:text-base">
-        {isSuperAdmin ? 'Koʻrish, bloklash va rol berish.' : 'Faqat koʻrish. Rol va bloklash — bosh admin uchun.'} Jami: {total}
-      </p>
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
-        {ROLES.map((r) => (
-          <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(r); setPage(1); }}>{ROLE_LABELS[r]}</Button>
-        ))}
-      </div>
-      {users.length === 0 && isApiError(data) && data.message && (
-        <p className="text-destructive text-sm mb-4">{data.message}</p>
-      )}
-      {totalPages > 1 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
-          <span className="text-sm text-muted-foreground">Sahifa {currentPage} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Keyingi</Button>
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Foydalanuvchilar"
+        description={`${isSuperAdmin ? 'Koʻrish, bloklash va rol berish.' : 'Faqat koʻrish. Rol va bloklash — bosh admin uchun.'} Jami: ${total}.`}
+      >
+        <div className="flex max-w-full flex-wrap gap-2">
+          <Button variant={roleFilter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(''); setPage(1); }}>Barchasi</Button>
+          {ROLES.map((r) => (
+            <Button key={r} variant={roleFilter === r ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => { setRoleFilter(r); setPage(1); }}>{ROLE_LABELS[r]}</Button>
+          ))}
         </div>
+      </DashboardPageHeader>
+      {users.length === 0 && isApiError(data) && data.message && (
+        <p className="mb-4 text-sm text-destructive">{data.message}</p>
       )}
-      <div className="space-y-3 max-w-3xl">
+      <DashboardPanel className="max-w-3xl p-4 sm:p-5 md:p-6">
+        {totalPages > 1 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Oldingi</Button>
+            <span className="text-sm text-muted-foreground">Sahifa {currentPage} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Keyingi</Button>
+          </div>
+        )}
+        {users.length === 0 ? (
+          <DashboardEmptyState
+            icon={Users}
+            title="Foydalanuvchilar yoʻq"
+            description="Filtr yoki sahifa boʻyicha natija topilmadi."
+          />
+        ) : (
+      <div className="space-y-3">
         {users.map((u) => (
-          <Card key={u.id}>
+          <Card key={u.id} className="border-border/70 shadow-none">
             <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row flex-wrap justify-between items-stretch sm:items-center gap-3">
               <Link href={`/admin/users/${u.id}`} className="hover:opacity-80 transition-opacity min-w-0 flex-1">
                 <p className="font-medium">{displayName(u)}</p>
@@ -186,6 +200,8 @@ export default function AdminUsersPage() {
           </Card>
         ))}
       </div>
+        )}
+      </DashboardPanel>
     </div>
   );
 }

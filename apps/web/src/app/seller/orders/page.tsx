@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { ShoppingBag } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Kutilmoqda',
@@ -119,18 +124,29 @@ export default function SellerOrdersPage() {
   const isPrepaid = (o: OrderRow) => o.paymentMethod === 'CLICK' || o.paymentMethod === 'PAYME';
   const canShipOrDeliver = (o: OrderRow) => !isPrepaid(o) || o.paymentStatus === 'PAID';
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-24 w-full" />;
   const orders = data.data ?? [];
 
   return (
-    <div>
-      <h1 className="text-xl sm:text-2xl font-bold mb-2">Buyurtmalar</h1>
-      <p className="text-muted-foreground mb-6">Doʻkoningizga kelgan buyurtmalar (faqat sizning doʻkoningiz uchun)</p>
+    <div className="min-w-0 max-w-full">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Buyurtmalar"
+        description="Doʻkoningizga kelgan buyurtmalar — holatni yangilang va toʻlovni belgilang."
+      />
+      <DashboardPanel className="p-4 sm:p-5 md:p-6">
+        {orders.length === 0 ? (
+          <DashboardEmptyState
+            icon={ShoppingBag}
+            title="Hali buyurtmalar yoʻq"
+            description="Birinchi buyurtma kelganda u shu yerda koʻrinadi. Tovarlarni katalogda yangilab turishingiz mumkin."
+          />
+        ) : (
       <div className="space-y-4">
         {orders.map((o) => (
-          <Card key={o.id}>
-            <CardHeader className="pb-2 flex flex-wrap items-center gap-2">
+          <Card key={o.id} className="border-border/70 shadow-none">
+            <CardHeader className="flex flex-wrap items-center gap-2 pb-2">
               <span className="font-mono">{o.orderNumber}</span>
               <span className="text-sm text-muted-foreground">{new Date(o.createdAt).toLocaleDateString('uz-UZ')}</span>
               <Badge variant="secondary" className="text-xs">{isPickup(o) ? 'Olib ketish' : 'Yetkazib berish'}</Badge>
@@ -242,6 +258,8 @@ export default function SellerOrdersPage() {
           </Card>
         ))}
       </div>
+        )}
+      </DashboardPanel>
     </div>
   );
 }

@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { BarChart3, Store, TrendingUp, Users, Package, ShoppingBag, Banknote, FileCheck } from 'lucide-react';
+import { Store, TrendingUp, Users, Package, ShoppingBag, Banknote, FileCheck } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type PayoutRow = {
   seller: { id: string; firstName: string; lastName: string; email: string };
@@ -81,7 +83,7 @@ export default function AdminStatsPage() {
     fetchChart();
   }, [fetchChart]);
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!stats) return <Skeleton className="h-32 w-full" />;
 
   const sellerRows = Array.isArray(payouts?.data) ? payouts.data : [];
@@ -93,15 +95,14 @@ export default function AdminStatsPage() {
   const maxChartValue = Math.max(...salesChart.map((x) => x.total), 1);
 
   return (
-    <div className="space-y-6 sm:space-y-8 min-w-0 max-w-full">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-          <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-          Analitika
-        </h1>
-        <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">Platforma statistikasi va savdolar</p>
+    <div className="min-w-0 max-w-full space-y-6 sm:space-y-8">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Analitika"
+        description="Platforma statistikasi, savdolar grafigi va sotuvchilar boʻyicha komissiya."
+      />
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <Card className="overflow-hidden">
             <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-5 flex flex-row items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-2">
@@ -191,7 +192,6 @@ export default function AdminStatsPage() {
             </CardContent>
           </Card>
         ) : null}
-      </div>
 
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">

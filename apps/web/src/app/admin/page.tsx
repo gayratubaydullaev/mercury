@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 
 type Stats = {
   usersCount: number;
@@ -62,8 +63,11 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold mb-2">Bosh sahifa</h1>
-      <p className="text-muted-foreground mb-4 sm:mb-6">Platformani boshqarish</p>
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Bosh sahifa"
+        description="Buyurtmalar, moderatsiya va sozlamalar — bitta paneldan."
+      />
 
       {(token && !stats) && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6 sm:mb-8">

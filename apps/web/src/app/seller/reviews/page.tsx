@@ -9,6 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { MessageSquare, Star } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Review = {
   id: string;
@@ -59,21 +62,27 @@ export default function SellerReviewsPage() {
       });
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (reviews === null) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <MessageSquare className="h-7 w-7" />
-        Sharhlar
-      </h1>
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Sharhlar"
+        description="Xaridorlar fikrlariga javob bering."
+      />
 
       <Card>
-        <CardHeader><CardTitle>Mahsulotlar boʻyicha sharhlar ({reviews.length})</CardTitle></CardHeader>
-        <CardContent>
+        <CardHeader className="border-b border-border/60 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MessageSquare className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            Mahsulotlar boʻyicha sharhlar ({reviews.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5">
           {reviews.length === 0 ? (
-            <p className="text-muted-foreground">Hali sharhlar yoʻq.</p>
+            <DashboardEmptyState icon={MessageSquare} title="Hali sharhlar yoʻq" description="Birinchi sharh kelganda u shu yerda koʻrinadi." />
           ) : (
             <ul className="space-y-4">
               {reviews.map((r) => (

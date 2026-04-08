@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { FileCheck } from 'lucide-react';
 
 type Application = {
   id: string;
@@ -38,7 +42,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AdminSellerApplicationsPage() {
-  const router = useRouter();
   const [data, setData] = useState<Response | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -58,10 +61,7 @@ export default function AdminSellerApplicationsPage() {
   };
 
   useEffect(() => {
-    if (!token) {
-      router.replace('/auth/login?next=/admin/seller-applications');
-      return;
-    }
+    if (!token) return;
     load();
   }, [token, statusFilter, page]);
 
@@ -91,24 +91,30 @@ export default function AdminSellerApplicationsPage() {
       .catch(() => toast.error('Xatolik'));
   };
 
-  if (!token) return null;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-64 w-full rounded-xl" />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold">Sotuvchi arizalari</h1>
-        <Link href="/admin"><Button variant="outline" size="sm">Bosh sahifa</Button></Link>
-      </div>
-      <div className="flex gap-2 flex-wrap">
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Sotuvchi arizalari"
+        description="Yangi sotuvchilar uchun arizalarni koʻrib chiqing."
+      >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin">Bosh sahifa</Link>
+        </Button>
+      </DashboardPageHeader>
+      <div className="flex flex-wrap gap-2">
         <Button variant={statusFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => { setStatusFilter(''); setPage(1); }}>Barchasi</Button>
         <Button variant={statusFilter === 'PENDING' ? 'default' : 'outline'} size="sm" onClick={() => { setStatusFilter('PENDING'); setPage(1); }}>Kutilmoqda</Button>
         <Button variant={statusFilter === 'APPROVED' ? 'default' : 'outline'} size="sm" onClick={() => { setStatusFilter('APPROVED'); setPage(1); }}>Qabul qilingan</Button>
         <Button variant={statusFilter === 'REJECTED' ? 'default' : 'outline'} size="sm" onClick={() => { setStatusFilter('REJECTED'); setPage(1); }}>Rad etilgan</Button>
       </div>
+      <DashboardPanel className="p-4 sm:p-5 md:p-6">
       <div className="space-y-3">
         {data.data.length === 0 ? (
-          <p className="text-muted-foreground">Arizalar yoq</p>
+          <DashboardEmptyState icon={FileCheck} title="Arizalar yoʻq" description="Tanlangan filtr boʻyicha natija topilmadi." />
         ) : (
           data.data.map((app) => (
             <Card key={app.id}>
@@ -163,12 +169,13 @@ export default function AdminSellerApplicationsPage() {
         )}
       </div>
       {data.totalPages > 1 && (
-        <div className="flex gap-2 justify-center">
+        <div className="mt-4 flex justify-center gap-2">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Oldingi</Button>
           <span className="py-2 text-sm text-muted-foreground">{page} / {data.totalPages}</span>
           <Button variant="outline" size="sm" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>Keyingi</Button>
         </div>
       )}
+      </DashboardPanel>
     </div>
   );
 }

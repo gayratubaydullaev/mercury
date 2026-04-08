@@ -12,6 +12,14 @@ export function ShellWrapper({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith('/telegram-app')) {
     return <>{children}</>;
   }
+  const isDashboard = pathname?.startsWith('/admin') || pathname?.startsWith('/seller');
+  if (isDashboard) {
+    return (
+      <div className="flex min-h-dvh w-full max-w-full min-w-0 flex-col bg-background">
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full min-w-0">
       <Header />

@@ -6,9 +6,9 @@ const SellerNav = dynamic(() => import('@/components/dashboard/seller-nav').then
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   return (
     <SellerGuard>
-      <div className="flex flex-col md:flex-row min-h-0 flex-1 w-full max-w-full min-w-0">
+      <div className="flex min-h-dvh w-full max-w-full min-w-0 flex-1 flex-col md:min-h-0 md:flex-row">
         <SellerNav />
-        <main className="flex-1 min-w-0 w-full max-w-full p-4 md:p-6 overflow-auto">{children}</main>
+        <main className="mx-auto flex w-full min-w-0 max-w-[min(100%,1400px)] flex-1 overflow-auto p-4 pb-[env(safe-area-inset-bottom,0px)] sm:p-5 md:p-6">{children}</main>
       </div>
     </SellerGuard>
   );

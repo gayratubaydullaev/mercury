@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch, getCsrfToken } from '@/lib/api';
 import { ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, Upload } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Banner = {
   id: string;
@@ -186,17 +188,17 @@ export default function AdminBannersPage() {
       .catch(() => toast.error('Oʻzgartirish amalga oshmadi'));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (list === null) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="space-y-6 min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <ImageIcon className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Bannerlar
-      </h1>
-      <p className="text-muted-foreground text-sm sm:text-base">Yaratish, tahrirlash, oʻchirish va koʻrsatishni yashirish</p>
-      {loadError && <p className="text-destructive text-sm">{loadError}</p>}
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Bannerlar"
+        description="Bosh sahifa karuseli: yaratish, tahrirlash, oʻchirish va koʻrsatishni boshqarish."
+      />
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base sm:text-lg"><Plus className="h-5 w-5 shrink-0" /> Yangi banner</CardTitle></CardHeader>

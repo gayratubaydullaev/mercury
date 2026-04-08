@@ -10,7 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch, getCsrfToken } from '@/lib/api';
 import { toast } from 'sonner';
-import { FileSpreadsheet, Download, Upload, Copy, CheckCircle, XCircle } from 'lucide-react';
+import { FileSpreadsheet, Download, Upload, Copy, CheckCircle, XCircle, Package } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 interface Product {
   id: string;
@@ -130,22 +134,23 @@ export default function SellerProductsPage() {
     }
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <div className="space-y-4"><Skeleton className="h-24 w-full" /></div>;
 
   const products = data.data ?? [];
 
   return (
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Tovarlar</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Mahsulotlar roʻyxati va tahrirlash</p>
-        </div>
+    <div className="min-w-0 max-w-full space-y-6">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Tovarlar"
+        description="Mahsulotlar roʻyxati, Excel import va tahrirlash."
+      >
         <Button asChild><Link href="/seller/products/new">Yangi tovar</Link></Button>
-      </div>
+      </DashboardPageHeader>
 
-      <Card className="mb-6">
+      <DashboardPanel>
+      <Card className="border-0 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileSpreadsheet className="h-5 w-5" />
@@ -179,6 +184,7 @@ export default function SellerProductsPage() {
           </Button>
         </CardContent>
       </Card>
+      </DashboardPanel>
 
       <Dialog open={!!importResult} onOpenChange={(open) => !open && setImportResult(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
@@ -238,10 +244,22 @@ export default function SellerProductsPage() {
         </DialogContent>
       </Dialog>
 
+      <DashboardPanel className="p-4 sm:p-5 md:p-6">
+        {products.length === 0 ? (
+          <DashboardEmptyState
+            icon={Package}
+            title="Tovarlar yoʻq"
+            description="Birinchi tovarni qoʻshing yoki Excel orqali import qiling."
+          >
+            <Button asChild>
+              <Link href="/seller/products/new">Yangi tovar</Link>
+            </Button>
+          </DashboardEmptyState>
+        ) : (
       <div className="grid gap-4 md:grid-cols-2">
         {products.map((p) => (
-          <Card key={p.id}>
-            <CardContent className="p-4 flex gap-4">
+          <Card key={p.id} className="border-border/70 shadow-none">
+            <CardContent className="flex gap-4 p-4">
               <div className="relative w-20 h-20 rounded bg-muted shrink-0">
                 {p.images?.[0] && <Image src={p.images[0].url} alt="" fill className="object-cover rounded" sizes="80px" />}
               </div>
@@ -262,6 +280,8 @@ export default function SellerProductsPage() {
           </Card>
         ))}
       </div>
+        )}
+      </DashboardPanel>
     </div>
   );
 }

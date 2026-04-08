@@ -6,9 +6,9 @@ const AdminNav = dynamic(() => import('@/components/dashboard/admin-nav').then((
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AdminGuard>
-      <div className="flex flex-col md:flex-row min-h-0 flex-1 w-full max-w-full min-w-0 overflow-x-hidden">
+      <div className="flex min-h-dvh w-full max-w-full min-w-0 flex-1 flex-col overflow-x-hidden md:min-h-0 md:flex-row">
         <AdminNav />
-        <main className="flex-1 min-w-0 w-full max-w-full p-4 sm:p-5 md:p-6 overflow-auto pb-[env(safe-area-inset-bottom,0px)]">{children}</main>
+        <main className="mx-auto flex w-full min-w-0 max-w-[min(100%,1400px)] flex-1 overflow-auto p-4 pb-[env(safe-area-inset-bottom,0px)] sm:p-5 md:p-6">{children}</main>
       </div>
     </AdminGuard>
   );

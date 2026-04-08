@@ -7,6 +7,7 @@ import { LayoutDashboard, Package, ShoppingBag, BarChart3, Settings, ArrowLeft, 
 import { cn, API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { NotificationsBell } from './notifications-bell';
+import { DashboardNavFooter } from '@/components/dashboard/dashboard-nav-footer';
 
 const mainItems = [
   { href: '/seller', label: 'Bosh sahifa', icon: LayoutDashboard },
@@ -139,7 +140,7 @@ function NavContent({
 export function SellerNav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [stats, setStats] = useState<{ pendingOrdersCount?: number; shopSlug?: string | null } | null>(null);
+  const [stats, setStats] = useState<{ pendingOrdersCount?: number; shopSlug?: string | null; shopName?: string | null } | null>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   useEffect(() => {
@@ -152,6 +153,7 @@ export function SellerNav() {
 
   const pendingCount = stats?.pendingOrdersCount ?? 0;
   const shopSlug = stats?.shopSlug ?? null;
+  const shopName = stats?.shopName?.trim() || null;
 
   return (
     <>
@@ -168,9 +170,12 @@ export function SellerNav() {
         >
           <Menu className="h-6 w-6 text-foreground" />
         </button>
-        <Link href="/seller" className="flex items-center gap-2 min-h-[44px] items-center" onClick={() => setMobileOpen(false)}>
-          <Store className="h-5 w-5 text-primary shrink-0" aria-hidden />
-          <span className="font-semibold text-sm">Sotuvchi panel</span>
+        <Link href="/seller" className="flex min-w-0 flex-col justify-center gap-0.5 min-h-[44px]" onClick={() => setMobileOpen(false)}>
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Store className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            Sotuvchi panel
+          </span>
+          {shopName ? <span className="truncate pl-7 text-xs text-muted-foreground">{shopName}</span> : null}
         </Link>
         <div className="min-w-[44px]" aria-hidden />
       </div>
@@ -188,45 +193,48 @@ export function SellerNav() {
       {/* Выдвижная панель меню (мобильная) / боковая панель (десктоп) */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-[min(300px,100vw-2rem)] max-w-[85vw] bg-card border-r border-border/60 shadow-xl flex flex-col transition-transform duration-200 ease-out md:translate-x-0 md:shadow-none md:static md:h-auto md:w-60 md:max-w-none',
+          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/60 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-60 md:max-w-none md:shrink-0 md:bg-muted/25 md:shadow-none md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
         aria-label="Sotuvchi panel navigatsiyasi"
       >
-        <div className="p-3 md:p-4 border-b border-border/60 flex flex-row flex-wrap items-center justify-between md:flex-col md:items-stretch md:justify-start gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col gap-3 border-b border-border/60 bg-card/80 p-3 backdrop-blur-sm md:p-4">
+          <div className="flex items-start justify-between gap-2">
             <Link
               href="/seller"
-              className="flex items-center gap-2 px-2 py-1.5 -mx-2 -my-1.5 rounded-lg hover:bg-muted/50 transition-colors md:mx-0 md:my-0 min-h-[44px] md:min-h-0 items-center"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg px-2 py-1.5 -mx-2 -my-1 transition-colors hover:bg-muted/50 md:mx-0 md:my-0"
               aria-label="Sotuvchi bosh sahifasi"
               onClick={() => setMobileOpen(false)}
             >
-              <Store className="h-5 w-5 text-primary shrink-0" aria-hidden />
-              <span className="font-semibold text-sm">Sotuvchi panel</span>
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Store className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <span className="truncate">Sotuvchi panel</span>
+              </span>
+              {shopName ? <span className="truncate pl-7 text-xs text-muted-foreground">{shopName}</span> : null}
             </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <NotificationsBell basePath="/seller" />
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
+                aria-label="Menyuni yopish"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <NotificationsBell basePath="/seller" />
-            <Link
-              href="/seller/products/new"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors min-h-[44px] md:min-h-[40px] touch-manipulation"
-              aria-label="Yangi tovar qoʻshish"
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span>Yangi tovar</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg hover:bg-muted text-muted-foreground touch-manipulation"
-              aria-label="Menyuni yopish"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <Link
+            href="/seller/products/new"
+            onClick={() => setMobileOpen(false)}
+            className="flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 md:min-h-[40px]"
+            aria-label="Yangi tovar qoʻshish"
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            Yangi tovar
+          </Link>
         </div>
-        <nav className="p-3 md:p-4 flex flex-col gap-0.5 overflow-y-auto flex-1 overscroll-contain" aria-label="Asosiy menyu">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain p-3 md:p-4" aria-label="Asosiy menyu">
           <NavContent
             pathname={pathname}
             pendingCount={pendingCount}
@@ -234,6 +242,7 @@ export function SellerNav() {
             onNavClick={() => setMobileOpen(false)}
           />
         </nav>
+        <DashboardNavFooter />
       </aside>
     </>
   );

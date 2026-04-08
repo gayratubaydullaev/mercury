@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { BarChart3, TrendingUp, Banknote, Wallet, Package, ShoppingBag } from 'lucide-react';
+import { TrendingUp, Banknote, Wallet, Package, ShoppingBag } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Stats = {
   ordersCount: number;
@@ -61,7 +63,7 @@ export default function SellerStatsPage() {
     fetchChart();
   }, [fetchChart]);
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!stats) return <Skeleton className="h-32 w-full" />;
 
   const totalSales = Number(stats.totalRevenue);
@@ -75,15 +77,13 @@ export default function SellerStatsPage() {
 
   return (
     <div className="min-w-0 space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-          Statistika va komissiya
-        </h1>
-        <p className="text-muted-foreground mb-4 text-sm">Savdolar, sizga tegishli summa va marketpleys komissiyasi</p>
-      </div>
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Statistika va komissiya"
+        description="Savdolar, sizga tegishli summa va marketpleys komissiyasi."
+      />
 
-      <div className="bg-muted/50 border border-border rounded-lg p-4 max-w-2xl">
+      <div className="max-w-2xl rounded-lg border border-border bg-muted/50 p-4">
         <p className="text-sm font-medium mb-1">Qanday ishlaydi</p>
         <ul className="text-xs sm:text-sm text-muted-foreground space-y-1 list-disc list-inside">
           <li><strong className="text-foreground">Savdolar</strong> — toʻlangan buyurtmalar jami (xaridor sizga toʻlaydi).</li>

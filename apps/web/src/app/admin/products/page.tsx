@@ -11,6 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { Package, Check, X } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Product = {
   id: string;
@@ -64,30 +68,40 @@ export default function AdminProductsPage() {
       .finally(() => setLoading(false));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (data === null) return <Skeleton className="h-64 w-full" />;
 
   const products = data.data ?? [];
 
   return (
-    <div className="space-y-6 min-w-0 max-w-full">
-      {loadError && <p className="text-destructive text-sm">{loadError}</p>}
-      <h1 className="text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2">
-        <Package className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Moderatsiya (tovarlar)
-      </h1>
+    <div className="min-w-0 max-w-full space-y-6">
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Moderatsiya (tovarlar)"
+        description="Yangi va oʻzgartirilgan tovarlarni tasdiqlang yoki rad eting."
+      >
+        <div className="flex flex-wrap gap-2">
+          <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('')}>Barchasi</Button>
+          <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('false')}>Kutilmoqda</Button>
+          <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
+        </div>
+      </DashboardPageHeader>
 
-      <div className="flex gap-2 flex-wrap">
-        <Button variant={filter === '' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('')}>Barchasi</Button>
-        <Button variant={filter === 'false' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('false')}>Kutilmoqda</Button>
-        <Button variant={filter === 'true' ? 'default' : 'outline'} size="sm" className="min-h-[40px] touch-manipulation" onClick={() => setFilter('true')}>Tasdiqlangan</Button>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Tovarlar ({data.total})</CardTitle></CardHeader>
-        <CardContent>
+      <DashboardPanel>
+        <CardHeader className="border-b border-border/60 pb-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Package className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            Tovarlar ({data.total})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5">
           {products.length === 0 ? (
-            <p className="text-muted-foreground py-4">Tovarlar yoʻq.</p>
+            <DashboardEmptyState
+              icon={Package}
+              title="Tovarlar yoʻq"
+              description="Filtr yoki API javobiga koʻra roʻyxat boʻsh. Kutilayotganlar uchun «Kutilmoqda»ni tanlang."
+            />
           ) : (
             <ul className="space-y-3">
               {products.map((p) => (
@@ -126,7 +140,7 @@ export default function AdminProductsPage() {
             </ul>
           )}
         </CardContent>
-      </Card>
+      </DashboardPanel>
     </div>
   );
 }

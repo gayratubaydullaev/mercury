@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { API_URL } from '@/lib/utils';
 import { apiFetch, getCsrfToken } from '@/lib/api';
 import { ArrowLeft, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Category = { id: string; name: string; slug: string; parentId: string | null; children?: Category[] };
 
@@ -271,19 +273,22 @@ export default function NewProductPage() {
       .finally(() => setLoading(false));
   };
 
-  if (!token) return null;
+  if (!token) return <DashboardAuthGate />;
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/seller/products"><ArrowLeft className="h-5 w-5" /></Link>
+    <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Yangi tovar"
+        description="Nomi, narx, rasmlar va ixtiyoriy variantlar — keyin roʻyxatda koʻrinadi."
+      >
+        <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+          <Link href="/seller/products">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Tovarlar
+          </Link>
         </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Yangi tovar</h1>
-          <p className="text-muted-foreground text-sm">Mahsulot qoʻshish</p>
-        </div>
-      </div>
+      </DashboardPageHeader>
 
       <form onSubmit={submit} className="space-y-6">
         <Card>

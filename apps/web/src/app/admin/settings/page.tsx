@@ -11,6 +11,8 @@ import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { Banknote, Truck, CreditCard, Send, Unplug, Store, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
 type Settings = {
   siteName?: string | null;
@@ -171,16 +173,17 @@ export default function AdminSettingsPage() {
     setPaymentDelivery((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!settings) return <Skeleton className="h-32 w-full" />;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold mb-2">Platforma sozlamalari</h1>
-        <p className="text-muted-foreground mb-6">Komissiya, toʻlov usullari va yetkazib berish</p>
-        {error && <p className="text-destructive text-sm mb-4">{error}</p>}
-      </div>
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Platforma sozlamalari"
+        description="Komissiya, toʻlov usullari, yetkazib berish va Telegram."
+      />
+      {error && <p className="text-destructive text-sm">{error}</p>}
 
       <Card>
         <CardHeader>

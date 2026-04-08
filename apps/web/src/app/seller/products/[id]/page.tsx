@@ -9,8 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { API_URL } from '@/lib/utils';
 import { apiFetch, getCsrfToken } from '@/lib/api';
-import { ArrowLeft, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Upload, X, ChevronLeft, ChevronRight, PackageX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
 
 type Category = { id: string; name: string; slug: string; parentId: string | null; children?: Category[] };
 
@@ -36,7 +39,7 @@ export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<Product | null | undefined>(undefined);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -58,9 +61,17 @@ export default function EditProductPage() {
 
   useEffect(() => {
     if (!token || !id) return;
+    setProduct(undefined);
     apiFetch(`${API_URL}/products/my/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error('not_found');
+        return r.json() as Promise<Product>;
+      })
       .then((p: Product) => {
+        if (!p?.id) {
+          setProduct(null);
+          return;
+        }
         setProduct(p);
         setTitle(p.title);
         setDescription(p.description);
@@ -310,21 +321,69 @@ export default function EditProductPage() {
       .finally(() => setLoading(false));
   };
 
-  if (!token) return null;
-  if (product === null) return <div className="max-w-2xl p-4"><Skeleton className="h-64 w-full" /><p className="text-muted-foreground mt-2">Tovar topilmadi yoki ruxsat yoʻq.</p><Button variant="outline" asChild><Link href="/seller/products">← Orqaga</Link></Button></div>;
-  if (!product.id) return <div className="max-w-2xl p-4"><Skeleton className="h-64 w-full" /></div>;
+  if (!token) return <DashboardAuthGate />;
+  if (product === undefined) {
+    return (
+      <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+        <DashboardPageHeader
+          eyebrow="Sotuvchi kabineti"
+          title="Tovarni tahrirlash"
+          description="Maʼlumot yuklanmoqda…"
+        >
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+            <Link href="/seller/products">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Tovarlar
+            </Link>
+          </Button>
+        </DashboardPageHeader>
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+  if (product === null) {
+    return (
+      <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+        <DashboardPageHeader
+          eyebrow="Sotuvchi kabineti"
+          title="Tovarni tahrirlash"
+          description="Tovar topilmadi yoki bu sahifaga ruxsat yoʻq."
+        >
+          <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+            <Link href="/seller/products">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Tovarlar
+            </Link>
+          </Button>
+        </DashboardPageHeader>
+        <DashboardEmptyState
+          icon={PackageX}
+          title="Tovar topilmadi"
+          description="Havola notoʻgʻri, mahsulot oʻchirilgan yoki boshqa doʻkonga tegishli."
+        >
+          <Button asChild>
+            <Link href="/seller/products">Tovarlar roʻyxati</Link>
+          </Button>
+        </DashboardEmptyState>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/seller/products"><ArrowLeft className="h-5 w-5" /></Link>
+    <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+      <DashboardPageHeader
+        eyebrow="Sotuvchi kabineti"
+        title="Tovarni tahrirlash"
+        subtitle={product.title}
+        description="Narx, qoldiq, rasmlar va holatni yangilang."
+      >
+        <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
+          <Link href="/seller/products">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Tovarlar
+          </Link>
         </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Tovarni tahrirlash</h1>
-          <p className="text-muted-foreground text-sm">{product.title}</p>
-        </div>
-      </div>
+      </DashboardPageHeader>
 
       <form onSubmit={submit} className="space-y-6">
         <Card>

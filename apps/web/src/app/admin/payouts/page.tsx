@@ -6,6 +6,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL, formatPrice } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { Banknote, PlusCircle } from 'lucide-react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
+import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 import {
   Dialog,
   DialogContent,
@@ -109,18 +113,19 @@ export default function AdminPayoutsPage() {
       });
   };
 
-  if (!token) return <p>Kirish kerak</p>;
+  if (!token) return <DashboardAuthGate />;
   if (!data) return <Skeleton className="h-64 w-full" />;
 
   const rows = Array.isArray(data?.data) ? data.data : [];
 
   return (
-    <div className="min-w-0 max-w-full">
-      <h1 className="text-xl sm:text-2xl font-bold mb-2 flex flex-wrap items-center gap-2">
-        <Banknote className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
-        Komissiya hisobi
-      </h1>
-      <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4 sm:mb-6 max-w-2xl">
+    <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
+      <DashboardPageHeader
+        eyebrow="Platforma"
+        title="Komissiya hisobi"
+        description="Sotuvchilardan komissiya qabul qilish va qoldiqni kuzatish."
+      />
+      <div className="max-w-2xl rounded-lg border border-border bg-muted/50 p-4">
         <p className="text-sm font-medium mb-1">Qanday ishlaydi</p>
         <ul className="text-xs sm:text-sm text-muted-foreground space-y-1 list-disc list-inside">
           <li><strong className="text-foreground">Savdolar</strong> — toʻlangan buyurtmalar boʻyicha jami summa (sotuvchi oladi).</li>
@@ -129,9 +134,10 @@ export default function AdminPayoutsPage() {
           <li><strong className="text-foreground">Qoldiq</strong> — sotuvchi qancha toʻlashi kerak (yoki ortiqcha toʻlangan boʻlsa — uning hisobida).</li>
         </ul>
       </div>
-      {loadError && <p className="text-destructive text-sm mb-4">{loadError}</p>}
-      <div className="overflow-x-auto -mx-0 rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm border-collapse min-w-[560px]">
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
+      <DashboardPanel className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left py-2 px-2 font-medium">Sotuvchi</th>
@@ -190,13 +196,18 @@ export default function AdminPayoutsPage() {
             </tfoot>
           )}
         </table>
-      </div>
+        </div>
+        {rows.length === 0 && !loadError && (
+          <div className="p-6">
+            <DashboardEmptyState icon={Banknote} title="Maʼlumot yoʻq" description="Sotuvchilar boʻyicha komissiya jadvali hozircha boʻsh." />
+          </div>
+        )}
+      </DashboardPanel>
       {rows.length > 0 && (
-        <p className="text-muted-foreground text-xs sm:text-sm mt-3">
+        <p className="text-xs text-muted-foreground sm:text-sm">
           <strong>Qoldiq</strong> — sotuvchilar platformaga qancha toʻlashi kerak (yoki manfiy boʻlsa, sotuvchilar hisobida ortiqcha).
         </p>
       )}
-      {rows.length === 0 && !loadError && <p className="text-muted-foreground py-8">Maʼlumot yoʻq</p>}
 
       <Dialog open={recordModal.open} onOpenChange={(open) => !open && closeRecordModal()}>
         <DialogContent>
