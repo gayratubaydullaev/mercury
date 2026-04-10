@@ -16,6 +16,10 @@ import {
   Banknote,
   RotateCcw,
   Keyboard,
+  PackageSearch,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,6 +81,15 @@ type LastScanBanner = {
   tone: 'ok' | 'warn' | 'err';
   text: string;
 };
+
+/** USB / klaviatura / kamera — bir xil kodni tez takrorlashdan saqlash (ms) */
+const BARCODE_DEDUPE_MS = 2800;
+
+function truncateProductTitle(title: string, max = 40): string {
+  const t = title.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, Math.max(0, max - 1))}…`;
+}
 
 function variantLabel(options: unknown): string {
   if (options && typeof options === 'object' && !Array.isArray(options)) {
@@ -186,6 +199,7 @@ export function PosWorkspace({
         const tag = el?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
         e.preventDefault();
+        setLastScanBanner(null);
         setScannerOpen(true);
         return;
       }
@@ -260,6 +274,7 @@ export function PosWorkspace({
     [cart]
   );
   const cartTotalRounded = Math.round(cartTotal);
+  const cartUnitsCount = useMemo(() => cart.reduce((s, l) => s + l.quantity, 0), [cart]);
   const cashReceivedNum = useMemo(() => {
     const s = cashReceived.replace(/\s/g, '').replace(/,/g, '.');
     const n = Number(s);
@@ -323,7 +338,7 @@ export function PosWorkspace({
     async (text: string, mode: PosMode): Promise<boolean> => {
       if (!token) return false;
       const now = Date.now();
-      if (lastScanRef.current.code === text && now - lastScanRef.current.at < 750) return false;
+      if (lastScanRef.current.code === text && now - lastScanRef.current.at < BARCODE_DEDUPE_MS) return false;
       lastScanRef.current = { code: text, at: now };
 
       const r = await apiFetch(`${API_URL}/products/my/by-sku/${encodeURIComponent(text)}`, {
@@ -371,7 +386,11 @@ export function PosWorkspace({
       if (mode === 'ombor') {
         playPosScanBeep();
         setWarehouseFocusId(p.id);
-        setLastScanBanner({ code: displayCode, tone: 'ok', text: 'Tovar topildi — tahrir oynasi' });
+        setLastScanBanner({
+          code: displayCode,
+          tone: 'ok',
+          text: `«${truncateProductTitle(p.title)}» — tahrir oynasi`,
+        });
         return true;
       }
 
@@ -380,18 +399,34 @@ export function PosWorkspace({
         const ok = addLine(p, { variantId: data.variantId });
         if (ok) {
           playPosScanBeep();
-          setLastScanBanner({ code: displayCode, tone: 'ok', text: 'Savatga qoʻshildi (variant)' });
+          setLastScanBanner({
+            code: displayCode,
+            tone: 'ok',
+            text: `«${truncateProductTitle(p.title)}» savatga +1 (variant)`,
+          });
         } else {
-          setLastScanBanner({ code: displayCode, tone: 'warn', text: 'Qoʻshilmadi (variant yoki limit)' });
+          setLastScanBanner({
+            code: displayCode,
+            tone: 'warn',
+            text: `«${truncateProductTitle(p.title)}» — qoʻshilmadi (limit yoki variant)`,
+          });
         }
         return ok;
       }
       const ok = addLine(p);
       if (ok) {
         playPosScanBeep();
-        setLastScanBanner({ code: displayCode, tone: 'ok', text: 'Savatga qoʻshildi' });
+        setLastScanBanner({
+          code: displayCode,
+          tone: 'ok',
+          text: `«${truncateProductTitle(p.title)}» savatga +1`,
+        });
       } else {
-        setLastScanBanner({ code: displayCode, tone: 'warn', text: 'Qoʻshilmadi (limit yoki variant)' });
+        setLastScanBanner({
+          code: displayCode,
+          tone: 'warn',
+          text: `«${truncateProductTitle(p.title)}» — qoʻshilmadi (limit yoki variant)`,
+        });
       }
       return ok;
     },
@@ -472,21 +507,27 @@ export function PosWorkspace({
 
   return (
     <>
-      <DashboardPageHeader eyebrow={eyebrow} title={title} description={description} />
+      <DashboardPageHeader eyebrow={eyebrow} title={title} description={description} compact />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div
+        className={cn(
+          'mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between',
+          'sticky top-0 z-20 rounded-xl border border-border/60 bg-card/90 px-3 py-3 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-card/80',
+          'sm:static sm:z-auto sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none sm:backdrop-blur-none'
+        )}
+      >
         {cashierOnly ? (
           <div
-            className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 py-2.5 text-sm font-medium text-foreground"
+            className="inline-flex w-full items-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/12 to-primary/5 px-3 py-2.5 text-sm font-semibold text-foreground sm:w-auto"
             role="status"
           >
-            <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            Kassa rejimi
-            <span className="hidden text-xs font-normal text-muted-foreground sm:inline">· F2 kamera · F3 kod · F9 toʻlash</span>
+            <Store className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+            <span className="min-w-0 flex-1 sm:flex-none">Kassa</span>
+            <span className="hidden text-xs font-normal text-muted-foreground sm:inline">F2 · F3 · F9</span>
           </div>
         ) : (
           <div
-            className="inline-flex w-full max-w-md rounded-xl border border-border/80 bg-muted/40 p-1 shadow-inner sm:w-auto"
+            className="inline-flex w-full max-w-md rounded-xl border border-border/70 bg-muted/50 p-1 shadow-inner sm:w-auto"
             role="tablist"
             aria-label="POS rejimi"
           >
@@ -496,9 +537,9 @@ export function PosWorkspace({
               aria-selected={posMode === 'kassa'}
               onClick={() => setPosMode('kassa')}
               className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors min-h-[44px]',
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
                 posMode === 'kassa'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -511,9 +552,9 @@ export function PosWorkspace({
               aria-selected={posMode === 'ombor'}
               onClick={() => setPosMode('ombor')}
               className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors min-h-[44px]',
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
                 posMode === 'ombor'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -525,10 +566,13 @@ export function PosWorkspace({
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-full gap-2 sm:w-auto shrink-0 border-primary/30 bg-primary/5"
-          onClick={() => setScannerOpen(true)}
+          className="h-12 w-full gap-2 border-primary/35 bg-primary/[0.07] font-semibold shadow-sm hover:bg-primary/10 sm:h-11 sm:w-auto sm:shrink-0"
+          onClick={() => {
+            setLastScanBanner(null);
+            setScannerOpen(true);
+          }}
         >
-          <Camera className="h-4 w-4" />
+          <Camera className="h-5 w-5 sm:h-4 sm:w-4" />
           Kamera (F2)
         </Button>
       </div>
@@ -565,22 +609,31 @@ export function PosWorkspace({
         </div>
       ) : null}
       {lastScanBanner ? (
-        <p
+        <div
+          role="status"
           className={cn(
-            'mb-6 text-xs sm:text-sm',
-            lastScanBanner.tone === 'ok' && 'text-emerald-700 dark:text-emerald-400',
-            lastScanBanner.tone === 'warn' && 'text-amber-800 dark:text-amber-400',
-            lastScanBanner.tone === 'err' && 'text-destructive'
+            'mb-5 flex gap-3 rounded-xl border px-3 py-3 sm:px-4',
+            lastScanBanner.tone === 'ok' &&
+              'border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-950 dark:text-emerald-100',
+            lastScanBanner.tone === 'warn' &&
+              'border-amber-500/40 bg-amber-500/[0.08] text-amber-950 dark:text-amber-100',
+            lastScanBanner.tone === 'err' && 'border-destructive/40 bg-destructive/[0.08] text-destructive'
           )}
         >
-          <span className="font-medium">{lastScanBanner.text}</span>
-          {lastScanBanner.code ? (
-            <>
-              {' '}
-              · <span className="font-mono">{lastScanBanner.code}</span>
-            </>
-          ) : null}
-        </p>
+          {lastScanBanner.tone === 'ok' ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          ) : lastScanBanner.tone === 'warn' ? (
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+          ) : (
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          )}
+          <div className="min-w-0 flex-1 text-sm sm:text-base">
+            <p className="font-semibold leading-snug">{lastScanBanner.text}</p>
+            {lastScanBanner.code ? (
+              <p className="mt-1 break-all font-mono text-xs opacity-90 sm:text-sm">{lastScanBanner.code}</p>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       {posMode === 'ombor' && !cashierOnly && token ? (
@@ -605,11 +658,11 @@ export function PosWorkspace({
             cart.length > 0 && 'max-md:pb-28'
           )}
         >
-          <DashboardPanel className="min-w-0 overflow-hidden p-3 sm:p-5 md:p-6">
-            <div className="mb-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-3 sm:p-4">
+          <DashboardPanel className="min-w-0 overflow-hidden border-border/60 p-3 shadow-sm sm:p-5 md:p-6">
+            <div className="mb-4 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/[0.07] via-primary/[0.03] to-transparent p-3 sm:p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <Keyboard className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                <span className="font-medium text-foreground">USB shtrix-skanner</span>
+                <Keyboard className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                <span className="font-semibold text-foreground">USB shtrix-skanner</span>
                 <span className="hidden sm:inline">F3 — fokus · boshqa joyda kod + Enter</span>
               </div>
               <Input
@@ -650,7 +703,17 @@ export function PosWorkspace({
                 ))}
               </div>
             ) : !catalog?.length ? (
-              <p className="text-sm text-muted-foreground">Faol tovar yoʻq yoki natija topilmadi.</p>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                  <PackageSearch className="h-7 w-7 text-muted-foreground" aria-hidden />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Tovar topilmadi</p>
+                  <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                    Faol tovar yoʻq, qidiruv boshqa soʻz bilan urinib koʻring yoki kamera / USB skanerdan foydalaning.
+                  </p>
+                </div>
+              </div>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 {catalog.map((p) => {
@@ -660,7 +723,7 @@ export function PosWorkspace({
                   return (
                     <li
                       key={p.id}
-                      className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/80 p-3 shadow-sm sm:flex-row sm:items-center sm:p-4"
+                      className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-sm transition-[box-shadow,transform,border-color] hover:border-primary/25 hover:shadow-md active:scale-[0.99] sm:flex-row sm:items-center sm:p-4"
                     >
                       <div className="flex min-w-0 flex-1 gap-3">
                         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-[72px] sm:w-[72px]">
@@ -717,16 +780,23 @@ export function PosWorkspace({
           </DashboardPanel>
 
           <aside className="flex flex-col gap-4 xl:sticky xl:top-20 xl:self-start">
-            <Card className="border-border/80 shadow-lg ring-1 ring-border/40">
+            <Card
+              className={cn(
+                'border-border/80 shadow-lg ring-1 ring-border/40',
+                cashierOnly && 'border-primary/15 bg-gradient-to-b from-card to-primary/[0.02] ring-primary/10'
+              )}
+            >
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0 pb-3">
                 <CardTitle className="flex flex-col gap-0.5 text-lg sm:flex-row sm:items-baseline sm:gap-2">
                   <span className="flex items-center gap-2">
-                    <ScanLine className="h-5 w-5 text-primary" aria-hidden />
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <ScanLine className="h-5 w-5 text-primary" aria-hidden />
+                    </span>
                     Savat
                   </span>
                   {cart.length > 0 ? (
                     <span className="text-sm font-normal tabular-nums text-muted-foreground">
-                      {cart.length} pozitsiya
+                      {cart.length} qator · {cartUnitsCount} dona
                     </span>
                   ) : null}
                 </CardTitle>
@@ -750,21 +820,29 @@ export function PosWorkspace({
               </CardHeader>
               <CardContent className="space-y-4">
                 {cart.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Savat boʻsh. Tovar tanlang yoki skanerlang.</p>
+                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-foreground">Savat boʻsh</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Roʻyxatdan qoʻshing yoki skanerlang</p>
+                  </div>
                 ) : (
-                  <ul className="max-h-[min(45vh,280px)] space-y-2 overflow-y-auto pr-1 md:max-h-[min(55vh,360px)]">
-                    {cart.map((line) => (
+                  <ul className="max-h-[min(45vh,280px)] space-y-2 overflow-y-auto pr-1 md:max-h-[min(55vh,380px)]">
+                    {cart.map((line) => {
+                      const lineSum = line.unitPrice * line.quantity;
+                      return (
                       <li
                         key={line.key}
-                        className="flex gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm"
+                        className="flex gap-2 rounded-xl border border-border/60 bg-muted/25 p-3 text-sm shadow-sm"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium leading-tight">{line.title}</p>
+                          <p className="font-semibold leading-tight">{line.title}</p>
                           {line.variantLabel ? (
                             <p className="text-xs text-muted-foreground">{line.variantLabel}</p>
                           ) : null}
-                          <p className="mt-1 text-muted-foreground">
+                          <p className="mt-1 tabular-nums text-muted-foreground">
                             {formatPrice(line.unitPrice)} × {line.quantity}
+                          </p>
+                          <p className="mt-1 text-base font-bold tabular-nums text-foreground">
+                            {formatPrice(lineSum)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -803,17 +881,21 @@ export function PosWorkspace({
                           </Button>
                         </div>
                       </li>
-                    ))}
+                    );
+                    })}
                   </ul>
                 )}
 
-                <div className="border-t border-border/60 pt-4">
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-3 py-3 sm:px-4 sm:py-3.5">
                   <p className="flex items-end justify-between gap-3 tabular-nums">
-                    <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Jami</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">Jami</span>
                     <span className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                       {formatPrice(cartTotal)}
                     </span>
                   </p>
+                  {cart.length > 0 ? (
+                    <p className="mt-1 text-right text-xs text-muted-foreground">{cartUnitsCount} dona</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
@@ -832,14 +914,14 @@ export function PosWorkspace({
                   </Select>
                 </div>
 
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm font-medium transition-colors hover:bg-muted/35 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-input"
+                    className="h-5 w-5 shrink-0 rounded border-input accent-primary"
                     checked={markPaid}
                     onChange={(e) => setMarkPaid(e.target.checked)}
                   />
-                  Toʻlov darhol qabul qilindi
+                  <span className="leading-snug">Toʻlov darhol qabul qilindi</span>
                 </label>
 
                 {paymentMethod === 'CASH' && markPaid ? (
@@ -958,30 +1040,47 @@ export function PosWorkspace({
 
       {posMode === 'kassa' && cart.length > 0 ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md md:hidden"
         >
-          <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-            <div>
-              <p className="text-xs text-muted-foreground">Jami</p>
-              <p className="text-lg font-bold tabular-nums">{formatPrice(cartTotal)}</p>
+          <div className="mx-auto flex max-w-lg flex-col gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Jami</p>
+                <p className="text-xl font-bold tabular-nums tracking-tight">{formatPrice(cartTotal)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {cart.length} qator · {cartUnitsCount} dona
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="lg"
+                className="min-h-[52px] min-w-[140px] flex-1 max-w-[240px] text-base font-bold shadow-md"
+                disabled={cart.length === 0 || submitting || cashShort}
+                onClick={() => void submitPos()}
+              >
+                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Toʻlash'}
+              </Button>
             </div>
-            <Button
-              type="button"
-              size="lg"
-              className="min-h-[48px] flex-1 max-w-[220px] font-semibold"
-              disabled={cart.length === 0 || submitting || cashShort}
-              onClick={() => void submitPos()}
-            >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Toʻlash'}
-            </Button>
+            {paymentMethod === 'CASH' && markPaid && cashShort ? (
+              <p className="text-center text-xs font-medium text-destructive">Naqd yetarli emas</p>
+            ) : null}
+            {paymentMethod === 'CASH' && markPaid && !cashShort && changeDue > 0 ? (
+              <p className="text-center text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                Qaytim {formatPrice(changeDue)}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
 
       <PosBarcodeScanner
         open={scannerOpen}
-        onOpenChange={setScannerOpen}
+        onOpenChange={(open) => {
+          setScannerOpen(open);
+          if (open) setLastScanBanner(null);
+        }}
         continuous
+        feedback={scannerOpen ? lastScanBanner : null}
         onDecoded={(text) => void processBarcodeText(text, posMode)}
       />
 

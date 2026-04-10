@@ -15,12 +15,23 @@ import { cn } from '@/lib/utils';
 /** Html5Qrcode ищет контейнер по id; на экране один экземпляр сканера. */
 const SCANNER_ELEMENT_ID = 'pos-html5-qrcode-view';
 
+/** Bir xil kodni qayta-qayta o‘qishdan saqlash (kamera FPS tez-tez chaqiradi) */
+const SAME_CODE_MIN_MS = 2800;
+
+export type PosScannerFeedback = {
+  text: string;
+  code: string;
+  tone: 'ok' | 'warn' | 'err';
+};
+
 type PosBarcodeScannerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDecoded: (text: string) => void;
   /** true: kamera ochiq qoladi, bir nechta shtrix-kod ketma-ket */
   continuous?: boolean;
+  /** Oxirgi skan natijasi — dialog ichida ko‘rinadi (asosan telefon) */
+  feedback?: PosScannerFeedback | null;
 };
 
 type CameraConfig = MediaTrackConstraints | boolean;
@@ -66,10 +77,17 @@ function cameraSortKey(label: string): number {
   return 1;
 }
 
-export function PosBarcodeScanner({ open, onOpenChange, onDecoded, continuous = false }: PosBarcodeScannerProps) {
+export function PosBarcodeScanner({
+  open,
+  onOpenChange,
+  onDecoded,
+  continuous = false,
+  feedback = null,
+}: PosBarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onDecodedRef = useRef(onDecoded);
   const continuousRef = useRef(continuous);
+  const cameraDedupeRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
   onDecodedRef.current = onDecoded;
   continuousRef.current = continuous;
 
@@ -99,6 +117,7 @@ export function PosBarcodeScanner({ open, onOpenChange, onDecoded, continuous = 
     if (!open) {
       void stop();
       setError(null);
+      cameraDedupeRef.current = { code: '', at: 0 };
     }
   }, [open, stop]);
 
@@ -160,6 +179,10 @@ export function PosBarcodeScanner({ open, onOpenChange, onDecoded, continuous = 
     const onSuccess = (text: string) => {
       const t = text?.trim();
       if (!t) return;
+      const now = Date.now();
+      const d = cameraDedupeRef.current;
+      if (d.code === t && now - d.at < SAME_CODE_MIN_MS) return;
+      cameraDedupeRef.current = { code: t, at: now };
       onDecodedRef.current(t);
       if (!continuousRef.current) {
         void stop();
@@ -207,21 +230,46 @@ export function PosBarcodeScanner({ open, onOpenChange, onDecoded, continuous = 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[92dvh] max-w-md overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Shtrix-kod / QR</DialogTitle>
           <DialogDescription className={cn('text-left text-sm text-muted-foreground')}>
             «Kamerani yoqish»ni bosing — brauzer ruxsat soʻraydi. Keyin SKU yoki shtrix-kodini tuting.
             {continuous
-              ? ' Ketma-ket bir nechta skanerlash mumkin; yopish tugmasi bilan kamerani toʻxtating.'
+              ? ' Ketma-ket skanerlash: bir xil kod ~3 soniyagacha takrorlanmaydi — keyingi tovarga kamerani siljiting.'
               : null}
           </DialogDescription>
         </DialogHeader>
 
         <div
           id={SCANNER_ELEMENT_ID}
-          className="min-h-[240px] w-full overflow-hidden rounded-lg bg-black/90"
+          className="min-h-[220px] w-full overflow-hidden rounded-lg bg-black/90 sm:min-h-[260px]"
         />
+
+        {feedback ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className={cn(
+              'rounded-xl border-2 px-3 py-4 text-center text-base font-semibold leading-snug shadow-sm sm:px-4 sm:text-lg',
+              feedback.tone === 'ok' &&
+                'border-emerald-500/60 bg-emerald-500/15 text-emerald-950 dark:border-emerald-400/50 dark:bg-emerald-500/20 dark:text-emerald-50',
+              feedback.tone === 'warn' &&
+                'border-amber-500/60 bg-amber-500/15 text-amber-950 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-50',
+              feedback.tone === 'err' &&
+                'border-destructive/60 bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive-foreground'
+            )}
+          >
+            <p>{feedback.text}</p>
+            {feedback.code && feedback.code !== '—' ? (
+              <p className="mt-2 break-all font-mono text-sm font-medium opacity-90">{feedback.code}</p>
+            ) : null}
+          </div>
+        ) : running ? (
+          <p className="text-center text-sm text-muted-foreground">
+            Kodni ramka ichiga tuting — natija shu yerda, katta yozuvda chiqadi.
+          </p>
+        ) : null}
 
         {!running ? (
           <Button type="button" className="w-full" disabled={starting} onClick={() => void startFromUserClick()}>
