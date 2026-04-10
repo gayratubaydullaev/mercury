@@ -223,7 +223,7 @@ export default function SellerSettingsPage() {
   if (shop === undefined) return <Skeleton className="h-32 w-full" />;
 
   return (
-    <div className="w-full max-w-2xl space-y-6">
+    <div className="w-full min-w-0 max-w-2xl space-y-6 xl:max-w-5xl 2xl:max-w-6xl">
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Doʻkon sozlamalari"

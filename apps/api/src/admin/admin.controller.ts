@@ -20,6 +20,8 @@ import { ModerateProductDto } from './dto/moderate-product.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { RecordPayoutDto } from './dto/record-payout.dto';
 import { SetSellerCommissionDto } from './dto/set-seller-commission.dto';
+import { BulkOrderStatusDto } from './dto/bulk-order-status.dto';
+import { BulkOrderMarkPaidDto } from './dto/bulk-order-mark-paid.dto';
 
 const SUPER_ADMIN = [UserRole.ADMIN];
 
@@ -138,9 +140,28 @@ export class AdminController {
   }
 
   @Get('orders')
-  @ApiOperation({ summary: 'List all orders' })
-  getOrders(@Req() req: Request, @Query('page') page?: number, @Query('limit') limit?: number) {
-    return this.admin.getOrders(req, page ?? 1, limit ?? 20);
+  @ApiOperation({ summary: 'List all orders (filters: status, paymentStatus, search)' })
+  getOrders(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+    @Query('paymentStatus') paymentStatus?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.admin.getOrders(req, page ?? 1, limit ?? 20, { status, paymentStatus, search });
+  }
+
+  @Post('orders/bulk-status')
+  @ApiOperation({ summary: 'Mass update order status (max 100)' })
+  bulkOrderStatus(@Body() dto: BulkOrderStatusDto, @CurrentUser('id') actorId: string) {
+    return this.admin.bulkUpdateOrderStatuses(dto.orderIds, dto.status, actorId);
+  }
+
+  @Post('orders/bulk-mark-paid')
+  @ApiOperation({ summary: 'Mass mark CASH / CARD_ON_DELIVERY orders as paid (max 100)' })
+  bulkOrderMarkPaid(@Body() dto: BulkOrderMarkPaidDto, @CurrentUser('id') actorId: string) {
+    return this.admin.bulkMarkOrdersPaid(dto.orderIds, actorId);
   }
 
   @Get('sellers')

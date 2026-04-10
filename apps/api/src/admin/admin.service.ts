@@ -2,7 +2,18 @@ import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Inj
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { BannersService } from '../banners/banners.service';
-import { Prisma, UserRole } from '@prisma/client';
+import { OrdersService } from '../orders/orders.service';
+import { OrderStatus, PaymentStatus, Prisma, UserRole } from '@prisma/client';
+
+function parseOrderStatusFilter(v?: string): OrderStatus | undefined {
+  if (!v || typeof v !== 'string') return undefined;
+  return (Object.values(OrderStatus) as string[]).includes(v) ? (v as OrderStatus) : undefined;
+}
+
+function parsePaymentStatusFilter(v?: string): PaymentStatus | undefined {
+  if (!v || typeof v !== 'string') return undefined;
+  return (Object.values(PaymentStatus) as string[]).includes(v) ? (v as PaymentStatus) : undefined;
+}
 import { Request } from 'express';
 
 const VALID_ROLES: UserRole[] = ['ADMIN', 'ADMIN_MODERATOR', 'BUYER', 'SELLER'];
@@ -15,6 +26,7 @@ export class AdminService {
     private prisma: PrismaService,
     private telegram: TelegramService,
     private banners: BannersService,
+    private orders: OrdersService,
   ) {}
 
   /** Get users in a transaction with RLS context set on the same connection to avoid 500 when using connection pool. */
@@ -188,24 +200,53 @@ export class AdminService {
     });
   }
 
-  async getOrders(req: Request, page = 1, limit = 20) {
+  async getOrders(
+    req: Request,
+    page = 1,
+    limit = 20,
+    filters?: { status?: string; paymentStatus?: string; search?: string },
+  ) {
     const user = req.user as { id: string; role: string } | undefined;
     const userId = user?.id ? String(user.id) : null;
     const roleStr = user?.role ? String(user.role) : null;
     const skip = Math.max(0, (Number(page) || 1) - 1) * Math.max(1, Math.min(100, Number(limit) || 20));
     const take = Math.max(1, Math.min(100, Number(limit) || 20));
 
+    const statusF = parseOrderStatusFilter(filters?.status);
+    const payF = parsePaymentStatusFilter(filters?.paymentStatus);
+    const q = filters?.search?.trim();
+    const where: Prisma.OrderWhereInput = {};
+    if (statusF) where.status = statusF;
+    if (payF) where.paymentStatus = payF;
+    if (q) {
+      where.OR = [
+        { orderNumber: { contains: q, mode: 'insensitive' } },
+        { guestPhone: { contains: q, mode: 'insensitive' } },
+        {
+          buyer: {
+            OR: [
+              { firstName: { contains: q, mode: 'insensitive' } },
+              { lastName: { contains: q, mode: 'insensitive' } },
+              { email: { contains: q, mode: 'insensitive' } },
+              { phone: { contains: q, mode: 'insensitive' } },
+            ],
+          },
+        },
+      ];
+    }
+
     return this.prisma.$transaction(async (tx) => {
       if (userId) await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
       if (roleStr) await tx.$executeRaw`SELECT set_config('app.user_role', ${roleStr}, true)`;
       const [data, total] = await Promise.all([
         tx.order.findMany({
+          where,
           skip,
           take,
           orderBy: { createdAt: 'desc' },
           include: { buyer: { select: { firstName: true, lastName: true } }, seller: { select: { firstName: true } }, items: true },
         }),
-        tx.order.count(),
+        tx.order.count({ where }),
       ]);
       return { data, total, page: Math.max(1, Number(page) || 1), limit: take, totalPages: Math.ceil(total / take) };
     });
@@ -220,6 +261,9 @@ export class AdminService {
       totalRevenue,
       pendingProductsCount,
       pendingReviewsCount,
+      ordersByStatusRows,
+      pendingPaymentOrdersCount,
+      recentOrders,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.product.count({ where: { isActive: true } }),
@@ -228,7 +272,26 @@ export class AdminService {
       this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'PAID' } }),
       this.prisma.product.count({ where: { isActive: true, isModerated: false } }),
       this.prisma.review.count({ where: { isModerated: false } }),
+      this.prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.order.count({ where: { paymentStatus: 'PENDING', status: { not: 'CANCELLED' } } }),
+      this.prisma.order.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          paymentStatus: true,
+          totalAmount: true,
+          createdAt: true,
+          buyer: { select: { firstName: true, lastName: true } },
+          seller: { select: { firstName: true, lastName: true } },
+        },
+      }),
     ]);
+    const ordersByStatus: Record<string, number> = {};
+    for (const s of Object.values(OrderStatus)) ordersByStatus[s] = 0;
+    for (const row of ordersByStatusRows) ordersByStatus[row.status] = row._count._all;
     return {
       usersCount,
       productsCount,
@@ -237,6 +300,9 @@ export class AdminService {
       totalRevenue: totalRevenue._sum.totalAmount?.toString() ?? '0',
       pendingProductsCount,
       pendingReviewsCount,
+      ordersByStatus,
+      pendingPaymentOrdersCount,
+      recentOrders,
     };
   }
 
@@ -775,5 +841,13 @@ export class AdminService {
       this.prisma.review.count({ where }),
     ]);
     return { data, total, page: Math.max(1, Number(page) || 1), limit: take, totalPages: Math.ceil(total / take) };
+  }
+
+  bulkUpdateOrderStatuses(orderIds: string[], status: OrderStatus, actorUserId: string) {
+    return this.orders.adminBulkSetOrderStatus(orderIds, status, actorUserId);
+  }
+
+  bulkMarkOrdersPaid(orderIds: string[], actorUserId: string) {
+    return this.orders.adminBulkMarkPaid(orderIds, actorUserId);
   }
 }

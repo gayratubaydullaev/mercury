@@ -68,7 +68,7 @@ export default function SellerReviewsPage() {
   if (reviews === null) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="min-w-0 max-w-full space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Sharhlar"
@@ -86,7 +86,7 @@ export default function SellerReviewsPage() {
           {reviews.length === 0 ? (
             <DashboardEmptyState icon={MessageSquare} title="Hali sharhlar yoʻq" description="Birinchi sharh kelganda u shu yerda koʻrinadi." />
           ) : (
-            <ul className="space-y-4">
+            <ul className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5 2xl:gap-6">
               {reviews.map((r) => (
                 <li key={r.id} className="p-4 rounded-lg border bg-card space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">

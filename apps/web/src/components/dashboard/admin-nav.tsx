@@ -52,11 +52,11 @@ function NavLink({
       aria-current={isActive ? 'page' : undefined}
       aria-label={label}
       className={cn(
-        'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px] touch-manipulation',
-        'border-l-2 border-transparent md:border-l-0 md:border-l-[3px]',
+        'flex items-center gap-3 rounded-r-lg px-3 py-2.5 text-sm transition-colors shrink-0 min-h-[44px] touch-manipulation md:min-h-0 md:py-2',
+        'border-l-[3px] border-transparent',
         isActive
-          ? 'bg-primary text-primary-foreground border-primary md:border-l-primary'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80'
+          ? 'border-primary bg-primary/[0.09] font-medium text-foreground dark:bg-primary/15'
+          : 'text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground active:bg-muted/80'
       )}
     >
       <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
@@ -174,12 +174,12 @@ export function AdminNav() {
       {/* Выдвижная панель меню (мобильная) */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/60 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-60 md:max-w-none md:shrink-0 md:bg-muted/25 md:shadow-none md:translate-x-0',
+          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/70 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-[260px] md:max-w-none md:shrink-0 md:shadow-none md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
         aria-label="Admin panel navigatsiyasi"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-card/80 p-3 backdrop-blur-sm md:p-4">
+        <div className="flex items-center justify-between gap-2 border-b border-border/70 bg-muted/30 p-3 md:p-4">
           <Link
             href="/admin"
             className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 -my-1.5 transition-colors hover:bg-muted/50 md:mx-0 md:my-0"

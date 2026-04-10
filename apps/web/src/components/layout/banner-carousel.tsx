@@ -9,14 +9,28 @@ import { cn } from '@/lib/utils';
 import { useSwipe } from '@/hooks/use-swipe';
 
 export interface BannerSlide {
+  /** Стабильный ключ для React / анимаций */
+  id?: string;
   image: string;
   href: string;
   external?: boolean;
   title?: string;
+  /** Длительность показа слайда, сек (с API); если нет — используется intervalMs карусели */
+  displaySeconds?: number | null;
 }
 
 const INTERVAL_MS = 5000;
 const PROGRESS_TICK_MS = 80;
+const MIN_SLIDE_MS = 3000;
+const MAX_SLIDE_MS = 120_000;
+
+function slideDurationMs(slide: BannerSlide | undefined, fallbackMs: number): number {
+  const ds = slide?.displaySeconds;
+  if (ds != null && ds > 0) {
+    return Math.min(Math.max(ds * 1000, MIN_SLIDE_MS), MAX_SLIDE_MS);
+  }
+  return Math.min(Math.max(fallbackMs, MIN_SLIDE_MS), MAX_SLIDE_MS);
+}
 
 const ReklamaBadge = () => (
   <div
@@ -38,6 +52,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
   const [progress, setProgress] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const slideStartRef = useRef(Date.now());
@@ -60,7 +75,16 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const shouldAutoAdvance = slides.length > 1 && !isPaused && !prefersReducedMotion;
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => setTabVisible(document.visibilityState === 'visible');
+    onVis();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
+  const activeDurationMs = slideDurationMs(slides[currentIndex], intervalMs);
+  const shouldAutoAdvance = slides.length > 1 && !isPaused && !prefersReducedMotion && tabVisible;
 
   useEffect(() => {
     if (!shouldAutoAdvance) return;
@@ -68,7 +92,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
     setProgress(0);
     const tick = setInterval(() => {
       const elapsed = Date.now() - slideStartRef.current;
-      const pct = Math.min((elapsed / intervalMs) * 100, 100);
+      const pct = Math.min((elapsed / activeDurationMs) * 100, 100);
       setProgress(pct);
       if (pct >= 100) {
         setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -76,7 +100,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
       }
     }, PROGRESS_TICK_MS);
     return () => clearInterval(tick);
-  }, [slides.length, intervalMs, shouldAutoAdvance]);
+  }, [slides.length, shouldAutoAdvance, currentIndex, activeDurationMs]);
 
   const goTo = useCallback((index: number) => {
     slideStartRef.current = Date.now();
@@ -95,13 +119,15 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
   }, [slides.length]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') goPrev();
-      if (e.key === 'ArrowRight') goNext();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [goPrev, goNext]);
+    if (typeof window === 'undefined' || slides.length <= 1) return;
+    const next = slides[(currentIndex + 1) % slides.length];
+    const prev = slides[(currentIndex - 1 + slides.length) % slides.length];
+    for (const s of [next, prev]) {
+      if (!s?.image) continue;
+      const img = new window.Image();
+      img.src = s.image;
+    }
+  }, [currentIndex, slides]);
 
   const swipe = useSwipe({
     threshold: 50,
@@ -109,6 +135,20 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
     onSwipeLeft: goNext,
     onSwipeRight: goPrev,
   });
+
+  const onCarouselKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (slides.length <= 1) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNext();
+      }
+    },
+    [slides.length, goPrev, goNext]
+  );
 
   if (slides.length === 0) return null;
 
@@ -140,7 +180,12 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
       aria-label="Reklama bannerlari"
     >
       <div
-        className="relative w-full max-w-[100vw] aspect-[16/9] md:aspect-[5/1] flex items-center justify-center group touch-pan-y contain-paint"
+        data-banner-carousel
+        tabIndex={0}
+        role="group"
+        aria-label="Reklama slaydlari. Chap va o‘ng o‘qlar bilan almashtiring."
+        onKeyDown={onCarouselKeyDown}
+        className="relative w-full max-w-[100vw] aspect-[16/9] md:aspect-[5/1] flex items-center justify-center group touch-pan-y contain-paint rounded-2xl md:rounded-[1.5rem] outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
         onTouchEnd={swipe.onTouchEnd}
@@ -195,7 +240,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
 
               return (
                 <motion.div
-                  key={index}
+                  key={slide.id ?? `banner-${index}`}
                   variants={variants}
                   initial="hidden"
                   animate={position}
@@ -222,7 +267,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                           alt={slide.title ?? 'Reklama'}
                           fill
                           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 rounded-2xl"
-                          priority={index === 0}
+                          priority={isCenter}
                           sizes="(max-width: 768px) 100vw, 45vw"
                           unoptimized={slide.image.startsWith('http')}
                         />
@@ -236,7 +281,7 @@ export function BannerCarousel({ slides = [], intervalMs = INTERVAL_MS }: { slid
                           alt={slide.title ?? 'Reklama'}
                           fill
                           className="object-cover rounded-2xl"
-                          priority={index === 0}
+                          priority={isCenter}
                           sizes="(max-width: 768px) 100vw, 45vw"
                           unoptimized={slide.image.startsWith('http')}
                         />

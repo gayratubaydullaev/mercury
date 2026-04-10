@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -162,9 +163,24 @@ export class SellerService {
         commission: 0,
         totalPaidToPlatform: 0,
         balance: 0,
+        lowStockProductsCount: 0,
+        outOfStockProductsCount: 0,
+        ordersByStatus: {} as Record<string, number>,
+        unpaidOrdersCount: 0,
       };
     }
-    const [ordersCount, pendingOrdersCount, paidOrders, productsCount, settings, payoutRecords] = await Promise.all([
+    const [
+      ordersCount,
+      pendingOrdersCount,
+      paidOrders,
+      productsCount,
+      settings,
+      payoutRecords,
+      lowStockProductsCount,
+      outOfStockProductsCount,
+      ordersByStatusRows,
+      unpaidOrdersCount,
+    ] = await Promise.all([
       this.prisma.order.count({ where: { sellerId: userId } }),
       this.prisma.order.count({ where: { sellerId: userId, status: 'PENDING' } }),
       this.prisma.order.findMany({
@@ -174,6 +190,20 @@ export class SellerService {
       this.prisma.product.count({ where: { shopId: shop.id, isActive: true } }),
       this.prisma.platformSettings.findFirst({ select: { commissionRate: true } }),
       this.prisma.payoutRecord.findMany({ where: { sellerId: userId }, select: { amount: true } }),
+      this.prisma.product.count({
+        where: { shopId: shop.id, isActive: true, stock: { gt: 0, lte: 5 } },
+      }),
+      this.prisma.product.count({
+        where: { shopId: shop.id, isActive: true, stock: 0 },
+      }),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        where: { sellerId: userId },
+        _count: { _all: true },
+      }),
+      this.prisma.order.count({
+        where: { sellerId: userId, paymentStatus: 'PENDING', status: { not: 'CANCELLED' } },
+      }),
     ]);
     const totalRevenue = paidOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
     const platformRate = settings ? Number(settings.commissionRate) / 100 : 0.05;
@@ -181,6 +211,10 @@ export class SellerService {
     const commission = paidOrders.reduce((s, o) => s + Number(o.totalAmount) * sellerRate, 0);
     const totalPaidToPlatform = payoutRecords.reduce((s, r) => s + Number(r.amount), 0);
     const balance = commission - totalPaidToPlatform;
+
+    const ordersByStatus: Record<string, number> = {};
+    for (const s of Object.values(OrderStatus)) ordersByStatus[s] = 0;
+    for (const row of ordersByStatusRows) ordersByStatus[row.status] = row._count._all;
 
     return {
       ordersCount,
@@ -193,6 +227,10 @@ export class SellerService {
       commission,
       totalPaidToPlatform,
       balance,
+      lowStockProductsCount,
+      outOfStockProductsCount,
+      ordersByStatus,
+      unpaidOrdersCount,
     };
   }
 

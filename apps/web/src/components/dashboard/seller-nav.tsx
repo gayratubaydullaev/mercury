@@ -44,17 +44,22 @@ function NavLink({
       aria-current={isActive ? 'page' : undefined}
       aria-label={label}
       className={cn(
-        'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px] touch-manipulation',
-        'border-l-2 border-transparent md:border-l-0 md:border-l-[3px]',
+        'flex items-center gap-3 rounded-r-lg px-3 py-2.5 text-sm transition-colors shrink-0 min-h-[44px] touch-manipulation md:min-h-0 md:py-2',
+        'border-l-[3px] border-transparent',
         isActive
-          ? 'bg-primary text-primary-foreground border-primary md:border-l-primary'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80'
+          ? 'border-primary bg-primary/[0.09] font-medium text-foreground dark:bg-primary/15'
+          : 'text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground active:bg-muted/80'
       )}
     >
       <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
       <span className="whitespace-nowrap flex-1 min-w-0 truncate">{label}</span>
       {badge != null && badge > 0 && (
-        <span className="shrink-0 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+        <span
+          className={cn(
+            'flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-bold',
+            isActive ? 'bg-primary/20 text-primary' : 'bg-primary text-primary-foreground'
+          )}
+        >
           {badge > 99 ? '99+' : badge}
         </span>
       )}
@@ -118,8 +123,10 @@ function NavContent({
         onClick={onNavClick}
         aria-current={pathname === '/chat' ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px] touch-manipulation',
-          pathname === '/chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          'flex items-center gap-3 rounded-r-lg border-l-[3px] px-3 py-2.5 text-sm transition-colors shrink-0 min-h-[44px] touch-manipulation md:min-h-0 md:py-2',
+          pathname === '/chat'
+            ? 'border-primary bg-primary/[0.09] font-medium text-foreground dark:bg-primary/15'
+            : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground'
         )}
         aria-label="Xabarlar"
       >
@@ -193,12 +200,12 @@ export function SellerNav() {
       {/* Выдвижная панель меню (мобильная) / боковая панель (десктоп) */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/60 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-60 md:max-w-none md:shrink-0 md:bg-muted/25 md:shadow-none md:translate-x-0',
+          'fixed top-0 left-0 z-50 flex h-full w-[min(300px,100vw-2rem)] max-w-[85vw] flex-col border-r border-border/70 bg-card shadow-xl transition-transform duration-200 ease-out md:sticky md:top-0 md:z-30 md:h-auto md:min-h-dvh md:w-[260px] md:max-w-none md:shrink-0 md:shadow-none md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
         aria-label="Sotuvchi panel navigatsiyasi"
       >
-        <div className="flex flex-col gap-3 border-b border-border/60 bg-card/80 p-3 backdrop-blur-sm md:p-4">
+        <div className="flex flex-col gap-3 border-b border-border/70 bg-muted/30 p-3 md:p-4">
           <div className="flex items-start justify-between gap-2">
             <Link
               href="/seller"

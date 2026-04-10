@@ -296,7 +296,7 @@ export default function EditProductPage() {
   if (!token) return <DashboardAuthGate />;
   if (product === undefined) {
     return (
-      <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6 xl:max-w-5xl 2xl:max-w-6xl">
         <DashboardPageHeader
           eyebrow="Sotuvchi kabineti"
           title="Tovarni tahrirlash"
@@ -315,7 +315,7 @@ export default function EditProductPage() {
   }
   if (product === null) {
     return (
-      <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6 xl:max-w-5xl 2xl:max-w-6xl">
         <DashboardPageHeader
           eyebrow="Sotuvchi kabineti"
           title="Tovarni tahrirlash"
@@ -342,7 +342,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6 xl:max-w-5xl 2xl:max-w-6xl">
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Tovarni tahrirlash"

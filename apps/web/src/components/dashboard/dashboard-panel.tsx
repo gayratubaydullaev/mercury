@@ -13,7 +13,7 @@ export function DashboardPanel({ children, className, padded = false }: Dashboar
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm',
+        'overflow-hidden rounded-xl border border-border/70 bg-card text-card-foreground shadow-sm ring-1 ring-black/[0.03] dark:ring-white/[0.04]',
         padded && 'p-4 sm:p-5 md:p-6',
         className
       )}

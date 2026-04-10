@@ -110,10 +110,20 @@ export class PaymentsService {
       return { click_trans_id, merchant_trans_id, merchant_prepare_id: order.id, error: 0, error_note: 'Success' };
     }
     if (action === '1') {
+      const fromStatus = order.status;
+      const fromPaymentStatus = order.paymentStatus;
       await this.prisma.$transaction([
         this.prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID', status: 'CONFIRMED' } }),
         this.prisma.payment.updateMany({ where: { orderId: order.id, provider: 'CLICK' }, data: { status: 'PAID', externalId: click_trans_id } }),
       ]);
+      this.ordersService.appendOrderAudit(order.id, null, 'GATEWAY_MARK_PAID', {
+        provider: 'CLICK',
+        externalId: click_trans_id,
+        fromPaymentStatus,
+        toPaymentStatus: 'PAID',
+        fromStatus,
+        toStatus: 'CONFIRMED',
+      });
       const orderWithDetails = await this.prisma.order.findUnique({
         where: { id: order.id },
         include: {
@@ -205,10 +215,20 @@ export class PaymentsService {
       const order = await this.prisma.order.findUnique({ where: { id: accountOrderId } });
       if (!order) return { error: { code: -31050, message: 'Order not found' } };
       if (order.paymentStatus !== 'PAID') {
+        const fromStatus = order.status;
+        const fromPaymentStatus = order.paymentStatus;
         await this.prisma.$transaction([
           this.prisma.order.update({ where: { id: accountOrderId }, data: { paymentStatus: 'PAID', status: 'CONFIRMED' } }),
           this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'PAID', externalId: String(params?.id ?? '') } }),
         ]);
+        this.ordersService.appendOrderAudit(accountOrderId, null, 'GATEWAY_MARK_PAID', {
+          provider: 'PAYME',
+          externalId: String(params?.id ?? ''),
+          fromPaymentStatus,
+          toPaymentStatus: 'PAID',
+          fromStatus,
+          toStatus: 'CONFIRMED',
+        });
         const orderWithDetails = await this.prisma.order.findUnique({
           where: { id: accountOrderId },
           include: {

@@ -11,7 +11,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { UserRole, OrderStatus } from '@prisma/client';
+import { UserRole, OrderStatus, PaymentStatus } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
 import { CartService } from '../cart/cart.service';
 
@@ -87,12 +87,18 @@ export class OrdersController {
     @CurrentUser('id') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('paymentStatus') paymentStatus?: string,
+    @Query('search') search?: string,
   ) {
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
     const statusFilter = status && Object.values(OrderStatus).includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
-    return this.orders.findSellerOrders(userId, pageNum, limitNum, statusFilter);
+    const paymentFilter =
+      paymentStatus && Object.values(PaymentStatus).includes(paymentStatus as PaymentStatus)
+        ? (paymentStatus as PaymentStatus)
+        : undefined;
+    return this.orders.findSellerOrders(userId, pageNum, limitNum, statusFilter, paymentFilter, search);
   }
 
   @Get('guest-lookup')
@@ -107,6 +113,12 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get order by guest view token (no auth)' })
   findOneGuestView(@Param('id') id: string, @Query('token') token: string) {
     return this.orders.findOneByGuestToken(id, token ?? '');
+  }
+
+  @Get(':id/audit')
+  @ApiOperation({ summary: 'Order audit log (buyer / seller / admin with access)' })
+  getOrderAudit(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: string) {
+    return this.orders.getOrderAudit(id, userId, role);
   }
 
   @Get(':id')

@@ -412,19 +412,29 @@ export class ProductsService {
     return { success: true };
   }
 
-  async getSellerProducts(sellerId: string, page = 1, limit = 20) {
+  async getSellerProducts(sellerId: string, page = 1, limit = 20, search?: string) {
     const shop = await this.prisma.shop.findFirst({ where: { userId: sellerId } });
     if (!shop) return { data: [], total: 0, page, limit, totalPages: 0 };
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
+    const q = search?.trim();
+    const where: Prisma.ProductWhereInput = {
+      shopId: shop.id,
+      ...(q
+        ? {
+            title: { contains: q, mode: 'insensitive' },
+          }
+        : {}),
+    };
     const [rows, total] = await Promise.all([
       this.prisma.product.findMany({
-        where: { shopId: shop.id },
+        where,
         skip,
         take,
         include: { images: true, category: true },
+        orderBy: { updatedAt: 'desc' },
       }),
-      this.prisma.product.count({ where: { shopId: shop.id } }),
+      this.prisma.product.count({ where }),
     ]);
     const data = rows.map((p) => ({
       ...p,

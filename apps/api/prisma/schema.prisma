@@ -301,8 +301,22 @@ model Order {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  items    OrderItem[]
-  payments Payment[]
+  items         OrderItem[]
+  payments      Payment[]
+  auditEvents   OrderAuditEvent[]
+}
+
+model OrderAuditEvent {
+  id          String   @id @default(uuid())
+  orderId     String   @map("order_id")
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  meta        Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([orderId, createdAt(sort: Desc)])
+  @@map("order_audit_events")
 }
 
 model CheckoutSession {

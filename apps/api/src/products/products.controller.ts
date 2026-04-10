@@ -41,10 +41,15 @@ export class ProductsController {
   @Roles(UserRole.SELLER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'My products (seller)' })
-  myProducts(@CurrentUser('id') userId: string, @Query('page') page?: string | number, @Query('limit') limit?: string | number) {
+  myProducts(
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
+    @Query('search') search?: string,
+  ) {
     const pageNum = page != null ? Math.max(1, Number(page) || 1) : 1;
     const limitNum = limit != null ? Math.min(100, Math.max(1, Number(limit) || 20)) : 20;
-    return this.products.getSellerProducts(userId, pageNum, limitNum);
+    return this.products.getSellerProducts(userId, pageNum, limitNum, search);
   }
 
   @Get('my/:id')

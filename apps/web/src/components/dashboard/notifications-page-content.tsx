@@ -73,7 +73,7 @@ export function NotificationsPageContent({
   const hasUnread = data.data.some((n) => !n.readAt);
 
   return (
-    <div className="min-w-0 max-w-full space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <DashboardPageHeader eyebrow={eyebrow} title={title} description={`${description} Jami: ${data.total}.`}>
         {hasUnread ? (
           <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={markingAll} className="gap-2">

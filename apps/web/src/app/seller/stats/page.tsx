@@ -76,14 +76,14 @@ export default function SellerStatsPage() {
   const maxChartValue = Math.max(...chart.map((x) => x.total), 1);
 
   return (
-    <div className="min-w-0 space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Statistika va komissiya"
         description="Savdolar, sizga tegishli summa va marketpleys komissiyasi."
       />
 
-      <div className="max-w-2xl rounded-lg border border-border bg-muted/50 p-4">
+      <div className="w-full max-w-4xl 2xl:max-w-none rounded-lg border border-border bg-muted/50 p-4 sm:p-5">
         <p className="text-sm font-medium mb-1">Qanday ishlaydi</p>
         <ul className="text-xs sm:text-sm text-muted-foreground space-y-1 list-disc list-inside">
           <li><strong className="text-foreground">Savdolar</strong> — toʻlangan buyurtmalar jami (xaridor sizga toʻlaydi).</li>
@@ -93,7 +93,7 @@ export default function SellerStatsPage() {
         </ul>
       </div>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:gap-5">
         {stats.productsCount != null && (
           <Card className="overflow-hidden">
             <CardHeader className="pb-1 px-4 sm:px-5 flex flex-row items-center gap-2">
@@ -139,7 +139,7 @@ export default function SellerStatsPage() {
         </Card>
       </div>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-3 xl:gap-5">
         <Card>
           <CardHeader className="pb-1 px-4 sm:px-5"><CardTitle className="text-sm sm:text-base">Komissiya (marketpleys)</CardTitle></CardHeader>
           <CardContent className="px-4 sm:px-5 pt-0">
@@ -188,10 +188,13 @@ export default function SellerStatsPage() {
         </CardHeader>
         <CardContent className="pt-2">
           {chartLoading ? (
-            <Skeleton className="h-[200px] w-full rounded-lg" />
+            <Skeleton className="h-[200px] w-full rounded-lg sm:h-[220px] xl:h-[280px]" />
           ) : chart.length > 0 ? (
             <>
-              <div className="flex items-end gap-[2px] sm:gap-0.5 h-[200px] rounded-lg bg-muted/30 p-2" aria-label="Savdolar grafigi">
+              <div
+                className="flex h-[200px] items-end gap-[2px] rounded-lg bg-muted/30 p-2 sm:h-[220px] sm:gap-0.5 xl:h-[280px]"
+                aria-label="Savdolar grafigi"
+              >
                 {chart.map((p) => {
                   const pct = maxChartValue > 0 ? (p.total / maxChartValue) * 100 : 0;
                   return (

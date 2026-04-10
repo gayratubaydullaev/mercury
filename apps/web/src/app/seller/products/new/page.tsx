@@ -253,7 +253,7 @@ export default function NewProductPage() {
   if (!token) return <DashboardAuthGate />;
 
   return (
-    <div className="mx-auto min-w-0 max-w-2xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6 xl:max-w-5xl 2xl:max-w-6xl">
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Yangi tovar"

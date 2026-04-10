@@ -132,6 +132,11 @@ export default function MyOrdersPage() {
                     Sotuvchi: {o.seller.firstName} {o.seller.lastName}
                   </p>
                 )}
+                <div className="mb-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/orders/${o.id}`}>Batafsil va tarix</Link>
+                  </Button>
+                </div>
                 <ul className="space-y-1">
                   {o.items?.slice(0, 3).map((item, i) => (
                     <li key={item.product?.id ?? i} className="flex gap-2 text-sm items-center">

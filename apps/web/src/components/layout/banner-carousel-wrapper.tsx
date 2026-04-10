@@ -23,25 +23,41 @@ function BannerSkeleton() {
 
 const DEFAULT_INTERVAL_MS = 5000;
 
-function normalizeBanners(data: unknown): { slides: BannerSlide[]; intervalMs: number } {
+function normalizeBanners(data: unknown): { slides: BannerSlide[]; defaultIntervalMs: number } {
   const list = Array.isArray(data) ? data : [];
-  const slides: BannerSlide[] = list.map((b: { image: string; href: string; external?: boolean; title?: string | null }) => ({
-    image: b.image,
-    href: b.href,
-    external: b.external,
-    title: b.title ?? undefined,
-  }));
+  const slides: BannerSlide[] = list.map(
+    (b: {
+      id?: string;
+      image: string;
+      href: string;
+      external?: boolean;
+      title?: string | null;
+      displaySeconds?: number | null;
+    }) => ({
+      id: b.id,
+      image: b.image,
+      href: b.href,
+      external: b.external,
+      title: b.title ?? undefined,
+      displaySeconds: b.displaySeconds,
+    })
+  );
   const first = list[0] as { displaySeconds?: number | null } | undefined;
-  const intervalMs = first?.displaySeconds != null && first.displaySeconds > 0
-    ? first.displaySeconds * 1000
-    : DEFAULT_INTERVAL_MS;
-  return { slides, intervalMs };
+  const defaultIntervalMs =
+    first?.displaySeconds != null && first.displaySeconds > 0
+      ? first.displaySeconds * 1000
+      : DEFAULT_INTERVAL_MS;
+  return { slides, defaultIntervalMs };
+}
+
+function defaultIntervalFromSlides(s: BannerSlide[]): number {
+  const ds = s[0]?.displaySeconds;
+  if (ds != null && ds > 0) return ds * 1000;
+  return DEFAULT_INTERVAL_MS;
 }
 
 let cachedSlides: BannerSlide[] | null = null;
 let cacheTime = 0;
-
-let cachedIntervalMs = DEFAULT_INTERVAL_MS;
 
 export function BannerCarouselWrapper() {
   const pathname = usePathname();
@@ -52,34 +68,39 @@ export function BannerCarouselWrapper() {
   useEffect(() => {
     if (pathname !== '/') return;
 
-    const useCache = cachedSlides && Date.now() - cacheTime < CACHE_TTL_MS;
-    if (useCache) {
-      setSlides(cachedSlides!);
-      setIntervalMs(cachedIntervalMs);
+    const applyFromNetwork = (data: unknown) => {
+      const { slides: list, defaultIntervalMs: def } = normalizeBanners(data);
+      cachedSlides = list;
+      cacheTime = Date.now();
+      setSlides(list);
+      setIntervalMs(def);
+    };
+
+    const fetchBanners = () =>
+      fetch(`${API_URL}/banners`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : []))
+        .then(applyFromNetwork)
+        .catch((err: unknown) => {
+          console.warn('[BannerCarouselWrapper] banners fetch failed', err);
+        });
+
+    if (cachedSlides !== null && Date.now() - cacheTime < CACHE_TTL_MS) {
+      setSlides(cachedSlides);
+      setIntervalMs(defaultIntervalFromSlides(cachedSlides));
       setLoading(false);
+      void fetchBanners();
       return;
     }
 
     if (cachedSlides) {
       setSlides(cachedSlides);
-      setIntervalMs(cachedIntervalMs);
+      setIntervalMs(defaultIntervalFromSlides(cachedSlides));
       setLoading(false);
     } else {
       setLoading(true);
     }
 
-    fetch(`${API_URL}/banners`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: unknown) => {
-        const { slides: list, intervalMs: interval } = normalizeBanners(data);
-        cachedSlides = list;
-        cachedIntervalMs = interval;
-        cacheTime = Date.now();
-        setSlides(list);
-        setIntervalMs(interval);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    void fetchBanners().finally(() => setLoading(false));
   }, [pathname]);
 
   if (pathname !== '/') return null;

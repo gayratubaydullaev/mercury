@@ -909,6 +909,16 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         where: { id: orderId },
         data: { paymentStatus: 'PAID' },
       });
+      this.prisma.orderAuditEvent
+        .create({
+          data: {
+            orderId,
+            actorUserId: shop.userId,
+            action: 'SELLER_MARK_PAID',
+            meta: { paymentMethod: order.paymentMethod, source: 'telegram_bot' },
+          },
+        })
+        .catch((err) => this.logger.warn(`order audit log failed: ${(err as Error).message}`));
       await this.bot.answerCallbackQuery(query.id, { text: "To'lov belgilandi." });
       const messageId = query.message?.message_id;
       if (messageId) {
@@ -1068,10 +1078,21 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const fromStatus = order.status;
     await this.prisma.order.update({
       where: { id: orderId },
       data: { status },
     });
+    this.prisma.orderAuditEvent
+      .create({
+        data: {
+          orderId,
+          actorUserId: shop.userId,
+          action: 'SELLER_STATUS',
+          meta: { fromStatus, toStatus: status, source: 'telegram_bot' },
+        },
+      })
+      .catch((err) => this.logger.warn(`order audit log failed: ${(err as Error).message}`));
 
     const label = getOrderStatusLabel(status);
     await this.bot.answerCallbackQuery(query.id, { text: `Holat: ${label}` });

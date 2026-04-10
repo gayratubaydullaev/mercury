@@ -18,7 +18,7 @@ export function DashboardNavFooter() {
   const isDark = mounted && (resolvedTheme === 'dark' || theme === 'dark');
 
   return (
-    <div className="mt-auto border-t border-border/60 p-3 md:p-4 space-y-2 shrink-0 bg-muted/20">
+    <div className="mt-auto shrink-0 space-y-2 border-t border-border/70 bg-muted/25 p-3 md:p-4">
       <Button
         type="button"
         variant="outline"

@@ -59,6 +59,10 @@
     background-image: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(var(--primary) / 0.08), transparent 60%);
     background-attachment: scroll;
   }
+  /* Admin / seller: flat console background (Medusa-style), no storefront gradient */
+  body:has([data-dashboard-main]) {
+    background-image: none;
+  }
   /* Telegram Web App: при открытии в Telegram на body ставится data-telegram-webapp */
   body[data-telegram-webapp="true"] {
     /* опционально: var(--tg-theme-bg-color), var(--tg-theme-text-color) */
