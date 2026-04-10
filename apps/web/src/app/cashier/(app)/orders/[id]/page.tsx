@@ -121,12 +121,17 @@ export default function CashierOrderDetailPage() {
         title={order.orderNumber}
         description="Buyurtma holati va toʻlov."
       >
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/cashier/pos">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            POS
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/cashier/orders">Roʻyxat</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/cashier/pos">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              POS
+            </Link>
+          </Button>
+        </div>
       </DashboardPageHeader>
 
       <DashboardPanel className="space-y-6 p-4 sm:p-6">

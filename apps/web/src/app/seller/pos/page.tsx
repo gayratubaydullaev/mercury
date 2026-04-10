@@ -8,7 +8,7 @@ export default function SellerPosPage() {
       ordersBasePath="/seller/orders"
       eyebrow="Sotuvchi kabineti"
       title="POS — nuqta sotuvi"
-      description="Doʻkonda jonli mijoz uchun tez buyurtma: savat toʻldiring, toʻlov turini tanlang va rasmiylashtiring. Kamera orqali SKU/shtrix-kod. Onlayn savatdan mustaqil."
+      description="Jonli mijoz: savat, toʻlov, chek. F2 kamera, F3 USB, F6 oxirgi tovar +1, F9 toʻlash. SKU/shtrix-kod skaneri."
     />
   );
 }

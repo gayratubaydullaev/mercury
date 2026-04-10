@@ -8,7 +8,7 @@ export default function CashierPosPage() {
       ordersBasePath="/cashier/orders"
       eyebrow="Kassa"
       title="POS — professional kassa"
-      description="USB yoki kamera skaner, tezkor tugmalar (F2 kamera, F3 kod maydoni, F9 toʻlash). Faqat oʻz doʻkoningiz tovarlari."
+      description="USB yoki kamera skaner. F2 kamera, F3 USB, F6 oxirgi tovar +1, F9 toʻlash. Faqat oʻz doʻkoningiz tovarlari."
       cashierOnly
     />
   );

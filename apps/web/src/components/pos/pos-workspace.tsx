@@ -20,6 +20,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  RefreshCw,
+  ShoppingBag,
+  X,
+  PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -115,6 +119,17 @@ function stockFor(product: CatalogProduct, variantId?: string): number {
   return product.stock;
 }
 
+function skuHintForCatalog(product: CatalogProduct, variantId?: string): string | null {
+  if (variantId) {
+    const s = product.variants.find((v) => v.id === variantId)?.sku?.trim();
+    return s || null;
+  }
+  const any = product.variants.map((v) => v.sku?.trim()).find(Boolean);
+  return any ?? null;
+}
+
+const POS_GUEST_PHONE_KEY = 'pos:lastGuestPhone';
+
 export type PosWorkspaceProps = {
   ordersBasePath: string;
   eyebrow: string;
@@ -152,7 +167,11 @@ export function PosWorkspace({
   const [lastScanBanner, setLastScanBanner] = useState<LastScanBanner | null>(null);
   const [cashReceived, setCashReceived] = useState('');
   const [usbScanDraft, setUsbScanDraft] = useState('');
-
+  const [lastQuickAdd, setLastQuickAdd] = useState<{
+    productId: string;
+    variantId?: string;
+    title: string;
+  } | null>(null);
   const lastScanRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
   const usbScanInputRef = useRef<HTMLInputElement>(null);
   const processBarcodeRef = useRef<(text: string, mode: PosMode) => Promise<boolean>>(async () => false);
@@ -191,6 +210,24 @@ export function PosWorkspace({
   useEffect(() => {
     if (cashierOnly) setPosMode('kassa');
   }, [cashierOnly]);
+
+  useEffect(() => {
+    try {
+      const v = sessionStorage.getItem(POS_GUEST_PHONE_KEY);
+      if (v) setGuestPhone(v);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = guestPhone.trim();
+    try {
+      if (t) sessionStorage.setItem(POS_GUEST_PHONE_KEY, t);
+    } catch {
+      /* ignore */
+    }
+  }, [guestPhone]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -290,7 +327,7 @@ export function PosWorkspace({
       ? Math.max(0, cashReceivedNum - cartTotalRounded)
       : 0;
 
-  const addLine = useCallback((product: CatalogProduct, opts?: { variantId?: string }) => {
+  const addLine = useCallback((product: CatalogProduct, opts?: { variantId?: string }): boolean => {
     const hasV = product.variants.length > 0;
     const vid = opts?.variantId ?? (hasV ? variantPick[product.id] : undefined);
     if (hasV && !vid) {
@@ -305,6 +342,8 @@ export function PosWorkspace({
     const key = `${product.id}:${vid ?? ''}`;
     const price = unitPriceFor(product, vid);
     const vLabel = vid ? variantLabel(product.variants.find((x) => x.id === vid)?.options) : undefined;
+
+    let success = false;
     setCart((prev) => {
       const i = prev.findIndex((l) => l.key === key);
       if (i >= 0) {
@@ -315,8 +354,10 @@ export function PosWorkspace({
           return prev;
         }
         next[i] = { ...cur, quantity: cur.quantity + 1 };
+        success = true;
         return next;
       }
+      success = true;
       return [
         ...prev,
         {
@@ -331,8 +372,70 @@ export function PosWorkspace({
         },
       ];
     });
-    return true;
+
+    if (success) {
+      setLastQuickAdd({
+        productId: product.id,
+        variantId: vid,
+        title: truncateProductTitle(product.title, 36),
+      });
+    }
+    return success;
   }, [variantPick]);
+
+  const repeatLastQuick = useCallback(() => {
+    if (!lastQuickAdd) {
+      toast.message('Avval tovar qoʻshing yoki skanerlang');
+      return;
+    }
+    if (!catalog?.length) {
+      toast.message('Roʻyxat yuklanmagan');
+      return;
+    }
+    const p = catalog.find((x) => x.id === lastQuickAdd.productId);
+    if (!p) {
+      toast.message('Tovar topilmadi — «Yangilash»');
+      return;
+    }
+    if (lastQuickAdd.variantId) {
+      addLine(p, { variantId: lastQuickAdd.variantId });
+    } else {
+      addLine(p);
+    }
+  }, [lastQuickAdd, catalog, addLine]);
+
+  const bumpQtyBy = useCallback(
+    (lineKey: string, delta: number) => {
+      if (delta === 0) return;
+      setCart((prev) => {
+        const line = prev.find((l) => l.key === lineKey);
+        if (!line) return prev;
+        const product = catalog?.find((pr) => pr.id === line.productId);
+        if (!product) return prev;
+        const max = stockFor(product, line.variantId);
+        const nextQty = Math.max(1, Math.min(line.quantity + delta, max));
+        if (nextQty === line.quantity) {
+          if (delta > 0) toast.message(`Maksimum ${max} ta`);
+          return prev;
+        }
+        return prev.map((l) => (l.key === lineKey ? { ...l, quantity: nextQty } : l));
+      });
+    },
+    [catalog]
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'F6') return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
+      e.preventDefault();
+      repeatLastQuick();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [repeatLastQuick]);
 
   const processBarcodeText = useCallback(
     async (text: string, mode: PosMode): Promise<boolean> => {
@@ -511,70 +614,106 @@ export function PosWorkspace({
 
       <div
         className={cn(
-          'mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between',
+          'mb-3 flex flex-col gap-2 sm:mb-4',
           'sticky top-0 z-20 rounded-xl border border-border/60 bg-card/90 px-3 py-3 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-card/80',
           'sm:static sm:z-auto sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none sm:backdrop-blur-none'
         )}
       >
-        {cashierOnly ? (
-          <div
-            className="inline-flex w-full items-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/12 to-primary/5 px-3 py-2.5 text-sm font-semibold text-foreground sm:w-auto"
-            role="status"
-          >
-            <Store className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 flex-1 sm:flex-none">Kassa</span>
-            <span className="hidden text-xs font-normal text-muted-foreground sm:inline">F2 · F3 · F9</span>
-          </div>
-        ) : (
-          <div
-            className="inline-flex w-full max-w-md rounded-xl border border-border/70 bg-muted/50 p-1 shadow-inner sm:w-auto"
-            role="tablist"
-            aria-label="POS rejimi"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={posMode === 'kassa'}
-              onClick={() => setPosMode('kassa')}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
-                posMode === 'kassa'
-                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          {cashierOnly ? (
+            <div
+              className="inline-flex w-full items-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/12 to-primary/5 px-3 py-2.5 text-sm font-semibold text-foreground sm:w-auto"
+              role="status"
             >
-              <Store className="h-4 w-4 shrink-0" aria-hidden />
-              Kassa
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={posMode === 'ombor'}
-              onClick={() => setPosMode('ombor')}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
-                posMode === 'ombor'
-                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
+              <Store className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <span className="min-w-0 flex-1 sm:flex-none">Kassa</span>
+              <span className="hidden text-xs font-normal text-muted-foreground sm:inline">F2 · F3 · F9</span>
+            </div>
+          ) : (
+            <div
+              className="inline-flex w-full max-w-md rounded-xl border border-border/70 bg-muted/50 p-1 shadow-inner sm:w-auto"
+              role="tablist"
+              aria-label="POS rejimi"
             >
-              <Warehouse className="h-4 w-4 shrink-0" aria-hidden />
-              Ombor
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={posMode === 'kassa'}
+                onClick={() => setPosMode('kassa')}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
+                  posMode === 'kassa'
+                    ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Store className="h-4 w-4 shrink-0" aria-hidden />
+                Kassa
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={posMode === 'ombor'}
+                onClick={() => setPosMode('ombor')}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors min-h-[44px]',
+                  posMode === 'ombor'
+                    ? 'bg-background text-foreground shadow-md ring-1 ring-border/40'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Warehouse className="h-4 w-4 shrink-0" aria-hidden />
+                Ombor
+              </button>
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 w-full gap-2 border-primary/35 bg-primary/[0.07] font-semibold shadow-sm hover:bg-primary/10 sm:h-11 sm:w-auto sm:shrink-0"
+            onClick={() => {
+              setLastScanBanner(null);
+              setScannerOpen(true);
+            }}
+          >
+            <Camera className="h-5 w-5 sm:h-4 sm:w-4" />
+            Kamera (F2)
+          </Button>
+        </div>
+
+        {posMode === 'kassa' ? (
+          <div className="flex flex-wrap gap-2 border-t border-border/50 pt-2 sm:border-0 sm:pt-0">
+            <Button variant="secondary" size="sm" className="min-h-10 gap-1.5 touch-manipulation" asChild>
+              <Link href={ordersBasePath}>
+                <ShoppingBag className="h-4 w-4 shrink-0" aria-hidden />
+                Buyurtmalar
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="min-h-10 gap-1.5 touch-manipulation"
+              disabled={loadingCatalog}
+              onClick={() => void loadCatalog()}
+            >
+              <RefreshCw className={cn('h-4 w-4 shrink-0', loadingCatalog && 'animate-spin')} aria-hidden />
+              Yangilash
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="min-h-10 gap-1 touch-manipulation"
+              disabled={!lastQuickAdd}
+              onClick={() => repeatLastQuick()}
+              title={lastQuickAdd ? `Oxirgi: ${lastQuickAdd.title}` : undefined}
+            >
+              <PlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              Oxirgi +1
+            </Button>
           </div>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          className="h-12 w-full gap-2 border-primary/35 bg-primary/[0.07] font-semibold shadow-sm hover:bg-primary/10 sm:h-11 sm:w-auto sm:shrink-0"
-          onClick={() => {
-            setLastScanBanner(null);
-            setScannerOpen(true);
-          }}
-        >
-          <Camera className="h-5 w-5 sm:h-4 sm:w-4" />
-          Kamera (F2)
-        </Button>
+        ) : null}
       </div>
       <p
         className={cn(
@@ -593,6 +732,7 @@ export function PosWorkspace({
             [
               { k: 'F2', t: 'Kamera skaner' },
               { k: 'F3', t: 'USB maydon' },
+              { k: 'F6', t: 'Oxirgi +1' },
               { k: 'F9', t: 'Toʻlash (savat tayyor)' },
             ] as const
           ).map(({ k, t }) => (
@@ -684,17 +824,32 @@ export function PosWorkspace({
                 }}
               />
             </div>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
-                  className="h-11 pl-9"
+                  className="h-11 pl-9 pr-11"
                   placeholder="Tovar qidirish..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="Tovar qidirish"
                 />
+                {search.trim() ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0.5 top-1/2 h-10 w-10 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setSearch('')}
+                    aria-label="Qidiruvni tozalash"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                ) : null}
               </div>
+              <p className="text-xs text-muted-foreground sm:max-w-[10rem] sm:text-right">
+                Roʻyxat: 80 tagacha · «Yangilash» yangilaydi
+              </p>
             </div>
             {loadingCatalog ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
@@ -720,6 +875,7 @@ export function PosWorkspace({
                   const hasV = p.variants.length > 0;
                   const vid = variantPick[p.id];
                   const canAdd = !hasV || Boolean(vid);
+                  const skuHint = skuHintForCatalog(p, hasV ? vid : undefined);
                   return (
                     <li
                       key={p.id}
@@ -737,6 +893,9 @@ export function PosWorkspace({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium leading-snug">{p.title}</p>
+                          {skuHint ? (
+                            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">SKU · {skuHint}</p>
+                          ) : null}
                           <p className="mt-1 text-sm text-muted-foreground">
                             {formatPrice(unitPriceFor(p, hasV ? vid : undefined))} · ombor:{' '}
                             {stockFor(p, hasV ? vid : undefined)}
@@ -845,7 +1004,7 @@ export function PosWorkspace({
                             {formatPrice(lineSum)}
                           </p>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-end gap-1.5">
                           <div className="flex items-center gap-1">
                             <Button
                               type="button"
@@ -867,6 +1026,26 @@ export function PosWorkspace({
                               aria-label="Oshirish"
                             >
                               <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="h-8 min-w-[2.75rem] px-2 text-xs font-semibold tabular-nums"
+                              onClick={() => bumpQtyBy(line.key, 5)}
+                            >
+                              +5
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="h-8 min-w-[2.75rem] px-2 text-xs font-semibold tabular-nums"
+                              onClick={() => bumpQtyBy(line.key, 10)}
+                            >
+                              +10
                             </Button>
                           </div>
                           <Button

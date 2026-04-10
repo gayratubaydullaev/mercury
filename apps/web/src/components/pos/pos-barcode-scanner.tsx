@@ -190,10 +190,14 @@ export function PosBarcodeScanner({
       }
     };
 
+    const innerW = typeof window !== 'undefined' ? window.innerWidth : 400;
+    const narrow = innerW < 640;
+    const boxW = narrow ? Math.min(220, Math.max(150, innerW - 56)) : 260;
+    const boxH = narrow ? Math.min(100, Math.round(boxW * 0.42)) : 140;
     const scanConfig = {
-      fps: 10,
-      qrbox: { width: 260, height: 140 },
-      aspectRatio: 1.777777778,
+      fps: narrow ? 8 : 10,
+      qrbox: { width: boxW, height: boxH },
+      aspectRatio: narrow ? 1.5 : 1.777777778,
     };
 
     let lastErr: unknown;
@@ -228,63 +232,82 @@ export function PosBarcodeScanner({
     setStarting(false);
   }, [onOpenChange, stop]);
 
+  const feedbackBlock =
+    feedback != null ? (
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          'rounded-xl border-2 px-3 py-3 text-center text-sm font-semibold leading-snug shadow-sm sm:px-4 sm:py-4 sm:text-base',
+          feedback.tone === 'ok' &&
+            'border-emerald-500/60 bg-emerald-500/15 text-emerald-950 dark:border-emerald-400/50 dark:bg-emerald-500/20 dark:text-emerald-50',
+          feedback.tone === 'warn' &&
+            'border-amber-500/60 bg-amber-500/15 text-amber-950 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-50',
+          feedback.tone === 'err' &&
+            'border-destructive/60 bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive-foreground'
+        )}
+      >
+        <p className="line-clamp-3 sm:line-clamp-none">{feedback.text}</p>
+        {feedback.code && feedback.code !== '—' ? (
+          <p className="mt-1.5 break-all font-mono text-xs font-medium opacity-90 sm:mt-2 sm:text-sm">{feedback.code}</p>
+        ) : null}
+      </div>
+    ) : running ? (
+      <div className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-2.5 text-center text-xs text-muted-foreground sm:text-sm">
+        Natija <span className="font-medium text-foreground">kamera ustida</span> chiqadi — kodni ramkaga tuting.
+      </div>
+    ) : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] max-w-md overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Shtrix-kod / QR</DialogTitle>
-          <DialogDescription className={cn('text-left text-sm text-muted-foreground')}>
-            «Kamerani yoqish»ni bosing — brauzer ruxsat soʻraydi. Keyin SKU yoki shtrix-kodini tuting.
-            {continuous
-              ? ' Ketma-ket skanerlash: bir xil kod ~3 soniyagacha takrorlanmaydi — keyingi tovarga kamerani siljiting.'
-              : null}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className={cn(
+          'flex max-h-[90dvh] w-[calc(100vw-1rem)] max-w-md flex-col gap-3 overflow-y-auto p-4 sm:max-h-[92dvh] sm:max-w-lg sm:gap-4 sm:p-6'
+        )}
+      >
+        <div className="sticky top-0 z-10 shrink-0 space-y-2 border-b border-border/50 bg-background pb-2 sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:pb-0">
+          <DialogHeader className="space-y-1 text-left">
+            <DialogTitle className="text-base sm:text-lg">Shtrix-kod / QR</DialogTitle>
+            <DialogDescription className="text-left text-xs leading-snug sm:text-sm">
+              <span className="block sm:inline">
+                «Kamerani yoqish» — ruxsat, keyin kodni skanerlang.
+              </span>
+              {continuous ? (
+                <span className="mt-1 block text-[11px] opacity-90 sm:mt-0 sm:ml-1 sm:inline sm:text-sm">
+                  Bir xil kod ~3 s takrorlanmaydi.
+                </span>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className={cn('sm:min-h-0', (running || feedback != null) && 'min-h-[3.25rem]')}>{feedbackBlock}</div>
+        </div>
 
         <div
           id={SCANNER_ELEMENT_ID}
-          className="min-h-[220px] w-full overflow-hidden rounded-lg bg-black/90 sm:min-h-[260px]"
+          className={cn(
+            'relative w-full shrink-0 overflow-hidden rounded-lg bg-black/95',
+            'h-[min(190px,32vh)] sm:h-[260px]',
+            '[&_video]:h-full [&_video]:w-full [&_video]:object-cover'
+          )}
         />
 
-        {feedback ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className={cn(
-              'rounded-xl border-2 px-3 py-4 text-center text-base font-semibold leading-snug shadow-sm sm:px-4 sm:text-lg',
-              feedback.tone === 'ok' &&
-                'border-emerald-500/60 bg-emerald-500/15 text-emerald-950 dark:border-emerald-400/50 dark:bg-emerald-500/20 dark:text-emerald-50',
-              feedback.tone === 'warn' &&
-                'border-amber-500/60 bg-amber-500/15 text-amber-950 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-50',
-              feedback.tone === 'err' &&
-                'border-destructive/60 bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive-foreground'
-            )}
-          >
-            <p>{feedback.text}</p>
-            {feedback.code && feedback.code !== '—' ? (
-              <p className="mt-2 break-all font-mono text-sm font-medium opacity-90">{feedback.code}</p>
-            ) : null}
-          </div>
-        ) : running ? (
-          <p className="text-center text-sm text-muted-foreground">
-            Kodni ramka ichiga tuting — natija shu yerda, katta yozuvda chiqadi.
-          </p>
-        ) : null}
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border/40 pt-2 sm:mt-0 sm:border-0 sm:pt-0">
+          {!running ? (
+            <Button type="button" className="h-11 w-full sm:h-10" disabled={starting} onClick={() => void startFromUserClick()}>
+              {starting ? 'Ulanmoqda…' : 'Kamerani yoqish'}
+            </Button>
+          ) : null}
 
-        {!running ? (
-          <Button type="button" className="w-full" disabled={starting} onClick={() => void startFromUserClick()}>
-            {starting ? 'Ulanmoqda…' : 'Kamerani yoqish'}
+          {starting && !running ? (
+            <p className="text-center text-sm text-muted-foreground">Kamera yoqilmoqda…</p>
+          ) : null}
+          {error ? <p className="text-center text-sm text-destructive">{error}</p> : null}
+
+          <Button type="button" variant="outline" className="h-11 w-full sm:h-10" onClick={() => onOpenChange(false)}>
+            Yopish
           </Button>
-        ) : null}
-
-        {starting && !running ? (
-          <p className="text-center text-sm text-muted-foreground">Kamera yoqilmoqda…</p>
-        ) : null}
-        {error ? <p className="text-center text-sm text-destructive">{error}</p> : null}
-
-        <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
-          Yopish
-        </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
