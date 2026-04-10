@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { usePublicSettings } from '@/contexts/public-settings-context';
+import { toast } from 'sonner';
 import { Store, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 type ApplicationStatus = {
@@ -32,6 +34,7 @@ type ApplicationStatus = {
 export default function BecomeSellerPage() {
   const router = useRouter();
   const { token, isReady } = useAuth();
+  const { newSellerApplicationsOpen, marketplaceMode } = usePublicSettings();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<ApplicationStatus | null>(null);
@@ -96,9 +99,22 @@ export default function BecomeSellerPage() {
         if (!r.ok) return r.json().then((err: { message?: string }) => Promise.reject(new Error(err?.message ?? 'Xatolik')));
         return r.json();
       })
-      .then((data: { application?: ApplicationStatus }) => {
+      .then(async (data: { application: ApplicationStatus | null; canApply: boolean }) => {
         setApplication(data.application ?? null);
-        setCanApply(false);
+        setCanApply(data.canApply);
+        if (data.application?.status === 'APPROVED') {
+          try {
+            const r = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+            const j = (await r.json()) as { accessToken?: string };
+            if (j?.accessToken) {
+              localStorage.setItem('accessToken', j.accessToken);
+              window.dispatchEvent(new Event('auth-change'));
+            }
+          } catch {
+            /* ignore */
+          }
+          toast.success('Tabriklaymiz! Sotuvchi boʻldingiz.');
+        }
       })
       .catch((err) => setError(err?.message ?? 'Ariza yuborishda xatolik'))
       .finally(() => setSubmitting(false));
@@ -116,13 +132,59 @@ export default function BecomeSellerPage() {
   const isSeller = application?.status === 'APPROVED';
   const isPending = application?.status === 'PENDING';
   const isRejected = application?.status === 'REJECTED';
+  const applicationsClosed = !newSellerApplicationsOpen;
+
+  const leadParagraph = (() => {
+    if (isSeller) return null;
+    if (applicationsClosed && isRejected) {
+      return (
+        <p className="text-muted-foreground text-sm mb-6">
+          Arizangiz rad etilgan. Hozircha qayta yuborish yopiq — savollar boʻlsa, administrator bilan bogʻlaning.
+        </p>
+      );
+    }
+    if (applicationsClosed) {
+      return null;
+    }
+    return (
+      <p className="text-muted-foreground text-sm mb-6">
+        {marketplaceMode === 'SINGLE_SHOP'
+          ? 'Yakka doʻkon rejimi: ariza yuborganingizda doʻkoningiz ochiladi (admin tasdiqlashi shart emas). Yangi tovarlar saqlangach katalogda darhol chiqadi.'
+          : 'Doʻkoningizni ochish uchun ariza yuboring. Admin tasdiqlagach, siz sotuvchi boʻlasiz va tovarlar qoʻsha olasiz.'}
+      </p>
+    );
+  })();
 
   return (
     <div className="max-w-lg mx-auto px-0 sm:px-4 md:px-6 py-8">
       <h1 className="text-xl sm:text-2xl font-bold mb-2">Sotuvchi bo‘lish</h1>
-      <p className="text-muted-foreground text-sm mb-6">
-        Do‘koningizni ochish uchun ariza yuboring. Admin tasdiqlagach, siz sotuvchi bo‘lasiz va tovarlar qo‘sha olasiz.
-      </p>
+      {leadParagraph}
+
+      {!newSellerApplicationsOpen && !isSeller && (
+        <Card className="mb-6 border-amber-200 dark:border-amber-900">
+          <CardContent className="pt-6 space-y-4">
+            <div>
+              <p className="font-medium">Yangi sotuvchi arizalari hozircha yopiq</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {marketplaceMode === 'SINGLE_SHOP'
+                  ? 'Platformada allaqachon doʻkon mavjud — qoʻshimcha sotuvchi roʻyxatdan oʻtish hozircha mumkin emas.'
+                  : 'Platformada boshqa doʻkon roʻyxatdan oʻtgan boʻlishi mumkin. Qoʻshimcha sotuvchi qoʻshish uchun administrator bilan bogʻlaning.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/account">Profil</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/catalog">Katalog</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/">Bosh sahifa</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isSeller && (
         <Card className="mb-6 border-green-200 dark:border-green-900">
@@ -146,7 +208,9 @@ export default function BecomeSellerPage() {
             <div>
               <p className="font-medium">Arizangiz ko‘rib chiqilmoqda</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Admin tasdiqlagach, sizga xabar beramiz. Sahifani yangilab turing yoki keyinroq qaytib keling.
+                {marketplaceMode === 'SINGLE_SHOP'
+                  ? 'Agar uzoq vaqt „kutilmoqda“ turib qolsa, sahifani yangilang yoki qayta ariza yuborib koʻring.'
+                  : 'Admin tasdiqlagach, sizga xabar beramiz. Sahifani yangilab turing yoki keyinroq qaytib keling.'}
               </p>
               {application?.shopName && (
                 <p className="text-sm mt-2">Do‘kon nomi: <strong>{application.shopName}</strong></p>
@@ -165,13 +229,17 @@ export default function BecomeSellerPage() {
               {application?.rejectReason && (
                 <p className="text-sm text-muted-foreground mt-1">{application.rejectReason}</p>
               )}
-              <p className="text-sm mt-2">Agar xatolik bo‘lsa, quyidagi formadan qayta ariza yuborishingiz mumkin.</p>
+              <p className="text-sm mt-2">
+                {newSellerApplicationsOpen
+                  ? "Agar xatolik boʻlsa, quyidagi formadan qayta ariza yuborishingiz mumkin."
+                  : 'Hozircha qayta ariza qabul qilinmaydi. Administrator bilan bogʻlaning.'}
+              </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {!isSeller && (canApply || isRejected) && (
+      {!isSeller && (canApply || isRejected) && newSellerApplicationsOpen && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -179,7 +247,9 @@ export default function BecomeSellerPage() {
               Ariza yuborish
             </CardTitle>
             <p className="text-sm text-muted-foreground font-normal">
-              Do‘kon nomi, tavsif va yuridik ma’lumotlarni kiriting. Admin tasdiqlagach siz sotuvchi bo‘lasiz.
+              {marketplaceMode === 'SINGLE_SHOP'
+                ? 'Doʻkon nomi va maʼlumotlarni kiriting — yuborilgach siz darhol sotuvchi boʻlasiz.'
+                : 'Do‘kon nomi, tavsif va yuridik ma’lumotlarni kiriting. Admin tasdiqlagach siz sotuvchi bo‘lasiz.'}
             </p>
           </CardHeader>
           <CardContent>
@@ -316,8 +386,16 @@ export default function BecomeSellerPage() {
         </Card>
       )}
 
-      <p className="text-center text-sm text-muted-foreground mt-6">
-        <Link href="/" className="hover:underline">Bosh sahifaga qaytish</Link>
+      <p className="text-center text-sm text-muted-foreground mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <Link href="/account" className="hover:underline">
+          Profil
+        </Link>
+        <span className="text-border" aria-hidden>
+          ·
+        </span>
+        <Link href="/" className="hover:underline">
+          Bosh sahifa
+        </Link>
       </p>
     </div>
   );

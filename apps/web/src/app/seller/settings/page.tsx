@@ -10,13 +10,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { MessageCircle, Send, Unplug, FileText, X } from 'lucide-react';
+import { MessageCircle, Send, Unplug, FileText, X, Users } from 'lucide-react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
 
+type CashierRow = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+};
+
 export default function SellerSettingsPage() {
+  const { marketplaceMode } = usePublicSettings();
   const [shop, setShop] = useState<{
     name: string;
     slug: string;
@@ -57,7 +67,29 @@ export default function SellerSettingsPage() {
   const [telegramCode, setTelegramCode] = useState('');
   const [telegramLinking, setTelegramLinking] = useState(false);
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
+  const [staff, setStaff] = useState<CashierRow[] | null>(null);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [cashierEmail, setCashierEmail] = useState('');
+  const [cashierPassword, setCashierPassword] = useState('');
+  const [cashierFirstName, setCashierFirstName] = useState('');
+  const [cashierLastName, setCashierLastName] = useState('');
+  const [cashierPhone, setCashierPhone] = useState('');
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const loadStaff = useCallback(() => {
+    if (!token) return;
+    setStaffLoading(true);
+    apiFetch(`${API_URL}/seller/staff`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((rows) => setStaff(Array.isArray(rows) ? rows : []))
+      .catch(() => setStaff([]))
+      .finally(() => setStaffLoading(false));
+  }, [token]);
+
+  useEffect(() => {
+    if (token) loadStaff();
+  }, [token, loadStaff]);
 
   const loadTelegramStatus = useCallback(() => {
     if (!token) return;
@@ -133,6 +165,65 @@ export default function SellerSettingsPage() {
       })
       .catch(() => toast.error('Uzishda xatolik'))
       .finally(() => setTelegramDisconnecting(false));
+  };
+
+  const createCashier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setStaffSaving(true);
+    apiFetch(`${API_URL}/seller/staff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        email: cashierEmail.trim().toLowerCase(),
+        password: cashierPassword,
+        firstName: cashierFirstName.trim(),
+        lastName: cashierLastName.trim(),
+        phone: cashierPhone.trim() || undefined,
+      }),
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) {
+          const msg =
+            typeof d?.message === 'string'
+              ? d.message
+              : Array.isArray(d?.message)
+                ? d.message.map((x: { constraints?: Record<string, string> }) => Object.values(x.constraints ?? {}).join(' ')).join(' ')
+                : 'Xatolik';
+          throw new Error(msg);
+        }
+        return d;
+      })
+      .then(() => {
+        toast.success('Kassir yaratildi');
+        setCashierEmail('');
+        setCashierPassword('');
+        setCashierFirstName('');
+        setCashierLastName('');
+        setCashierPhone('');
+        loadStaff();
+      })
+      .catch((err: Error) => toast.error(err?.message ?? 'Yaratilmadi'))
+      .finally(() => setStaffSaving(false));
+  };
+
+  const removeCashier = (userId: string) => {
+    if (!token) return;
+    apiFetch(`${API_URL}/seller/staff/${userId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(typeof d?.message === 'string' ? d.message : 'Xatolik');
+        return d;
+      })
+      .then(() => {
+        toast.success('Kassir doʻkondan olib tashlandi');
+        loadStaff();
+      })
+      .catch((err: Error) => toast.error(err?.message ?? 'Oʻchirilmadi'));
   };
 
   const uploadDocuments = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,7 +324,9 @@ export default function SellerSettingsPage() {
         <CardHeader>
           <CardTitle>Maʼlumot</CardTitle>
           <p className="text-sm text-muted-foreground font-normal mt-1">
-            Nomi, slug va tavsif o‘zgarishlari admin tasdiqidan keyin qo‘llanadi. Manzil va chat sozlamalari darhol yangilanadi.
+            {marketplaceMode === 'SINGLE_SHOP'
+              ? 'Yagona doʻkon rejimida nom, slug va tavsif oʻzgarishlari administrator tasdiqlagach qoʻllanadi. Manzil va chat sozlamalari darhol yangilanadi.'
+              : 'Nomi, slug va tavsif oʻzgarishlari admin tasdiqidan keyin qoʻllanadi. Manzil va chat sozlamalari darhol yangilanadi.'}
           </p>
           {shop?.pendingUpdate && (
             <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
@@ -247,6 +340,110 @@ export default function SellerSettingsPage() {
             <textarea placeholder="Tavsif" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]" />
             <Button type="submit" disabled={loading}>{loading ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
           </form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Kassirlar (POS)
+          </CardTitle>
+          <p className="text-sm text-muted-foreground font-normal mt-1">
+            Kassirlar faqat oʻz doʻkoningiz tovarlari, POS va buyurtmalarni koʻradi. Hisob yaratgach, ular{' '}
+            <span className="font-mono text-xs">/cashier/pos</span> orqali kirishadi.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form onSubmit={createCashier} className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="cashier-email">Email</Label>
+                <Input
+                  id="cashier-email"
+                  type="email"
+                  className="mt-1"
+                  value={cashierEmail}
+                  onChange={(e) => setCashierEmail(e.target.value)}
+                  required
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="cashier-password">Parol (min. 8)</Label>
+                <Input
+                  id="cashier-password"
+                  type="password"
+                  className="mt-1"
+                  value={cashierPassword}
+                  onChange={(e) => setCashierPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="cashier-fn">Ism</Label>
+                <Input
+                  id="cashier-fn"
+                  className="mt-1"
+                  value={cashierFirstName}
+                  onChange={(e) => setCashierFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="cashier-ln">Familiya</Label>
+                <Input
+                  id="cashier-ln"
+                  className="mt-1"
+                  value={cashierLastName}
+                  onChange={(e) => setCashierLastName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="cashier-phone">Telefon (ixtiyoriy)</Label>
+              <Input
+                id="cashier-phone"
+                className="mt-1"
+                value={cashierPhone}
+                onChange={(e) => setCashierPhone(e.target.value)}
+                placeholder="+998..."
+              />
+            </div>
+            <Button type="submit" disabled={staffSaving}>
+              {staffSaving ? 'Yaratilmoqda...' : 'Kassir qo‘shish'}
+            </Button>
+          </form>
+          <div className="border-t border-border/60 pt-4">
+            <p className="text-sm font-medium mb-2">Mavjud kassirlar</p>
+            {staffLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : !staff?.length ? (
+              <p className="text-sm text-muted-foreground">Hozircha kassir yoʻq.</p>
+            ) : (
+              <ul className="space-y-2">
+                {staff.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex flex-col gap-2 rounded-md border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{c.firstName} {c.lastName}</p>
+                      <p className="text-sm text-muted-foreground truncate">{c.email}</p>
+                      {c.phone ? <p className="text-xs text-muted-foreground">{c.phone}</p> : null}
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => removeCashier(c.id)}>
+                      Oʻchirish
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </CardContent>
       </Card>
       <Card>

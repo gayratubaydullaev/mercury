@@ -4,8 +4,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto, DeliveryType } from './dto/create-order.dto';
-import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { CreatePosOrderDto } from './dto/create-pos-order.dto';
+import { OrderStatus, PaymentStatus, Prisma, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { RequestAuthUser } from '../auth/request-user.types';
+
+type Tx = Prisma.TransactionClient;
+
+type OrderFromCartCreate = Prisma.OrderGetPayload<{
+  include: {
+    items: { include: { product: { include: { images: true; shop: true } }; variant: true } };
+    seller: { include: { shop: true } };
+    buyer: { select: { firstName: true; lastName: true; email: true; phone: true } };
+  };
+}>;
 
 @Injectable()
 export class OrdersService {
@@ -17,9 +29,61 @@ export class OrdersService {
     private notifications: NotificationsService,
   ) {}
 
-  private async generateOrderNumber() {
-    const count = await this.prisma.order.count();
+  private async generateOrderNumber(tx?: Tx) {
+    const db = tx ?? this.prisma;
+    const count = await db.order.count();
     return `ORD-${Date.now().toString(36).toUpperCase()}-${(count + 1).toString().padStart(5, '0')}`;
+  }
+
+  private async decrementStockForLines(
+    tx: Tx,
+    lines: { productId: string; variantId?: string | null; quantity: number }[],
+  ) {
+    for (const line of lines) {
+      if (line.variantId) {
+        const r = await tx.productVariant.updateMany({
+          where: { id: line.variantId, stock: { gte: line.quantity } },
+          data: { stock: { decrement: line.quantity } },
+        });
+        if (r.count !== 1) {
+          throw new BadRequestException('Omborda yetarli mahsulot yoʻq (variant).');
+        }
+      } else {
+        const r = await tx.product.updateMany({
+          where: { id: line.productId, stock: { gte: line.quantity } },
+          data: { stock: { decrement: line.quantity } },
+        });
+        if (r.count !== 1) {
+          throw new BadRequestException('Omborda yetarli mahsulot yoʻq.');
+        }
+      }
+    }
+  }
+
+  private async restoreStockForOrderItems(
+    tx: Tx,
+    items: { productId: string; variantId: string | null; quantity: number }[],
+  ) {
+    for (const item of items) {
+      if (item.variantId) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      } else {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+  }
+
+  private sellerAccess(auth: RequestAuthUser, orderSellerId: string): boolean {
+    if (auth.role === UserRole.ADMIN || auth.role === UserRole.ADMIN_MODERATOR) return true;
+    if (auth.role === UserRole.SELLER && orderSellerId === auth.id) return true;
+    if (auth.role === UserRole.CASHIER && auth.effectiveSellerId === orderSellerId) return true;
+    return false;
   }
 
   async create(buyerId: string | null, sessionId: string | null, dto: CreateOrderDto) {
@@ -70,54 +134,71 @@ export class OrdersService {
       byShop.get(shopId)!.push(item);
     }
 
-    const orders = [];
+    const orders: OrderFromCartCreate[] = [];
     const shippingPayload = deliveryType === DeliveryType.PICKUP
       ? (dto.shippingAddress && typeof dto.shippingAddress === 'object' ? dto.shippingAddress : {})
       : (dto.shippingAddress as object);
-    for (const [, items] of byShop) {
-      const orderNumber = await this.generateOrderNumber();
-      const sellerId = items[0]!.product.shop.userId;
-      const totalAmount = items.reduce((sum, i) => {
-        const price = i.variant?.priceOverride != null ? Number(i.variant.priceOverride) : Number(i.product.price);
-        return sum + price * i.quantity;
-      }, 0);
-      const guestViewToken = isGuest ? randomBytes(24).toString('hex') : undefined;
-      const order = await this.prisma.order.create({
-        data: {
-          orderNumber,
-          ...(buyerId != null ? { buyerId } : {}),
-          ...(isGuest ? { guestEmail: dto.guestEmail?.trim(), guestPhone: dto.guestPhone?.trim(), guestViewToken } : {}),
-          sellerId,
-          paymentMethod: dto.paymentMethod,
-          deliveryType,
-          totalAmount: new Decimal(totalAmount),
-          shippingAddress: shippingPayload,
-          notes: dto.notes,
-          items: {
-            create: items.map((i) => {
-              const price = i.variant?.priceOverride != null ? i.variant.priceOverride! : i.product.price;
-              return {
-                productId: i.productId,
-                variantId: i.variantId ?? undefined,
-                quantity: i.quantity,
-                price,
-              };
-            }),
+    const stockDeductedAt = new Date();
+    const guestViewToken = isGuest ? randomBytes(24).toString('hex') : undefined;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const [, items] of byShop) {
+        const orderNumber = await this.generateOrderNumber(tx);
+        const sellerId = items[0]!.product.shop.userId;
+        const totalAmount = items.reduce((sum, i) => {
+          const price = i.variant?.priceOverride != null ? Number(i.variant.priceOverride) : Number(i.product.price);
+          return sum + price * i.quantity;
+        }, 0);
+        const order = await tx.order.create({
+          data: {
+            orderNumber,
+            ...(buyerId != null ? { buyerId } : {}),
+            ...(isGuest ? { guestEmail: dto.guestEmail?.trim(), guestPhone: dto.guestPhone?.trim(), guestViewToken } : {}),
+            sellerId,
+            paymentMethod: dto.paymentMethod,
+            deliveryType,
+            totalAmount: new Decimal(totalAmount),
+            shippingAddress: shippingPayload,
+            notes: dto.notes,
+            stockDeductedAt,
+            items: {
+              create: items.map((i) => {
+                const price = i.variant?.priceOverride != null ? i.variant.priceOverride! : i.product.price;
+                return {
+                  productId: i.productId,
+                  variantId: i.variantId ?? undefined,
+                  quantity: i.quantity,
+                  price,
+                };
+              }),
+            },
           },
-        },
-        include: {
-          items: { include: { product: { include: { images: true, shop: true } }, variant: true } as const },
-          seller: { include: { shop: true } },
-          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        },
-      });
+          include: {
+            items: { include: { product: { include: { images: true, shop: true } }, variant: true } as const },
+            seller: { include: { shop: true } },
+            buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+          },
+        });
+        await this.decrementStockForLines(
+          tx,
+          items.map((i) => ({
+            productId: i.productId,
+            variantId: i.variantId,
+            quantity: i.quantity,
+          })),
+        );
+        orders.push(order);
+      }
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    });
+
+    for (const order of orders) {
       this.appendOrderAudit(order.id, order.buyerId ?? null, 'ORDER_CREATED', {
         source: 'cart',
         paymentMethod: dto.paymentMethod,
         deliveryType,
         orderNumber: order.orderNumber,
       });
-      orders.push(order);
       this.telegram.sendOrderNotification(order.sellerId, order, 'new_order').catch(() => {});
       this.telegram.sendAdminOrderNotification(order, 'new_order').catch(() => {});
       if (order.buyerId) {
@@ -133,9 +214,168 @@ export class OrdersService {
         })
         .catch(() => {});
     }
-    await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     this.logger.log(`Orders created: ${orders.map((o) => o.id).join(', ')} for ${buyerId ?? 'guest'}`);
     return orders;
+  }
+
+  /**
+   * In-store sale (Point of Sale): seller or cashier creates an order for their shop without a buyer cart.
+   */
+  async createPosOrder(actorUserId: string, dto: CreatePosOrderDto) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: {
+        id: true,
+        role: true,
+        staffShop: { select: { id: true, userId: true } },
+        shop: { select: { id: true } },
+      },
+    });
+    if (!actor) throw new BadRequestException('Foydalanuvchi topilmadi');
+    let shopId: string;
+    let ownerSellerId: string;
+    if (actor.role === UserRole.SELLER && actor.shop) {
+      shopId = actor.shop.id;
+      ownerSellerId = actor.id;
+    } else if (actor.role === UserRole.CASHIER && actor.staffShop) {
+      shopId = actor.staffShop.id;
+      ownerSellerId = actor.staffShop.userId;
+    } else {
+      throw new BadRequestException("Avval do'kon yarating yoki kassir hisobi doʻkonga bogʻlanganligini tekshiring.");
+    }
+
+    const merged = new Map<string, { productId: string; variantId?: string; quantity: number }>();
+    for (const line of dto.items) {
+      const key = `${line.productId}:${line.variantId ?? ''}`;
+      const prev = merged.get(key);
+      if (prev) prev.quantity += line.quantity;
+      else merged.set(key, { productId: line.productId, variantId: line.variantId, quantity: line.quantity });
+    }
+    const lines = [...merged.values()];
+
+    const productIds = [...new Set(lines.map((l) => l.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, shopId, isActive: true },
+      include: { variants: true },
+    });
+    if (products.length !== productIds.length) {
+      throw new BadRequestException(
+        "Ba'zi mahsulotlar topilmadi, nofaol yoki boshqa do'konga tegishli.",
+      );
+    }
+    const byId = new Map(products.map((p) => [p.id, p]));
+
+    const outOfStock: string[] = [];
+    for (const line of lines) {
+      const p = byId.get(line.productId)!;
+      if (p.variants.length > 0) {
+        if (!line.variantId) {
+          throw new BadRequestException(`Variant tanlash kerak: "${p.title}"`);
+        }
+        const v = p.variants.find((x) => x.id === line.variantId);
+        if (!v) {
+          throw new BadRequestException(`Variant mos emas: "${p.title}"`);
+        }
+        if (v.stock < line.quantity) {
+          outOfStock.push(`"${p.title}": ${line.quantity} soʻralgan, mavjud ${v.stock}`);
+        }
+      } else if (line.variantId) {
+        throw new BadRequestException(`Bu tovarda variant yoʻq: "${p.title}"`);
+      } else if (p.stock < line.quantity) {
+        outOfStock.push(`"${p.title}": ${line.quantity} soʻralgan, mavjud ${p.stock}`);
+      }
+    }
+    if (outOfStock.length > 0) {
+      throw new BadRequestException({
+        message: "Omborda yetarli mahsulot yoʻq.",
+        outOfStock,
+      });
+    }
+
+    const markPaid = dto.markPaid !== false;
+    const guestPhone = dto.guestPhone?.trim() || undefined;
+    const guestViewToken = guestPhone ? randomBytes(24).toString('hex') : undefined;
+
+    const totalAmount = lines.reduce((sum, line) => {
+      const p = byId.get(line.productId)!;
+      if (line.variantId) {
+        const v = p.variants.find((x) => x.id === line.variantId)!;
+        const unit = v.priceOverride != null ? Number(v.priceOverride) : Number(p.price);
+        return sum + unit * line.quantity;
+      }
+      return sum + Number(p.price) * line.quantity;
+    }, 0);
+
+    const stockDeductedAt = new Date();
+    const order = await this.prisma.$transaction(async (tx) => {
+      const orderNumber = await this.generateOrderNumber(tx);
+      const o = await tx.order.create({
+        data: {
+          orderNumber,
+          sellerId: ownerSellerId,
+          paymentMethod: dto.paymentMethod,
+          paymentStatus: markPaid ? 'PAID' : 'PENDING',
+          status: markPaid ? 'CONFIRMED' : 'PENDING',
+          deliveryType: 'PICKUP',
+          totalAmount: new Decimal(totalAmount),
+          shippingAddress: {},
+          notes: dto.notes?.trim() || undefined,
+          guestPhone,
+          guestViewToken,
+          stockDeductedAt,
+          items: {
+            create: lines.map((line) => {
+              const p = byId.get(line.productId)!;
+              const price =
+                line.variantId != null
+                  ? (() => {
+                      const v = p.variants.find((x) => x.id === line.variantId)!;
+                      return v.priceOverride != null ? v.priceOverride : p.price;
+                    })()
+                  : p.price;
+              return {
+                productId: line.productId,
+                variantId: line.variantId,
+                quantity: line.quantity,
+                price,
+              };
+            }),
+          },
+        },
+        include: {
+          items: { include: { product: { include: { images: true, shop: true } }, variant: true } as const },
+          seller: { include: { shop: true } },
+          buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
+      });
+      await this.decrementStockForLines(tx, lines);
+      return o;
+    });
+
+    this.appendOrderAudit(order.id, actorUserId, 'ORDER_CREATED', {
+      source: 'pos',
+      paymentMethod: dto.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+      orderNumber: order.orderNumber,
+      markPaid,
+      actorRole: actor.role,
+    });
+
+    this.telegram.sendOrderNotification(order.sellerId, order, 'new_order').catch(() => {});
+    this.telegram.sendAdminOrderNotification(order, 'new_order').catch(() => {});
+    this.notifications
+      .createForUser(order.sellerId, {
+        type: 'NEW_ORDER',
+        title: 'Yangi buyurtma (POS)',
+        body: `${order.orderNumber} — ${Number(order.totalAmount).toLocaleString()} soʻm`,
+        link: '/seller/orders',
+        entityId: order.id,
+      })
+      .catch(() => {});
+
+    this.logger.log(`POS order created: ${order.id} by ${actor.role} ${actorUserId}`);
+    return order;
   }
 
   async createOrderFromCheckoutSession(
@@ -170,9 +410,10 @@ export class OrdersService {
       }
     }
 
-    const orderNumber = await this.generateOrderNumber();
     const totalAmount = cartSnapshot.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const stockDeductedAt = new Date();
     const order = await this.prisma.$transaction(async (tx) => {
+      const orderNumber = await this.generateOrderNumber(tx);
       const o = await tx.order.create({
         data: {
           orderNumber,
@@ -185,6 +426,7 @@ export class OrdersService {
           totalAmount: new Decimal(totalAmount),
           shippingAddress: session.shippingAddress as object,
           notes: session.notes ?? undefined,
+          stockDeductedAt,
           items: {
             create: cartSnapshot.map((i) => ({
               productId: i.productId,
@@ -200,6 +442,14 @@ export class OrdersService {
           buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
         },
       });
+      await this.decrementStockForLines(
+        tx,
+        cartSnapshot.map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
+          quantity: i.quantity,
+        })),
+      );
       await tx.payment.create({
         data: { orderId: o.id, provider, amount: new Decimal(totalAmount), status: 'PAID', externalId },
       });
@@ -326,7 +576,7 @@ export class OrdersService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string, userId: string, role: string) {
+  async findOne(id: string, auth: RequestAuthUser) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
@@ -336,19 +586,27 @@ export class OrdersService {
       },
     });
     if (!order) throw new NotFoundException('Order not found');
-    const canAccess = order.buyerId === userId || order.sellerId === userId || role === 'ADMIN' || role === 'ADMIN_MODERATOR';
+    const canAccess =
+      order.buyerId === auth.id ||
+      this.sellerAccess(auth, order.sellerId) ||
+      auth.role === UserRole.ADMIN ||
+      auth.role === UserRole.ADMIN_MODERATOR;
     if (!canAccess) throw new ForbiddenException();
     return order;
   }
 
-  /** Same access as findOne: buyer, seller of order, or platform admin. */
-  async getOrderAudit(orderId: string, userId: string, role: string) {
+  /** Same access as findOne: buyer, seller/cashier of order, or platform admin. */
+  async getOrderAudit(orderId: string, auth: RequestAuthUser) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       select: { id: true, buyerId: true, sellerId: true },
     });
     if (!order) throw new NotFoundException('Order not found');
-    const canAccess = order.buyerId === userId || order.sellerId === userId || role === 'ADMIN' || role === 'ADMIN_MODERATOR';
+    const canAccess =
+      order.buyerId === auth.id ||
+      this.sellerAccess(auth, order.sellerId) ||
+      auth.role === UserRole.ADMIN ||
+      auth.role === UserRole.ADMIN_MODERATOR;
     if (!canAccess) throw new ForbiddenException();
     return this.prisma.orderAuditEvent.findMany({
       where: { orderId },
@@ -406,8 +664,11 @@ export class OrdersService {
     return order;
   }
 
-  async updateStatus(id: string, sellerId: string, status: OrderStatus) {
-    const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
+  async updateStatus(id: string, shopOwnerSellerId: string, actorUserId: string, status: OrderStatus) {
+    const order = await this.prisma.order.findFirst({
+      where: { id, sellerId: shopOwnerSellerId },
+      include: { items: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
     const isPrepaid = order.paymentMethod === 'CLICK' || order.paymentMethod === 'PAYME';
     if ((status === 'SHIPPED' || status === 'DELIVERED') && isPrepaid && order.paymentStatus !== 'PAID') {
@@ -416,17 +677,41 @@ export class OrdersService {
       );
     }
     const fromStatus = order.status;
+    const notifyInclude = {
+      items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+      buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+    } as const;
+
+    if (status === 'CANCELLED' && fromStatus !== 'CANCELLED' && order.stockDeductedAt) {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        await this.restoreStockForOrderItems(tx, order.items);
+        return tx.order.update({
+          where: { id },
+          data: { status, stockDeductedAt: null },
+          include: notifyInclude,
+        });
+      });
+      this.appendOrderAudit(id, actorUserId, 'SELLER_STATUS', {
+        fromStatus,
+        toStatus: status,
+        stockRestored: true,
+      });
+      this.telegram.sendOrderNotification(shopOwnerSellerId, updated, 'status_updated', status).catch(() => {});
+      this.telegram.sendAdminOrderNotification(updated, 'status_updated', status).catch(() => {});
+      if (updated.buyerId) {
+        this.telegram.sendBuyerOrderNotification(updated.buyerId, updated, 'status_updated', status).catch(() => {});
+      }
+      return updated;
+    }
+
     const updated = await this.prisma.order.update({
       where: { id },
       data: { status },
-      include: {
-        items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
-        buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
-      },
+      include: notifyInclude,
     });
-    this.appendOrderAudit(id, sellerId, 'SELLER_STATUS', { fromStatus, toStatus: status });
-    this.telegram.sendOrderNotification(sellerId, updated, 'status_updated', status).catch(() => {});
+    this.appendOrderAudit(id, actorUserId, 'SELLER_STATUS', { fromStatus, toStatus: status });
+    this.telegram.sendOrderNotification(shopOwnerSellerId, updated, 'status_updated', status).catch(() => {});
     this.telegram.sendAdminOrderNotification(updated, 'status_updated', status).catch(() => {});
     if (updated.buyerId) {
       this.telegram.sendBuyerOrderNotification(updated.buyerId, updated, 'status_updated', status).catch(() => {});
@@ -434,26 +719,29 @@ export class OrdersService {
     return updated;
   }
 
-  async markAsPaid(id: string, sellerId: string) {
-    const order = await this.prisma.order.findFirst({ where: { id, sellerId } });
+  async markAsPaid(id: string, shopOwnerSellerId: string, actorUserId: string) {
+    const markPaidInclude = {
+      items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
+      buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
+    } as const;
+    const order = await this.prisma.order.findFirst({ where: { id, sellerId: shopOwnerSellerId } });
     if (!order) throw new NotFoundException('Order not found');
     const method = order.paymentMethod;
     if (method !== 'CASH' && method !== 'CARD_ON_DELIVERY') {
       throw new BadRequestException('Toʻlovni faqat naqd yoki karta (yetkazishda) usuli uchun belgilash mumkin.');
     }
     if (order.paymentStatus === 'PAID') {
-      return order;
+      const o = await this.prisma.order.findUnique({ where: { id }, include: markPaidInclude });
+      if (!o) throw new NotFoundException('Order not found');
+      return o;
     }
     const updated = await this.prisma.order.update({
       where: { id },
       data: { paymentStatus: 'PAID' },
-      include: {
-        items: { include: { product: { select: { title: true } }, variant: { select: { options: true } } } as const },
-        buyer: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        seller: { select: { firstName: true, lastName: true, shop: { select: { name: true } } } },
-      },
+      include: markPaidInclude,
     });
-    this.appendOrderAudit(id, sellerId, 'SELLER_MARK_PAID', { paymentMethod: order.paymentMethod });
+    this.appendOrderAudit(id, actorUserId, 'SELLER_MARK_PAID', { paymentMethod: order.paymentMethod });
     return updated;
   }
 

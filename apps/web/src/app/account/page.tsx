@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 import { ShoppingBag, Heart, Store, Shield, LogOut, MessageCircle, Link2, Check } from 'lucide-react';
 
 type UserProfile = {
@@ -31,6 +32,7 @@ type UserProfile = {
 
 export default function AccountPage() {
   const router = useRouter();
+  const { newSellerApplicationsOpen } = usePublicSettings();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -268,7 +270,7 @@ export default function AccountPage() {
             </CardContent>
           </Card>
         </Link>
-        {user.role !== 'SELLER' && (
+        {user.role !== 'SELLER' && newSellerApplicationsOpen && (
           <Link href="/become-seller" className="sm:col-span-2">
             <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30 border-primary/20">
               <CardContent className="p-4 flex items-center gap-3">
@@ -280,6 +282,19 @@ export default function AccountPage() {
               </CardContent>
             </Card>
           </Link>
+        )}
+        {user.role !== 'SELLER' && !newSellerApplicationsOpen && (
+          <Card className="sm:col-span-2 border-dashed bg-muted/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="rounded-lg bg-muted p-2.5"><Store className="h-5 w-5 text-muted-foreground" /></div>
+              <div>
+                <p className="font-medium text-muted-foreground">Yangi sotuvchi arizalari yopiq</p>
+                <p className="text-xs text-muted-foreground">
+                  Platformada hozircha yangi doʻkon ochish qabul qilinmaydi. Savollar boʻlsa, qoʻllab-quvvatlash bilan bogʻlaning.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
         {user.role === 'SELLER' && (
           <Link href="/seller" className="sm:col-span-2">

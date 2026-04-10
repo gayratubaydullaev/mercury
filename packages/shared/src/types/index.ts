@@ -1,4 +1,4 @@
-export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN' | 'ADMIN_MODERATOR';
+export type UserRole = 'BUYER' | 'SELLER' | 'CASHIER' | 'ADMIN' | 'ADMIN_MODERATOR';
 
 /** Права модератора (только при role === ADMIN_MODERATOR). true = разрешено, false = запрещено. */
 export interface ModeratorPermissions {

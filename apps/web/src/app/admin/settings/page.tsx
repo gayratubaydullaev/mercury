@@ -9,13 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { Banknote, Truck, CreditCard, Send, Unplug, Store, MessageSquare } from 'lucide-react';
+import { Banknote, Truck, CreditCard, Send, Unplug, Store, MessageSquare, Layers } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 
+type MarketplaceMode = 'MULTIVENDOR' | 'SINGLE_SHOP';
+
 type Settings = {
   siteName?: string | null;
+  marketplaceMode?: MarketplaceMode;
   commissionRate: string;
   minPayoutAmount: string;
   paymentClickEnabled?: boolean;
@@ -44,6 +54,7 @@ export default function AdminSettingsPage() {
   const [commission, setCommission] = useState('');
   const [minPayout, setMinPayout] = useState('');
   const [paymentDelivery, setPaymentDelivery] = useState(defaultPaymentDelivery);
+  const [marketplaceMode, setMarketplaceMode] = useState<MarketplaceMode>('MULTIVENDOR');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [telegramStatus, setTelegramStatus] = useState<{ connected: boolean; adminTelegramChatId?: string | null } | null>(null);
@@ -69,6 +80,7 @@ export default function AdminSettingsPage() {
       .then((s: Settings) => {
         setSettings(s);
         setSiteName(s.siteName ?? '');
+        setMarketplaceMode(s.marketplaceMode === 'SINGLE_SHOP' ? 'SINGLE_SHOP' : 'MULTIVENDOR');
         setCommission(String(s.commissionRate ?? ''));
         setMinPayout(String(s.minPayoutAmount ?? ''));
         setAdminTelegramChatId(s.adminTelegramChatId ?? '');
@@ -138,6 +150,7 @@ export default function AdminSettingsPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         siteName: siteName.trim() || null,
+        marketplaceMode,
         commissionRate: Number(commission),
         minPayoutAmount: Number(minPayout),
         adminTelegramChatId: adminTelegramChatId.trim() || null,
@@ -148,6 +161,7 @@ export default function AdminSettingsPage() {
       .then((s: Settings) => {
         setSettings(s);
         setSiteName(s.siteName ?? '');
+        setMarketplaceMode(s.marketplaceMode === 'SINGLE_SHOP' ? 'SINGLE_SHOP' : 'MULTIVENDOR');
         setError('');
         setPaymentDelivery({
           paymentClickEnabled: s.paymentClickEnabled ?? true,
@@ -264,6 +278,32 @@ export default function AdminSettingsPage() {
               <Label htmlFor="siteName">Nomi</Label>
               <Input id="siteName" type="text" placeholder="Oline Bozor" maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Marketplace rejimi
+            </CardTitle>
+            <p className="text-sm text-muted-foreground font-normal mt-1">
+              <strong>Koʻp sotuvchi</strong> — yangi tovarlar, sharhlar va sotuvchi arizalari admin tasdiqlashini kutadi; doʻkon nomi/slugi oʻzgartirishlari moderatsiyaga yuboriladi.
+              <br />
+              <strong>Yakka doʻkon</strong> — bitta doʻkon uchun: sotuvchi tovarlarni darhol katalogga chiqaradi, ariza avto qabul qilinadi, doʻkon profili oʻzgartirishlari admin boʻlmagan holda saqlanadi. Ikkinchi sotuvchi arizasi bloklanadi.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="marketplace-mode">Rejim</Label>
+            <Select value={marketplaceMode} onValueChange={(v) => setMarketplaceMode(v as MarketplaceMode)}>
+              <SelectTrigger id="marketplace-mode" className="max-w-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MULTIVENDOR">Koʻp sotuvchi (admin moderatsiyasi)</SelectItem>
+                <SelectItem value="SINGLE_SHOP">Yakka doʻkon (sotuvchi mustaqil)</SelectItem>
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 

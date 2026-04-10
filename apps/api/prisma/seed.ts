@@ -39,9 +39,19 @@ async function main() {
   const existingSettings = await prisma.platformSettings.findFirst();
   if (!existingSettings) {
     await prisma.platformSettings.create({
-      data: { commissionRate: 5, minPayoutAmount: 100000 },
+      data: {
+        siteName: 'Oline Bozor',
+        commissionRate: 5,
+        minPayoutAmount: 100000,
+      },
     });
     console.log('Platform settings created');
+  } else if (!existingSettings.siteName?.trim()) {
+    await prisma.platformSettings.update({
+      where: { id: existingSettings.id },
+      data: { siteName: 'Oline Bozor' },
+    });
+    console.log('Platform settings: siteName backfilled');
   }
 
   const parentCats = await Promise.all([
@@ -89,6 +99,28 @@ async function main() {
     });
     console.log('Shop created:', shop.name);
   }
+
+  const cashierHash = await bcrypt.hash('Cashier123!', 10);
+  const cashier = await prisma.user.upsert({
+    where: { email: 'cashier@myshop.uz' },
+    update: {
+      passwordHash: cashierHash,
+      role: 'CASHIER',
+      staffShopId: shop.id,
+      firstName: 'Kassir',
+      lastName: 'Test',
+    },
+    create: {
+      email: 'cashier@myshop.uz',
+      passwordHash: cashierHash,
+      firstName: 'Kassir',
+      lastName: 'Test',
+      role: 'CASHIER',
+      staffShopId: shop.id,
+      emailVerified: true,
+    },
+  });
+  console.log('Cashier (POS):', cashier.email, '/ Cashier123!');
 
   const productData: Array<{
     title: string;

@@ -17,7 +17,7 @@ function FooterCopy() {
   );
 }
 
-const footerSections = [
+const footerSectionsBase = [
   {
     title: 'Doʻkon',
     links: [
@@ -42,40 +42,51 @@ const footerSections = [
       { href: '/', label: 'Aloqa' },
     ],
   },
-  {
-    title: 'Hisob',
-    links: [
-      { href: '/auth/login', label: 'Kirish' },
-      { href: '/auth/register', label: "Roʻyxatdan oʻtish" },
-      { href: '/become-seller', label: "Sotuvchi boʻlish" },
-    ],
-  },
-];
+] as const;
+
+function FooterNav() {
+  const { newSellerApplicationsOpen } = usePublicSettings();
+  const hisobLinks: { href: string; label: string }[] = [
+    { href: '/auth/login', label: 'Kirish' },
+    { href: '/auth/register', label: "Roʻyxatdan oʻtish" },
+  ];
+  if (newSellerApplicationsOpen) {
+    hisobLinks.push({ href: '/become-seller', label: "Sotuvchi boʻlish" });
+  }
+  const sections = [
+    ...footerSectionsBase.map((s) => ({ title: s.title, links: [...s.links] })),
+    { title: 'Hisob', links: hisobLinks },
+  ];
+
+  return (
+    <>
+      {sections.map((section) => (
+        <div key={section.title}>
+          <h3 className="font-semibold text-foreground mb-3 md:mb-4 text-sm">{section.title}</h3>
+          <ul className="space-y-2.5">
+            {section.links.map((link) => (
+              <li key={link.href + link.label}>
+                <Link
+                  href={link.href}
+                  className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
+  );
+}
 
 export function Footer() {
   return (
     <footer className="border-t border-border/80 bg-muted/20 mt-auto w-full">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-4 md:px-6 py-8 md:py-10 lg:py-12">
         <div className="grid grid-cols-2 gap-8 sm:gap-10 md:grid-cols-4">
-          {footerSections.map((section) => (
-            <div key={section.title}>
-              <h3 className="font-semibold text-foreground mb-3 md:mb-4 text-sm">
-                {section.title}
-              </h3>
-              <ul className="space-y-2.5">
-                {section.links.map((link) => (
-                  <li key={link.href + link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <FooterNav />
         </div>
         <div className="mt-10 md:mt-12 pt-6 md:pt-8 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <FooterCopy />

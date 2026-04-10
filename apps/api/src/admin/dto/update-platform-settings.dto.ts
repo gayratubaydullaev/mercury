@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { MarketplaceMode } from '@prisma/client';
 
 export class UpdatePlatformSettingsDto {
   @ApiPropertyOptional({ description: 'Название маркетплейса (шапка, футер, title)' })
@@ -7,6 +8,11 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @MaxLength(100)
   siteName?: string | null;
+
+  @ApiPropertyOptional({ enum: MarketplaceMode, description: 'MULTIVENDOR — admin moderatsiyasi; SINGLE_SHOP — bitta doʻkon, sotuvchi mustaqil' })
+  @IsOptional()
+  @IsEnum(MarketplaceMode)
+  marketplaceMode?: MarketplaceMode;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { MarketplaceMode, OrderStatus } from '@prisma/client';
+import { getPlatformMarketplaceMode } from '../common/platform-settings-compat';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -87,41 +88,68 @@ export class SellerService {
           : pending?.requestedDocumentUrls ?? (Array.isArray(shop.documentUrls) ? shop.documentUrls : null);
 
       const docUrlsJson = Array.isArray(requestedDocumentUrls) ? requestedDocumentUrls : undefined;
-      const pendingRecord = await this.prisma.pendingShopUpdate.upsert({
-        where: { shopId: shop.id },
-        create: {
-          shopId: shop.id,
-          requestedName,
-          requestedSlug: slug,
-          requestedDescription,
-          requestedLegalType,
-          requestedLegalName,
-          requestedOgrn,
-          requestedInn,
-          requestedDocumentUrls: docUrlsJson,
-          status: 'PENDING',
-        },
-        update: {
-          requestedName,
-          requestedSlug: slug,
-          requestedDescription,
-          requestedLegalType,
-          requestedLegalName,
-          requestedOgrn,
-          requestedInn,
-          requestedDocumentUrls: docUrlsJson,
-          status: 'PENDING',
-        },
-      });
-      this.notifications
-        .createForAdmins({
-          type: 'PENDING_SHOP_UPDATE',
-          title: 'Doʻkon oʻzgarishlari',
-          body: `${requestedName} — tasdiqlash kutilmoqda`,
-          link: '/admin/pending-shop-updates',
-          entityId: pendingRecord.id,
-        })
-        .catch(() => {});
+
+      const marketplaceMode = await getPlatformMarketplaceMode(this.prisma);
+      const singleShop = marketplaceMode === MarketplaceMode.SINGLE_SHOP;
+
+      if (singleShop) {
+        const slugTaken = await this.prisma.shop.findFirst({
+          where: { slug, id: { not: shop.id } },
+        });
+        if (slugTaken) {
+          throw new BadRequestException(`Slug "${slug}" band. Boshqa slug tanlang.`);
+        }
+        await this.prisma.shop.update({
+          where: { id: shop.id },
+          data: {
+            name: requestedName,
+            slug,
+            description: requestedDescription,
+            legalType: requestedLegalType ?? undefined,
+            legalName: requestedLegalName ?? undefined,
+            ogrn: requestedOgrn ?? undefined,
+            inn: requestedInn ?? undefined,
+            documentUrls: docUrlsJson === undefined ? undefined : docUrlsJson,
+          },
+        });
+        await this.prisma.pendingShopUpdate.deleteMany({ where: { shopId: shop.id } });
+      } else {
+        const pendingRecord = await this.prisma.pendingShopUpdate.upsert({
+          where: { shopId: shop.id },
+          create: {
+            shopId: shop.id,
+            requestedName,
+            requestedSlug: slug,
+            requestedDescription,
+            requestedLegalType,
+            requestedLegalName,
+            requestedOgrn,
+            requestedInn,
+            requestedDocumentUrls: docUrlsJson,
+            status: 'PENDING',
+          },
+          update: {
+            requestedName,
+            requestedSlug: slug,
+            requestedDescription,
+            requestedLegalType,
+            requestedLegalName,
+            requestedOgrn,
+            requestedInn,
+            requestedDocumentUrls: docUrlsJson,
+            status: 'PENDING',
+          },
+        });
+        this.notifications
+          .createForAdmins({
+            type: 'PENDING_SHOP_UPDATE',
+            title: 'Doʻkon oʻzgarishlari',
+            body: `${requestedName} — tasdiqlash kutilmoqda`,
+            link: '/admin/pending-shop-updates',
+            entityId: pendingRecord.id,
+          })
+          .catch(() => {});
+      }
     }
 
     const shopUpdate: Record<string, unknown> = {};

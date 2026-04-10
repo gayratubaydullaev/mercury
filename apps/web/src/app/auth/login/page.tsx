@@ -77,7 +77,7 @@ function LoginForm() {
           }
           fetch(`${API_URL}/auth/telegram/verify?token=${encodeURIComponent(loginToken)}`, { credentials: 'include' })
             .then((r) => r.json())
-            .then((res: { status?: string; accessToken?: string; user?: unknown }) => {
+            .then((res: { status?: string; accessToken?: string; user?: { role?: string } }) => {
               if (res.status === 'pending') return;
               if (res.accessToken) {
                 if (pollRef.current) clearInterval(pollRef.current);
@@ -85,7 +85,11 @@ function LoginForm() {
                 setTgWaiting(false);
                 localStorage.setItem('accessToken', res.accessToken);
                 window.dispatchEvent(new Event('auth-change'));
-                router.push(next);
+                const dest =
+                  res.user?.role === 'CASHIER' && !String(next || '').startsWith('/cashier')
+                    ? '/cashier/pos'
+                    : next;
+                router.push(dest);
                 router.refresh();
               }
             })
@@ -117,11 +121,15 @@ function LoginForm() {
         if (!r.ok) return Promise.reject(res);
         return res;
       })
-      .then((data) => {
+      .then((data: { accessToken?: string; user?: { role?: string } }) => {
         if (data.accessToken) {
           localStorage.setItem('accessToken', data.accessToken);
           window.dispatchEvent(new Event('auth-change'));
-          router.push(next);
+          const dest =
+            data.user?.role === 'CASHIER' && !String(next || '').startsWith('/cashier')
+              ? '/cashier/pos'
+              : next;
+          router.push(dest);
           router.refresh();
         }
       })

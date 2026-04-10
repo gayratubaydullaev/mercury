@@ -1,16 +1,18 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Req, Res, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { OrdersService } from './orders.service';
 import { OrdersControllerCreateResponse } from './orders.controller.types';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreatePosOrderDto } from './dto/create-pos-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import type { RequestAuthUser } from '../auth/request-user.types';
 import { UserRole, OrderStatus, PaymentStatus } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
 import { CartService } from '../cart/cart.service';
@@ -67,6 +69,13 @@ export class OrdersController {
     return { orders };
   }
 
+  @Post('pos')
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Create in-store order (POS) for own shop — no buyer cart' })
+  createPos(@CurrentUser('id') userId: string, @Body() dto: CreatePosOrderDto) {
+    return this.orders.createPosOrder(userId, dto);
+  }
+
   @Get('my')
   @Roles(UserRole.BUYER)
   @ApiOperation({ summary: 'My orders' })
@@ -81,16 +90,18 @@ export class OrdersController {
   }
 
   @Get('seller')
-  @Roles(UserRole.SELLER)
-  @ApiOperation({ summary: 'Seller orders' })
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Seller / cashier orders (shop owner id)' })
   sellerOrders(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: RequestAuthUser,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
     @Query('paymentStatus') paymentStatus?: string,
     @Query('search') search?: string,
   ) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) return { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
     const statusFilter = status && Object.values(OrderStatus).includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
@@ -98,7 +109,7 @@ export class OrdersController {
       paymentStatus && Object.values(PaymentStatus).includes(paymentStatus as PaymentStatus)
         ? (paymentStatus as PaymentStatus)
         : undefined;
-    return this.orders.findSellerOrders(userId, pageNum, limitNum, statusFilter, paymentFilter, search);
+    return this.orders.findSellerOrders(ownerId, pageNum, limitNum, statusFilter, paymentFilter, search);
   }
 
   @Get('guest-lookup')
@@ -117,31 +128,35 @@ export class OrdersController {
 
   @Get(':id/audit')
   @ApiOperation({ summary: 'Order audit log (buyer / seller / admin with access)' })
-  getOrderAudit(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: string) {
-    return this.orders.getOrderAudit(id, userId, role);
+  getOrderAudit(@Param('id') id: string, @CurrentUser() user: RequestAuthUser) {
+    return this.orders.getOrderAudit(id, user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get order' })
-  findOne(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: string) {
-    return this.orders.findOne(id, userId, role);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestAuthUser) {
+    return this.orders.findOne(id, user);
   }
 
   @Post(':id/status')
-  @Roles(UserRole.SELLER)
-  @ApiOperation({ summary: 'Update order status (seller)' })
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Update order status (seller / cashier)' })
   updateStatus(
     @Param('id') id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: RequestAuthUser,
     @Body() dto: UpdateOrderStatusDto
   ) {
-    return this.orders.updateStatus(id, userId, dto.status);
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException();
+    return this.orders.updateStatus(id, ownerId, user.id, dto.status);
   }
 
   @Post(':id/mark-paid')
-  @Roles(UserRole.SELLER)
-  @ApiOperation({ summary: 'Mark order as paid (seller; only for CASH / CARD_ON_DELIVERY)' })
-  markAsPaid(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.orders.markAsPaid(id, userId);
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Mark order as paid (seller / cashier; CASH / CARD_ON_DELIVERY)' })
+  markAsPaid(@Param('id') id: string, @CurrentUser() user: RequestAuthUser) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException();
+    return this.orders.markAsPaid(id, ownerId, user.id);
   }
 }

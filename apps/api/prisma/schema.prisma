@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   BUYER
   SELLER
+  CASHIER
   ADMIN
   ADMIN_MODERATOR
 }
@@ -42,6 +43,12 @@ enum PaymentStatus {
   REFUNDED
 }
 
+/// Koʻp sotuvchi (admin moderatsiyasi) yoki bitta doʻkon (sotuvchi mustaqil)
+enum MarketplaceMode {
+  MULTIVENDOR
+  SINGLE_SHOP
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -56,6 +63,9 @@ model User {
   isBlocked     Boolean   @default(false) @map("is_blocked")
   emailVerified Boolean   @default(false) @map("email_verified")
   isGuest       Boolean   @default(false) @map("is_guest")
+  /// Doʻkon xodimi (kassir) — bogʻlangan doʻkon
+  staffShopId   String?   @map("staff_shop_id")
+  staffShop     Shop?     @relation("ShopStaff", fields: [staffShopId], references: [id], onDelete: SetNull)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -81,6 +91,7 @@ model User {
 
   notifications Notification[]
 
+  @@index([staffShopId])
   @@map("users")
 }
 
@@ -147,6 +158,7 @@ model Shop {
 
   products         Product[]
   pendingUpdates   PendingShopUpdate[]
+  staffUsers       User[]          @relation("ShopStaff")
 
   @@map("shops")
 }
@@ -298,6 +310,7 @@ model Order {
   totalAmount     Decimal       @map("total_amount") @db.Decimal(12, 2)
   shippingAddress Json          @map("shipping_address")
   notes           String?
+  stockDeductedAt DateTime?     @map("stock_deducted_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -451,6 +464,7 @@ model ChatMessage {
 model PlatformSettings {
   id              String   @id @default(uuid())
   siteName        String?  @map("site_name") // название маркетплейса (в шапке, футере, title)
+  marketplaceMode MarketplaceMode @default(MULTIVENDOR) @map("marketplace_mode")
   commissionRate  Decimal  @map("commission_rate") @db.Decimal(5, 2) // e.g. 5.00 = 5%
   minPayoutAmount Decimal  @map("min_payout_amount") @db.Decimal(12, 2)
   paymentClickEnabled       Boolean @default(true) @map("payment_click_enabled")

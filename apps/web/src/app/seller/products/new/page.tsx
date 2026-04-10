@@ -13,10 +13,12 @@ import { apiFetch, getCsrfToken } from '@/lib/api';
 import { ArrowLeft, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 
 type Category = { id: string; name: string; slug: string; parentId: string | null; children?: Category[] };
 
 export default function NewProductPage() {
+  const { marketplaceMode } = usePublicSettings();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -257,7 +259,11 @@ export default function NewProductPage() {
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Yangi tovar"
-        description="Nomi, narx, rasmlar va ixtiyoriy variantlar — keyin roʻyxatda koʻrinadi."
+        description={
+          marketplaceMode === 'SINGLE_SHOP'
+            ? 'Nomi, narx, rasmlar va variantlar — saqlagach katalogda darhol chiqadi (yagona doʻkon rejimi).'
+            : 'Nomi, narx, rasmlar va ixtiyoriy variantlar — admin tasdiqlagach katalogda chiqadi.'
+        }
       >
         <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
           <Link href="/seller/products">

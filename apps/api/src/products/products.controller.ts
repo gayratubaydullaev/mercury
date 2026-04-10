@@ -1,4 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Header, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  Header,
+  Res,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -13,6 +29,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '@prisma/client';
+import type { RequestAuthUser } from '../auth/request-user.types';
 
 @ApiTags('products')
 @Controller('products')
@@ -21,11 +38,13 @@ export class ProductsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create product (seller)' })
-  create(@CurrentUser('id') userId: string, @Body() dto: CreateProductDto) {
-    return this.products.create(userId, dto);
+  @ApiOperation({ summary: 'Create product (seller / cashier POS)' })
+  create(@CurrentUser() user: RequestAuthUser, @Body() dto: CreateProductDto) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException('Doʻkon topilmadi');
+    return this.products.create(ownerId, dto);
   }
 
   @Get()
@@ -38,27 +57,46 @@ export class ProductsController {
 
   @Get('my')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'My products (seller)' })
+  @ApiOperation({ summary: 'My products (seller / cashier)' })
   myProducts(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: RequestAuthUser,
     @Query('page') page?: string | number,
     @Query('limit') limit?: string | number,
     @Query('search') search?: string,
   ) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) return { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
     const pageNum = page != null ? Math.max(1, Number(page) || 1) : 1;
     const limitNum = limit != null ? Math.min(100, Math.max(1, Number(limit) || 20)) : 20;
-    return this.products.getSellerProducts(userId, pageNum, limitNum, search);
+    return this.products.getSellerProducts(ownerId, pageNum, limitNum, search);
+  }
+
+  @Get('my/by-sku/:sku')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Find my shop product by SKU / barcode (POS)',
+    description:
+      'Doimiy 200: topilsa { found: true, match, product, queriedAs?, variantId? }, topilmasa { found: false }. Bir nechta raqamli kod variantlari (masalan EAN-13 ↔ bosh 0 + UPC-12) avtomatik sinanadi.',
+  })
+  myProductBySku(@CurrentUser() user: RequestAuthUser, @Param('sku') sku: string) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException();
+    return this.products.findMyProductBySku(ownerId, decodeURIComponent(sku ?? ''));
   }
 
   @Get('my/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get my product by id (seller, including inactive)' })
-  myProduct(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.products.getSellerProductById(id, userId);
+  @ApiOperation({ summary: 'Get my product by id (seller / cashier, including inactive)' })
+  myProduct(@Param('id') id: string, @CurrentUser() user: RequestAuthUser) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException();
+    return this.products.getSellerProductById(id, ownerId);
   }
 
   @Get('import-template')
@@ -111,10 +149,13 @@ export class ProductsController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.SELLER, UserRole.CASHIER)
   @ApiBearerAuth()
-  update(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateProductDto) {
-    return this.products.update(id, userId, dto);
+  @ApiOperation({ summary: 'Update product (seller / cashier POS)' })
+  update(@Param('id') id: string, @CurrentUser() user: RequestAuthUser, @Body() dto: UpdateProductDto) {
+    const ownerId = user.effectiveSellerId;
+    if (!ownerId) throw new ForbiddenException();
+    return this.products.update(id, ownerId, dto);
   }
 
   @Delete(':id')

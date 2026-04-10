@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { findFirstPlatformSettingsFull } from '../common/platform-settings-compat';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { BannersService } from '../banners/banners.service';
 import { OrdersService } from '../orders/orders.service';
-import { OrderStatus, PaymentStatus, Prisma, UserRole } from '@prisma/client';
+import { MarketplaceMode, OrderStatus, PaymentStatus, Prisma, UserRole } from '@prisma/client';
 
 function parseOrderStatusFilter(v?: string): OrderStatus | undefined {
   if (!v || typeof v !== 'string') return undefined;
@@ -337,7 +338,7 @@ export class AdminService {
   }
 
   async getPlatformSettings() {
-    const settings = await this.prisma.platformSettings.findFirst();
+    const settings = await findFirstPlatformSettingsFull(this.prisma);
     if (!settings) {
       return this.prisma.platformSettings.create({
         data: {
@@ -350,6 +351,7 @@ export class AdminService {
           deliveryEnabled: true,
           pickupEnabled: true,
           chatWithSellerEnabled: true,
+          marketplaceMode: 'MULTIVENDOR',
         },
       });
     }
@@ -358,6 +360,7 @@ export class AdminService {
 
   async updatePlatformSettings(data: {
     siteName?: string | null;
+    marketplaceMode?: MarketplaceMode;
     commissionRate?: number;
     minPayoutAmount?: number;
     paymentClickEnabled?: boolean;
@@ -369,7 +372,7 @@ export class AdminService {
     chatWithSellerEnabled?: boolean;
     adminTelegramChatId?: string | null;
   }) {
-    const settings = await this.prisma.platformSettings.findFirst();
+    const settings = await findFirstPlatformSettingsFull(this.prisma);
     if (!settings) {
       return this.prisma.platformSettings.create({
         data: {
@@ -382,6 +385,7 @@ export class AdminService {
           deliveryEnabled: data.deliveryEnabled ?? true,
           pickupEnabled: data.pickupEnabled ?? true,
           chatWithSellerEnabled: data.chatWithSellerEnabled ?? true,
+          marketplaceMode: data.marketplaceMode ?? 'MULTIVENDOR',
         },
       });
     }
@@ -389,6 +393,7 @@ export class AdminService {
       where: { id: settings.id },
       data: {
         ...(data.siteName !== undefined && { siteName: data.siteName?.trim() || null }),
+        ...(data.marketplaceMode != null && { marketplaceMode: data.marketplaceMode }),
         ...(data.commissionRate != null && { commissionRate: data.commissionRate }),
         ...(data.minPayoutAmount != null && { minPayoutAmount: data.minPayoutAmount }),
         ...(data.paymentClickEnabled != null && { paymentClickEnabled: data.paymentClickEnabled }),
@@ -408,7 +413,7 @@ export class AdminService {
   async linkTelegram(code: string): Promise<{ ok: boolean }> {
     const chatId = await this.telegram.resolveLinkCode(code);
     if (!chatId) throw new BadRequestException('Kod notoʻgʻri yoki muddati tugagan. Botda /start yoki /link yuboring.');
-    let settings = await this.prisma.platformSettings.findFirst();
+    let settings = await findFirstPlatformSettingsFull(this.prisma);
     if (!settings) {
       settings = await this.prisma.platformSettings.create({
         data: {
@@ -437,7 +442,7 @@ export class AdminService {
   }
 
   async disconnectTelegram(): Promise<{ ok: boolean }> {
-    const settings = await this.prisma.platformSettings.findFirst();
+    const settings = await findFirstPlatformSettingsFull(this.prisma);
     if (!settings) return { ok: true };
     await this.prisma.platformSettings.update({
       where: { id: settings.id },
@@ -536,7 +541,7 @@ export class AdminService {
             },
           },
         }),
-          tx.platformSettings.findFirst(),
+          tx.platformSettings.findFirst({ select: { commissionRate: true } }),
           tx.payoutRecord.findMany({ select: { sellerId: true, amount: true } }),
         ]);
         const platformRate = settings ? Number(settings.commissionRate) / 100 : 0.05;

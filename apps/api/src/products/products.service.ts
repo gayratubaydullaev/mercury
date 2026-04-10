@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { getPlatformMarketplaceMode } from '../common/platform-settings-compat';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductFilterDto } from './dto/product-filter.dto';
-import { Prisma } from '@prisma/client';
+import { MarketplaceMode, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as XLSX from 'xlsx';
 
@@ -23,6 +31,79 @@ function parseNum(value: unknown): number | undefined {
 
 function normOpt(s: string): string {
   return String(s ?? '').replace(/\s+/g, '').trim();
+}
+
+/** Kirill (RU/UZ) → lotin; slug URL uchun. */
+function transliterateCyrillicForSlug(text: string): string {
+  const map: Record<string, string> = {
+    а: 'a',
+    б: 'b',
+    в: 'v',
+    г: 'g',
+    д: 'd',
+    е: 'e',
+    ё: 'e',
+    ж: 'zh',
+    з: 'z',
+    и: 'i',
+    й: 'y',
+    к: 'k',
+    л: 'l',
+    м: 'm',
+    н: 'n',
+    о: 'o',
+    п: 'p',
+    р: 'r',
+    с: 's',
+    т: 't',
+    у: 'u',
+    ф: 'f',
+    х: 'h',
+    ц: 'ts',
+    ч: 'ch',
+    ш: 'sh',
+    щ: 'sch',
+    ъ: '',
+    ы: 'y',
+    ь: '',
+    э: 'e',
+    ю: 'yu',
+    я: 'ya',
+    ғ: "g'",
+    қ: 'q',
+    ҳ: 'h',
+    ў: "o'",
+  };
+  return text.replace(/[\u0400-\u04FF]/g, (ch) => map[ch.toLowerCase()] ?? '');
+}
+
+/** Skaner: bir xil mahsulot turli uzunlikdagi kod bilan saqlangan bo‘lishi mumkin. */
+function barcodeSkuCandidates(raw: string): string[] {
+  const t = raw.trim().replace(/\s/g, '');
+  const out: string[] = [];
+  const add = (s: string) => {
+    if (s.length > 0 && !out.includes(s)) out.push(s);
+  };
+  add(t);
+  if (/^\d+$/.test(t)) {
+    if (t.length === 13 && t.startsWith('0')) add(t.slice(1));
+    if (t.length === 12) add(`0${t}`);
+    const stripped = t.replace(/^0+/, '') || '0';
+    if (stripped !== t) add(stripped);
+  }
+  return out;
+}
+
+/** Slug faqat lotin; bo‘sh qolsa — noyob qisqa id (POS / kirill nomlari uchun 500 oldini olish). */
+function baseSlugFromTitle(title: string, explicitSlug?: string): string {
+  const source = explicitSlug ?? title;
+  const translit = transliterateCyrillicForSlug(source);
+  const raw = translit
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+  return raw.length > 0 ? raw : `tovar-${randomUUID().slice(0, 10)}`;
 }
 
 function validateOptionsAndVariants(
@@ -111,7 +192,19 @@ export class ProductsService {
         'Solishtirish narxi (eski narx) joriy narxdan kam boʻlishi mumkin emas. Sunʼiy chegirma yaratish taqiqlanadi.',
       );
     }
-    const slug = dto.slug ?? dto.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slugBase = baseSlugFromTitle(dto.title, dto.slug);
+    let slug = slugBase;
+    let suffix = 0;
+    while (
+      await this.prisma.product.findFirst({
+        where: { shopId: shop.id, slug },
+        select: { id: true },
+      })
+    ) {
+      suffix += 1;
+      slug = `${slugBase}-${suffix}`;
+      if (suffix > 200) throw new ConflictException('Slug yaratib boʻlmadi — nomni oʻzgartiring.');
+    }
     const hasVariants = dto.variants?.length;
     if (hasVariants && dto.options && Object.keys(dto.options).length > 0) {
       validateOptionsAndVariants(dto.options, dto.variants!);
@@ -119,36 +212,62 @@ export class ProductsService {
     const totalStock = hasVariants
       ? dto.variants!.reduce((s, v) => s + (v.stock ?? 0), 0)
       : (dto.stock ?? 0);
-    const product = await this.prisma.product.create({
-      data: {
-        title: dto.title,
-        slug,
-        description: dto.description,
-        price: new Decimal(dto.price),
-        comparePrice: dto.comparePrice != null ? new Decimal(dto.comparePrice) : null,
-        stock: totalStock,
-        sku: hasVariants ? undefined : dto.sku,
-        categoryId: dto.categoryId,
-        shopId: shop.id,
-        options: dto.options ?? undefined,
-        specs: dto.specs ?? undefined,
-        unit: dto.unit?.trim() || undefined,
-        images: dto.imageUrls?.length
-          ? { create: dto.imageUrls.map((url, i) => ({ url, sortOrder: i })) }
-          : undefined,
-      },
-      include: { images: true, category: true, variants: true, shop: { select: { name: true } } },
-    });
-    this.telegram.sendAdminPendingProductNotification(product).catch(() => {});
-    this.notifications
-      .createForAdmins({
-        type: 'PENDING_PRODUCT',
-        title: 'Yangi tovar — moderatsiya',
-        body: product.title,
-        link: '/admin/products',
-        entityId: product.id,
-      })
-      .catch(() => {});
+    const marketplaceMode = await getPlatformMarketplaceMode(this.prisma);
+    const instantCatalog = marketplaceMode === MarketplaceMode.SINGLE_SHOP;
+
+    let product;
+    try {
+      product = await this.prisma.product.create({
+        data: {
+          title: dto.title,
+          slug,
+          description: dto.description,
+          price: new Decimal(dto.price),
+          comparePrice: dto.comparePrice != null ? new Decimal(dto.comparePrice) : null,
+          stock: totalStock,
+          sku: hasVariants ? undefined : dto.sku?.trim() || undefined,
+          categoryId: dto.categoryId,
+          shopId: shop.id,
+          isModerated: instantCatalog,
+          options: dto.options ?? undefined,
+          specs: dto.specs ?? undefined,
+          unit: dto.unit?.trim() || undefined,
+          images: dto.imageUrls?.length
+            ? { create: dto.imageUrls.map((url, i) => ({ url, sortOrder: i })) }
+            : undefined,
+        },
+        include: { images: true, category: true, variants: true, shop: { select: { name: true } } },
+      });
+    } catch (e: unknown) {
+      if (
+        typeof e === 'object' &&
+        e !== null &&
+        'code' in e &&
+        (e as { code: string }).code === 'P2002'
+      ) {
+        const meta = (e as { meta?: { target?: string[] } }).meta;
+        const t = meta?.target?.join(',') ?? '';
+        if (t.includes('sku')) {
+          throw new ConflictException(
+            'Bu SKU allaqachon boshqa mahsulotda ishlatilgan. Boshqa kod kiriting.',
+          );
+        }
+        throw new ConflictException('Bunday slug yoki maʼlumot allaqachon mavjud.');
+      }
+      throw e;
+    }
+    if (!instantCatalog) {
+      this.telegram.sendAdminPendingProductNotification(product).catch(() => {});
+      this.notifications
+        .createForAdmins({
+          type: 'PENDING_PRODUCT',
+          title: 'Yangi tovar — moderatsiya',
+          body: product.title,
+          link: '/admin/products',
+          entityId: product.id,
+        })
+        .catch(() => {});
+    }
     if (hasVariants) {
       await this.prisma.productVariant.createMany({
         data: dto.variants!.map((v) => ({
@@ -431,7 +550,11 @@ export class ProductsService {
         where,
         skip,
         take,
-        include: { images: true, category: true },
+        include: {
+          images: true,
+          category: true,
+          variants: { select: { id: true, options: true, stock: true, sku: true, priceOverride: true } },
+        },
         orderBy: { updatedAt: 'desc' },
       }),
       this.prisma.product.count({ where }),
@@ -440,6 +563,10 @@ export class ProductsService {
       ...p,
       price: p.price.toString(),
       comparePrice: p.comparePrice != null ? p.comparePrice.toString() : null,
+      variants: p.variants.map((v) => ({
+        ...v,
+        priceOverride: v.priceOverride != null ? v.priceOverride.toString() : null,
+      })),
     }));
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
@@ -451,6 +578,81 @@ export class ProductsService {
     });
     if (!product) throw new NotFoundException('Product not found');
     return product;
+  }
+
+  /** POS / skaner: SKU bo‘yicha o‘z do‘konidagi tovar yoki variant (bir nechta kod variantlari) */
+  async findMyProductBySku(shopOwnerUserId: string, rawSku: string) {
+    const shop = await this.prisma.shop.findUnique({
+      where: { userId: shopOwnerUserId },
+      select: { id: true },
+    });
+    if (!shop) throw new NotFoundException('Shop not found');
+    const candidates = barcodeSkuCandidates(rawSku ?? '');
+    if (candidates.length === 0) throw new BadRequestException('SKU kiritilmagan');
+
+    const productInclude = {
+      images: true,
+      category: true,
+      variants: { select: { id: true, options: true, stock: true, sku: true, priceOverride: true } },
+    } as const;
+
+    for (const sku of candidates) {
+      const product = await this.prisma.product.findFirst({
+        where: {
+          shopId: shop.id,
+          sku: { equals: sku, mode: 'insensitive' },
+        },
+        include: productInclude,
+      });
+      if (product) {
+        return {
+          found: true as const,
+          match: 'product' as const,
+          queriedAs: sku,
+          product: {
+            ...product,
+            price: product.price.toString(),
+            comparePrice: product.comparePrice != null ? product.comparePrice.toString() : null,
+            variants: product.variants.map((v) => ({
+              ...v,
+              priceOverride: v.priceOverride != null ? v.priceOverride.toString() : null,
+            })),
+          },
+        };
+      }
+
+      const variant = await this.prisma.productVariant.findFirst({
+        where: {
+          sku: { equals: sku, mode: 'insensitive' },
+          product: { shopId: shop.id },
+        },
+        include: {
+          product: {
+            include: productInclude,
+          },
+        },
+      });
+      if (variant) {
+        const p = variant.product;
+        return {
+          found: true as const,
+          match: 'variant' as const,
+          variantId: variant.id,
+          queriedAs: sku,
+          product: {
+            ...p,
+            price: p.price.toString(),
+            comparePrice: p.comparePrice != null ? p.comparePrice.toString() : null,
+            variants: p.variants.map((v) => ({
+              ...v,
+              priceOverride: v.priceOverride != null ? v.priceOverride.toString() : null,
+            })),
+          },
+        };
+      }
+    }
+
+    return { found: false as const };
   }
 
   async getImportTemplate(): Promise<Buffer> {

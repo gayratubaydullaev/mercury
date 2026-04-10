@@ -10,7 +10,7 @@ export class SettingsController {
 
   @Get('public')
   @Public()
-  @ApiOperation({ summary: 'Public settings (site name for header, footer, title)' })
+  @ApiOperation({ summary: 'Public settings: site name, marketplace mode, new seller applications open' })
   getPublic() {
     return this.settings.getPublicSettings();
   }

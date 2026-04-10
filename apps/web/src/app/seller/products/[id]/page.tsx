@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 
 type Category = { id: string; name: string; slug: string; parentId: string | null; children?: Category[] };
 
@@ -37,6 +38,7 @@ type Product = {
 };
 
 export default function EditProductPage() {
+  const { marketplaceMode } = usePublicSettings();
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
@@ -347,7 +349,11 @@ export default function EditProductPage() {
         eyebrow="Sotuvchi kabineti"
         title="Tovarni tahrirlash"
         subtitle={product.title}
-        description="Narx, qoldiq, rasmlar va holatni yangilang."
+        description={
+          marketplaceMode === 'SINGLE_SHOP'
+            ? 'Narx, qoldiq, rasmlar va holat. O‘zgarishlar saqlangach katalogdagi kartangiz yangilanadi.'
+            : 'Narx, qoldiq, rasmlar va holatni yangilang.'
+        }
       >
         <Button variant="outline" size="sm" className="min-h-[40px] touch-manipulation" asChild>
           <Link href="/seller/products">

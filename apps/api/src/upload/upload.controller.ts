@@ -10,7 +10,7 @@ import { UserRole } from '@prisma/client';
 @ApiTags('upload')
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.BUYER) // BUYER — загрузка документов в заявке на продавца
+@Roles(UserRole.SELLER, UserRole.CASHIER, UserRole.ADMIN, UserRole.BUYER) // CASHIER — POS / ombor rasm
 @ApiBearerAuth()
 export class UploadController {
   constructor(private upload: UploadService) {}

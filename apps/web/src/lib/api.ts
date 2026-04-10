@@ -49,7 +49,11 @@ export async function apiFetch(
   const method = (init?.method ?? 'GET').toUpperCase();
   const headers = new Headers(init?.headers);
   headers.set('Accept', headers.get('Accept') ?? 'application/json');
-  if (!headers.has('Content-Type') && (init?.body !== undefined)) {
+  if (
+    !headers.has('Content-Type') &&
+    init?.body !== undefined &&
+    !(typeof FormData !== 'undefined' && init.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json');
   }
   const cart = getCartHeaders();

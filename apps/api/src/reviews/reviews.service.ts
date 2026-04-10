@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { getPlatformMarketplaceMode } from '../common/platform-settings-compat';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { MarketplaceMode, OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
 export class ReviewsService {
@@ -54,8 +55,17 @@ export class ReviewsService {
       );
     }
 
+    const marketplaceMode = await getPlatformMarketplaceMode(this.prisma);
+    const instantReview = marketplaceMode === MarketplaceMode.SINGLE_SHOP;
+
     const created = await this.prisma.review.create({
-      data: { productId, userId, rating: r, comment: comment?.trim() || null },
+      data: {
+        productId,
+        userId,
+        rating: r,
+        comment: comment?.trim() || null,
+        isModerated: instantReview,
+      },
     });
     const full = await this.prisma.review.findUnique({
       where: { id: created.id },
@@ -80,15 +90,17 @@ export class ReviewsService {
           entityId: full.id,
         })
         .catch(() => {});
-      this.telegram
-        .sendAdminPendingReviewNotification({
-          id: full.id,
-          rating: full.rating,
-          comment: full.comment,
-          productTitle: full.product.title,
-          userName: `${full.user.firstName} ${full.user.lastName}`,
-        })
-        .catch(() => {});
+      if (!instantReview) {
+        this.telegram
+          .sendAdminPendingReviewNotification({
+            id: full.id,
+            rating: full.rating,
+            comment: full.comment,
+            productTitle: full.product.title,
+            userName: `${full.user.firstName} ${full.user.lastName}`,
+          })
+          .catch(() => {});
+      }
     }
     return created;
   }

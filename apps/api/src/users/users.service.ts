@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -22,11 +23,19 @@ export class UsersService {
         emailVerified: true,
         telegramId: true,
         isGuest: true,
+        staffShopId: true,
         shop: { select: { id: true, name: true, slug: true } },
+        staffShop: { select: { id: true, name: true, slug: true, userId: true } },
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    const effectiveSellerId =
+      user.role === UserRole.SELLER
+        ? user.id
+        : user.role === UserRole.CASHIER && user.staffShop
+          ? user.staffShop.userId
+          : null;
+    return { ...user, effectiveSellerId };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {

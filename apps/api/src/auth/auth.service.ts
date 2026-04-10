@@ -96,31 +96,57 @@ export class AuthService implements OnModuleInit {
   }
 
   async login(user: { id: string; email: string; role: UserRole; isGuest?: boolean; moderatorPermissions?: unknown }) {
-    const isGuest = !!user.isGuest;
+    const full = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isGuest: true,
+        moderatorPermissions: true,
+        staffShopId: true,
+        staffShop: { select: { id: true, name: true, slug: true, userId: true } },
+      },
+    });
+    if (!full) throw new UnauthorizedException();
+    const isGuest = !!full.isGuest;
+    const effectiveSellerId =
+      full.role === UserRole.SELLER
+        ? full.id
+        : full.role === UserRole.CASHIER && full.staffShop
+          ? full.staffShop.userId
+          : null;
     const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
+      sub: full.id,
+      email: full.email,
+      role: full.role,
       isGuest,
-      ...(user.role === UserRole.ADMIN_MODERATOR && user.moderatorPermissions != null && { moderatorPermissions: user.moderatorPermissions as JwtPayload['moderatorPermissions'] }),
+      ...(full.role === UserRole.ADMIN_MODERATOR && full.moderatorPermissions != null && {
+        moderatorPermissions: full.moderatorPermissions as JwtPayload['moderatorPermissions'],
+      }),
     };
     const accessToken = this.jwt.sign(payload);
     const refreshToken = uuidv4();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + REFRESH_EXPIRES_DAYS);
     await this.prisma.refreshToken.create({
-      data: { token: refreshToken, userId: user.id, expiresAt },
+      data: { token: refreshToken, userId: full.id, expiresAt },
     });
     return {
       accessToken,
       refreshToken,
       expiresAt,
       user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
+        id: full.id,
+        email: full.email,
+        role: full.role,
         isGuest,
-        ...(user.role === UserRole.ADMIN_MODERATOR && user.moderatorPermissions != null && { moderatorPermissions: user.moderatorPermissions }),
+        effectiveSellerId,
+        staffShopId: full.staffShopId,
+        staffShop: full.staffShop,
+        ...(full.role === UserRole.ADMIN_MODERATOR && full.moderatorPermissions != null && {
+          moderatorPermissions: full.moderatorPermissions,
+        }),
       },
     };
   }

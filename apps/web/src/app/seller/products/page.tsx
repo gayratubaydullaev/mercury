@@ -31,6 +31,7 @@ import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-heade
 import { DashboardPanel } from '@/components/dashboard/dashboard-panel';
 import { DashboardEmptyState } from '@/components/dashboard/dashboard-empty-state';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
+import { usePublicSettings } from '@/contexts/public-settings-context';
 
 /** Bir nechta ustunlar uchun 2,3,4,5,6 ga mos qatorlar (keng ekranda toʻliqroq toʻldirish) */
 const PAGE_SIZE = 24;
@@ -79,6 +80,7 @@ function stockVariant(stock: number): 'destructive' | 'outline' {
 }
 
 export default function SellerProductsPage() {
+  const { marketplaceMode } = usePublicSettings();
   const [data, setData] = useState<ProductsResponse | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -232,7 +234,11 @@ export default function SellerProductsPage() {
       <DashboardPageHeader
         eyebrow="Sotuvchi kabineti"
         title="Tovarlar"
-        description="Roʻyxat, qidiruv, sahifalash va Excel import — barchasi bir joyda."
+        description={
+          marketplaceMode === 'SINGLE_SHOP'
+            ? 'Yagona doʻkon: yangi tovarlar katalogda darhol chiqadi. Excel import va qidiruv shu yerda. Katalogda koʻrinmasa — qoldiq yoki holatni tekshiring.'
+            : 'Roʻyxat, qidiruv, sahifalash va Excel import — barchasi bir joyda.'
+        }
       >
         <Button asChild className="min-h-[40px] touch-manipulation">
           <Link href="/seller/products/new">+ Yangi tovar</Link>
@@ -444,7 +450,7 @@ export default function SellerProductsPage() {
                             </Badge>
                           ) : (
                             <Badge variant="secondary" className="shadow-sm text-[10px] px-1.5 py-0">
-                              Moderatsiya
+                              {marketplaceMode === 'SINGLE_SHOP' ? 'Katalogda emas' : 'Moderatsiya'}
                             </Badge>
                           )}
                         </div>
