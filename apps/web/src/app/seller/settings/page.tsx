@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,20 +11,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
-import { MessageCircle, Send, Unplug, FileText, X, Users } from 'lucide-react';
+import { MessageCircle, Send, Unplug, FileText, X, Users, ChevronRight } from 'lucide-react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { DashboardAuthGate } from '@/components/dashboard/dashboard-auth-gate';
 import { usePublicSettings } from '@/contexts/public-settings-context';
 
 type PickupAddress = { city?: string; district?: string; street?: string; house?: string; phone?: string } | null;
-
-type CashierRow = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-};
 
 export default function SellerSettingsPage() {
   const { marketplaceMode } = usePublicSettings();
@@ -67,29 +60,7 @@ export default function SellerSettingsPage() {
   const [telegramCode, setTelegramCode] = useState('');
   const [telegramLinking, setTelegramLinking] = useState(false);
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
-  const [staff, setStaff] = useState<CashierRow[] | null>(null);
-  const [staffLoading, setStaffLoading] = useState(false);
-  const [staffSaving, setStaffSaving] = useState(false);
-  const [cashierEmail, setCashierEmail] = useState('');
-  const [cashierPassword, setCashierPassword] = useState('');
-  const [cashierFirstName, setCashierFirstName] = useState('');
-  const [cashierLastName, setCashierLastName] = useState('');
-  const [cashierPhone, setCashierPhone] = useState('');
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
-  const loadStaff = useCallback(() => {
-    if (!token) return;
-    setStaffLoading(true);
-    apiFetch(`${API_URL}/seller/staff`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((rows) => setStaff(Array.isArray(rows) ? rows : []))
-      .catch(() => setStaff([]))
-      .finally(() => setStaffLoading(false));
-  }, [token]);
-
-  useEffect(() => {
-    if (token) loadStaff();
-  }, [token, loadStaff]);
 
   const loadTelegramStatus = useCallback(() => {
     if (!token) return;
@@ -165,65 +136,6 @@ export default function SellerSettingsPage() {
       })
       .catch(() => toast.error('Uzishda xatolik'))
       .finally(() => setTelegramDisconnecting(false));
-  };
-
-  const createCashier = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    setStaffSaving(true);
-    apiFetch(`${API_URL}/seller/staff`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        email: cashierEmail.trim().toLowerCase(),
-        password: cashierPassword,
-        firstName: cashierFirstName.trim(),
-        lastName: cashierLastName.trim(),
-        phone: cashierPhone.trim() || undefined,
-      }),
-    })
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) {
-          const msg =
-            typeof d?.message === 'string'
-              ? d.message
-              : Array.isArray(d?.message)
-                ? d.message.map((x: { constraints?: Record<string, string> }) => Object.values(x.constraints ?? {}).join(' ')).join(' ')
-                : 'Xatolik';
-          throw new Error(msg);
-        }
-        return d;
-      })
-      .then(() => {
-        toast.success('Kassir yaratildi');
-        setCashierEmail('');
-        setCashierPassword('');
-        setCashierFirstName('');
-        setCashierLastName('');
-        setCashierPhone('');
-        loadStaff();
-      })
-      .catch((err: Error) => toast.error(err?.message ?? 'Yaratilmadi'))
-      .finally(() => setStaffSaving(false));
-  };
-
-  const removeCashier = (userId: string) => {
-    if (!token) return;
-    apiFetch(`${API_URL}/seller/staff/${userId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(typeof d?.message === 'string' ? d.message : 'Xatolik');
-        return d;
-      })
-      .then(() => {
-        toast.success('Kassir doʻkondan olib tashlandi');
-        loadStaff();
-      })
-      .catch((err: Error) => toast.error(err?.message ?? 'Oʻchirilmadi'));
   };
 
   const uploadDocuments = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,108 +254,26 @@ export default function SellerSettingsPage() {
           </form>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Kassirlar (POS)
-          </CardTitle>
-          <p className="text-sm text-muted-foreground font-normal mt-1">
-            Kassirlar faqat oʻz doʻkoningiz tovarlari, POS va buyurtmalarni koʻradi. Hisob yaratgach, ular{' '}
-            <span className="font-mono text-xs">/cashier/pos</span> orqali kirishadi.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={createCashier} className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="cashier-email">Email</Label>
-                <Input
-                  id="cashier-email"
-                  type="email"
-                  className="mt-1"
-                  value={cashierEmail}
-                  onChange={(e) => setCashierEmail(e.target.value)}
-                  required
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cashier-password">Parol (min. 8)</Label>
-                <Input
-                  id="cashier-password"
-                  type="password"
-                  className="mt-1"
-                  value={cashierPassword}
-                  onChange={(e) => setCashierPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                />
-              </div>
+      <Card className="border-primary/15 bg-primary/[0.03]">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Users className="h-5 w-5 text-primary" aria-hidden />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="cashier-fn">Ism</Label>
-                <Input
-                  id="cashier-fn"
-                  className="mt-1"
-                  value={cashierFirstName}
-                  onChange={(e) => setCashierFirstName(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="cashier-ln">Familiya</Label>
-                <Input
-                  id="cashier-ln"
-                  className="mt-1"
-                  value={cashierLastName}
-                  onChange={(e) => setCashierLastName(e.target.value)}
-                  required
-                />
-              </div>
+            <div className="min-w-0">
+              <p className="font-medium">Kassirlar (POS)</p>
+              <p className="text-sm text-muted-foreground">
+                Yangi hisoblar, roʻyxat va oʻchirish — alohida sahifada. Kassirlar{' '}
+                <span className="font-mono text-xs">/cashier/pos</span> orqali kiradi.
+              </p>
             </div>
-            <div>
-              <Label htmlFor="cashier-phone">Telefon (ixtiyoriy)</Label>
-              <Input
-                id="cashier-phone"
-                className="mt-1"
-                value={cashierPhone}
-                onChange={(e) => setCashierPhone(e.target.value)}
-                placeholder="+998..."
-              />
-            </div>
-            <Button type="submit" disabled={staffSaving}>
-              {staffSaving ? 'Yaratilmoqda...' : 'Kassir qo‘shish'}
-            </Button>
-          </form>
-          <div className="border-t border-border/60 pt-4">
-            <p className="text-sm font-medium mb-2">Mavjud kassirlar</p>
-            {staffLoading ? (
-              <Skeleton className="h-16 w-full" />
-            ) : !staff?.length ? (
-              <p className="text-sm text-muted-foreground">Hozircha kassir yoʻq.</p>
-            ) : (
-              <ul className="space-y-2">
-                {staff.map((c) => (
-                  <li
-                    key={c.id}
-                    className="flex flex-col gap-2 rounded-md border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{c.firstName} {c.lastName}</p>
-                      <p className="text-sm text-muted-foreground truncate">{c.email}</p>
-                      {c.phone ? <p className="text-xs text-muted-foreground">{c.phone}</p> : null}
-                    </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => removeCashier(c.id)}>
-                      Oʻchirish
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
+          <Button asChild className="shrink-0 min-h-[44px] touch-manipulation gap-2">
+            <Link href="/seller/cashiers">
+              Boshqarish
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
         </CardContent>
       </Card>
       <Card>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { LogOut, ScanLine } from 'lucide-react';
+import { LogOut, ScanLine, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function CashierChrome({ children }: { children: React.ReactNode }) {
@@ -12,14 +12,20 @@ export function CashierChrome({ children }: { children: React.ReactNode }) {
           <ScanLine className="h-6 w-6 shrink-0 text-primary" aria-hidden />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">Kassa</p>
-            <p className="truncate text-xs text-muted-foreground">Cheklangan kirish</p>
+            <p className="truncate text-xs text-muted-foreground">Doʻkon kassasi · profil va chiqish</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" size="sm" className="min-h-9 gap-1.5" asChild>
+            <Link href="/account">
+              <UserRound className="h-4 w-4" aria-hidden />
+              Profil
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="min-h-9" asChild>
             <Link href="/cashier/pos">POS</Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="min-h-9" asChild>
             <Link href="/">Sayt</Link>
           </Button>
           <Button

@@ -532,7 +532,38 @@ export function PosWorkspace({
           Kamera (F2)
         </Button>
       </div>
-      <p className={cn('text-sm text-muted-foreground', lastScanBanner ? 'mb-2' : 'mb-6')}>{modeDescription}</p>
+      <p
+        className={cn(
+          'text-sm text-muted-foreground',
+          posMode === 'kassa' ? (lastScanBanner ? 'mb-2' : 'mb-3') : lastScanBanner ? 'mb-2' : 'mb-6'
+        )}
+      >
+        {modeDescription}
+      </p>
+      {posMode === 'kassa' ? (
+        <div
+          className={cn('flex flex-wrap gap-2', lastScanBanner ? 'mb-2' : 'mb-6')}
+          aria-label="Tezkor tugmalar"
+        >
+          {(
+            [
+              { k: 'F2', t: 'Kamera skaner' },
+              { k: 'F3', t: 'USB maydon' },
+              { k: 'F9', t: 'Toʻlash (savat tayyor)' },
+            ] as const
+          ).map(({ k, t }) => (
+            <span
+              key={k}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground"
+            >
+              <kbd className="rounded bg-background px-1.5 py-0.5 font-mono text-[0.7rem] font-semibold text-foreground shadow-sm">
+                {k}
+              </kbd>
+              {t}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {lastScanBanner ? (
         <p
           className={cn(

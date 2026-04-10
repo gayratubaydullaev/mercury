@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, BarChart3, Settings, ArrowLeft, Store, MessageCircle, Plus, ExternalLink, Star, Menu, X, Bell, ScanLine } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, BarChart3, Settings, ArrowLeft, Store, MessageCircle, Plus, ExternalLink, Star, Menu, X, Bell, ScanLine, Users } from 'lucide-react';
 import { cn, API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { NotificationsBell } from './notifications-bell';
@@ -14,6 +14,7 @@ const mainItems = [
   { href: '/seller/notifications', label: 'Bildirishnomalar', icon: Bell },
   { href: '/seller/products', label: 'Tovarlar', icon: Package },
   { href: '/seller/pos', label: 'POS kassa', icon: ScanLine },
+  { href: '/seller/cashiers', label: 'Kassirlar', icon: Users },
   { href: '/seller/orders', label: 'Buyurtmalar', icon: ShoppingBag, badgeKey: 'pendingOrdersCount' as const },
   { href: '/seller/reviews', label: 'Sharhlar', icon: Star },
   { href: '/seller/stats', label: 'Statistika', icon: BarChart3 },

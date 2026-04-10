@@ -13,7 +13,7 @@ import { API_URL } from '@/lib/utils';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import { usePublicSettings } from '@/contexts/public-settings-context';
-import { ShoppingBag, Heart, Store, Shield, LogOut, MessageCircle, Link2, Check } from 'lucide-react';
+import { ShoppingBag, Heart, Store, Shield, LogOut, MessageCircle, Link2, Check, ScanLine } from 'lucide-react';
 
 type UserProfile = {
   id: string;
@@ -139,7 +139,16 @@ export default function AccountPage() {
 
   if (!user) return <div className="w-full max-w-2xl mx-auto px-0 sm:px-4 md:px-6"><Skeleton className="h-64 w-full rounded-xl" /></div>;
 
-  const roleLabel = user.role === 'ADMIN' ? 'Admin' : user.role === 'SELLER' ? 'Sotuvchi' : user.isGuest ? 'Mehmon' : 'Xaridor';
+  const roleLabel =
+    user.role === 'ADMIN'
+      ? 'Admin'
+      : user.role === 'SELLER'
+        ? 'Sotuvchi'
+        : user.role === 'CASHIER'
+          ? 'Kassir'
+          : user.isGuest
+            ? 'Mehmon'
+            : 'Xaridor';
   const initials = [user.firstName, user.lastName].map((s) => s?.charAt(0) ?? '').join('').toUpperCase() || '?';
   const joinedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' }) : '';
 
@@ -270,7 +279,7 @@ export default function AccountPage() {
             </CardContent>
           </Card>
         </Link>
-        {user.role !== 'SELLER' && newSellerApplicationsOpen && (
+        {user.role !== 'SELLER' && user.role !== 'CASHIER' && newSellerApplicationsOpen && (
           <Link href="/become-seller" className="sm:col-span-2">
             <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30 border-primary/20">
               <CardContent className="p-4 flex items-center gap-3">
@@ -283,7 +292,7 @@ export default function AccountPage() {
             </Card>
           </Link>
         )}
-        {user.role !== 'SELLER' && !newSellerApplicationsOpen && (
+        {user.role !== 'SELLER' && user.role !== 'CASHIER' && !newSellerApplicationsOpen && (
           <Card className="sm:col-span-2 border-dashed bg-muted/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-muted p-2.5"><Store className="h-5 w-5 text-muted-foreground" /></div>
@@ -297,11 +306,42 @@ export default function AccountPage() {
           </Card>
         )}
         {user.role === 'SELLER' && (
-          <Link href="/seller" className="sm:col-span-2">
-            <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30">
+          <>
+            <Link href="/seller">
+              <Card className="h-full transition-colors hover:bg-accent/50 hover:border-primary/30">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2.5"><Store className="h-5 w-5 text-primary" /></div>
+                  <div>
+                    <p className="font-medium">Sotuvchi kabineti</p>
+                    <p className="text-xs text-muted-foreground">Tovarlar, buyurtmalar, sozlamalar</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/seller/pos">
+              <Card className="h-full border-primary/25 transition-colors hover:bg-primary/[0.06] hover:border-primary/40">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/15 p-2.5"><ScanLine className="h-5 w-5 text-primary" /></div>
+                  <div>
+                    <p className="font-medium">Kassa (POS)</p>
+                    <p className="text-xs text-muted-foreground">Savdo, skaner, chek</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </>
+        )}
+        {user.role === 'CASHIER' && (
+          <Link href="/cashier/pos" className="sm:col-span-2">
+            <Card className="h-full border-primary/25 transition-colors hover:bg-primary/[0.06] hover:border-primary/40">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2.5"><Store className="h-5 w-5 text-primary" /></div>
-                <div><p className="font-medium">Sotuvchi kabineti</p><p className="text-xs text-muted-foreground">Tovarlar, buyurtmalar, doʻkon sozlamalari</p></div>
+                <div className="rounded-lg bg-primary/15 p-2.5"><ScanLine className="h-5 w-5 text-primary" /></div>
+                <div>
+                  <p className="font-medium">Kassa (POS)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user.shop ? `Doʻkon: ${user.shop.name}` : 'Savdo va chek chiqarish'}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </Link>
