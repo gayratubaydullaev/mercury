@@ -38,6 +38,8 @@ type PosBarcodeScannerProps = {
   mobileCatalogControls?: ReactNode;
   /** Telefon: savat qisqacha (jami) — tugmalar ustida */
   mobileCartSummary?: ReactNode;
+  /** Telefon: savatdagi qatorlar (nomi, miqdor) — skaner paytida koʻrinadi; afzal */
+  mobileCartPanel?: ReactNode;
 };
 
 type CameraConfig = MediaTrackConstraints | boolean;
@@ -92,6 +94,7 @@ export function PosBarcodeScanner({
   mobileCatalogSlot = null,
   mobileCatalogControls = null,
   mobileCartSummary = null,
+  mobileCartPanel = null,
 }: PosBarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onDecodedRef = useRef(onDecoded);
@@ -268,7 +271,10 @@ export function PosBarcodeScanner({
     ) : null;
 
   const hasMobileCatalog =
-    Boolean(mobileCatalogSlot) || Boolean(mobileCatalogControls) || Boolean(mobileCartSummary);
+    Boolean(mobileCatalogSlot) ||
+    Boolean(mobileCatalogControls) ||
+    Boolean(mobileCartSummary) ||
+    Boolean(mobileCartPanel);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -300,12 +306,24 @@ export function PosBarcodeScanner({
           <div className={cn('sm:min-h-0', (running || feedback != null) && 'min-h-[3.25rem]')}>{feedbackBlock}</div>
         </div>
 
+        {/* Savat: kamera ostida emas — skanerlashda darhol koʻrinadi */}
+        {mobileCartPanel ? (
+          <div className="flex min-h-0 shrink-0 flex-col sm:hidden">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Savat</p>
+            <div className="flex max-h-[min(34dvh,280px)] min-h-[4.5rem] flex-col overflow-hidden rounded-xl border border-border/70 bg-muted/25 shadow-sm dark:bg-zinc-900/50">
+              {mobileCartPanel}
+            </div>
+          </div>
+        ) : null}
+
         <div
           id={SCANNER_ELEMENT_ID}
           className={cn(
             'relative w-full shrink-0 overflow-hidden rounded-lg bg-black/95',
             hasMobileCatalog
-              ? 'h-[min(128px,18dvh)] sm:h-[260px]'
+              ? mobileCartPanel
+                ? 'h-[min(108px,15dvh)] sm:h-[260px]'
+                : 'h-[min(128px,18dvh)] sm:h-[260px]'
               : 'h-[min(190px,32vh)] sm:h-[260px]',
             '[&_video]:h-full [&_video]:w-full [&_video]:object-cover'
           )}
@@ -314,26 +332,31 @@ export function PosBarcodeScanner({
         {hasMobileCatalog ? (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
             <p className="mb-1.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Tovarlar
+              Katalog
               <span className="ml-1 font-normal normal-case text-muted-foreground/80">
-                (yuqori — server · pastki — jadvalda filtr)
+                (qidiruv · qoʻshish)
               </span>
             </p>
             {mobileCatalogControls ? (
-              <div className="mb-2 max-h-[min(30dvh,200px)] min-h-0 shrink-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+              <div
+                className={cn(
+                  'mb-2 min-h-0 shrink-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y',
+                  mobileCartPanel ? 'max-h-[min(22dvh,168px)]' : 'max-h-[min(30dvh,200px)]'
+                )}
+              >
                 {mobileCatalogControls}
               </div>
             ) : null}
             <div
               className={cn(
-                /* h-0 + flex-1: qolgan balandlikni aniq beradi (ichki scroll mobil Safari / Chrome) */
-                'h-0 min-h-[8rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
+                'h-0 min-h-[6.5rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
                 'touch-pan-y pr-1 [overflow-anchor:none]'
               )}
             >
               {mobileCatalogSlot}
             </div>
-            {mobileCartSummary ? <div className="mt-2 shrink-0">{mobileCartSummary}</div> : null}
+            {/* Agar faqat eski summary ishlatilsa (panel yoʻq) */}
+            {!mobileCartPanel && mobileCartSummary ? <div className="mt-2 shrink-0">{mobileCartSummary}</div> : null}
           </div>
         ) : null}
 

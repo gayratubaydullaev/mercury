@@ -1,5 +1,9 @@
--- Baseline: bitta migratsiyada joriy `schema.prisma` holati (oldingi 4 ta migratsiya birlashtirildi).
--- Mavjud bazada eski `_prisma_migrations` yozuvlari bo‘lsa — `migrate deploy`dan oldin bazani qayta bosqichlash yoki baseline qilish kerak.
+﻿-- Squashed baseline: full schema from `schema.prisma` (Prisma `migrate diff --from-empty`).
+-- Replaces former chain: order_item_returned_quantity, squashed_init, staff_shop_id, stock_deducted_at,
+-- platform_settings chat flag, perf_indexes — one deploy for empty databases.
+--
+-- Mavjud production bazalar: README dagi «Migratsiyalarni birlashtirish» — `_prisma_migrations` ni baseline qiling,
+-- aks holda `migrate deploy` jadval allaqachon mavjudligi uchun yiqiladi yoki tarix mos kelmaydi.
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('BUYER', 'SELLER', 'CASHIER', 'ADMIN', 'ADMIN_MODERATOR');
@@ -292,6 +296,7 @@ CREATE TABLE "order_items" (
     "product_id" TEXT NOT NULL,
     "variant_id" TEXT,
     "quantity" INTEGER NOT NULL,
+    "returned_quantity" INTEGER NOT NULL DEFAULT 0,
     "price" DECIMAL(12,2) NOT NULL,
 
     CONSTRAINT "order_items_pkey" PRIMARY KEY ("id")
@@ -473,6 +478,9 @@ CREATE UNIQUE INDEX "telegram_login_tokens_token_key" ON "telegram_login_tokens"
 CREATE UNIQUE INDEX "products_sku_key" ON "products"("sku");
 
 -- CreateIndex
+CREATE INDEX "products_shop_id_is_active_idx" ON "products"("shop_id", "is_active");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "products_slug_shop_id_key" ON "products"("slug", "shop_id");
 
 -- CreateIndex
@@ -485,7 +493,16 @@ CREATE UNIQUE INDEX "Order_order_number_key" ON "Order"("order_number");
 CREATE UNIQUE INDEX "Order_guest_view_token_key" ON "Order"("guest_view_token");
 
 -- CreateIndex
+CREATE INDEX "Order_seller_id_created_at_idx" ON "Order"("seller_id", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "Order_buyer_id_created_at_idx" ON "Order"("buyer_id", "created_at" DESC);
+
+-- CreateIndex
 CREATE INDEX "order_audit_events_order_id_created_at_idx" ON "order_audit_events"("order_id", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "checkout_sessions_order_id_idx" ON "checkout_sessions"("order_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "carts_user_id_key" ON "carts"("user_id");
@@ -609,3 +626,4 @@ ALTER TABLE "payout_records" ADD CONSTRAINT "payout_records_seller_id_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

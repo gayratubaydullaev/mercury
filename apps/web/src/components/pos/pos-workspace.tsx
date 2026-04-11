@@ -532,23 +532,6 @@ export function PosWorkspace({
     ]
   );
 
-  const scannerMobileCartSummary = useMemo(() => {
-    if (cart.length === 0) return null;
-    return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/[0.12] px-3 py-2 dark:bg-emerald-500/15">
-        <span className="text-xs leading-tight text-muted-foreground">
-          Savat:{' '}
-          <span className="font-semibold text-foreground">
-            {cart.length} qator · {cartUnitsCount} dona
-          </span>
-        </span>
-        <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-          {formatPrice(cartTotal)}
-        </span>
-      </div>
-    );
-  }, [cart.length, cartUnitsCount, cartTotal]);
-
   /** Kamera dialogi (telefon): skaner paytida aylantiriladigan roʻyxat */
   const scannerMobileCatalogList = useMemo(() => {
     if (loadingCatalog) {
@@ -795,7 +778,7 @@ export function PosWorkspace({
 
   processBarcodeRef.current = processBarcodeText;
 
-  const setQty = (key: string, qty: number) => {
+  const setQty = useCallback((key: string, qty: number) => {
     setCart((prev) => {
       const line = prev.find((l) => l.key === key);
       if (!line) return prev;
@@ -805,9 +788,125 @@ export function PosWorkspace({
       const nextQty = Math.max(1, Math.min(qty, max));
       return prev.map((l) => (l.key === key ? { ...l, quantity: nextQty } : l));
     });
-  };
+  }, [catalog]);
 
-  const removeLine = (key: string) => setCart((prev) => prev.filter((l) => l.key !== key));
+  const removeLine = useCallback((key: string) => {
+    setCart((prev) => prev.filter((l) => l.key !== key));
+  }, []);
+
+  /** Skaner dialogi (telefon): savat qatorlari + jami — kamera ostida emas, doim koʻrinadi */
+  const scannerMobileCartPanel = useMemo(() => {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-background/70 px-2 py-1.5 dark:bg-zinc-950/60">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Joriy chek</p>
+            <p className="truncate text-[11px] tabular-nums text-muted-foreground">
+              {cart.length} qator · {cartUnitsCount} dona
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+              {formatPrice(cartTotal)}
+            </span>
+            {cart.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 gap-1 px-2 text-[11px] text-destructive hover:text-destructive"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.confirm('Savatni butunlay tozalaysizmi?')) {
+                    setCart([]);
+                    setVariantPick({});
+                  }
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Tozalash
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        {cart.length === 0 ? (
+          <div className="shrink-0 px-2 py-3 text-center">
+            <p className="text-xs leading-snug text-muted-foreground">
+              Savat boʻsh. Kodni skanerlang yoki pastdagi <span className="font-medium text-foreground">Katalog</span>dan
+              qoʻshing.
+            </p>
+          </div>
+        ) : (
+          <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-y-contain px-1 py-1 [-webkit-overflow-scrolling:touch] touch-pan-y">
+            {cart.map((line, idx) => {
+              const lineSum = line.unitPrice * line.quantity;
+              return (
+                <li
+                  key={line.key}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg border border-border/50 px-1.5 py-1.5',
+                    idx % 2 === 0 ? 'bg-background/80 dark:bg-zinc-900/50' : 'bg-muted/15 dark:bg-zinc-950/30'
+                  )}
+                >
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {line.imageUrl ? (
+                      <Image src={line.imageUrl} alt="" fill className="object-cover" sizes="36px" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[9px] text-muted-foreground">—</div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-[11px] font-semibold leading-tight">{line.title}</p>
+                    {line.variantLabel ? (
+                      <p className="line-clamp-1 text-[10px] text-muted-foreground">{line.variantLabel}</p>
+                    ) : null}
+                    <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                      {formatPrice(line.unitPrice)} × {line.quantity}{' '}
+                      <span className="font-semibold text-foreground">· {formatPrice(lineSum)}</span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 touch-manipulation"
+                        onClick={() => setQty(line.key, line.quantity - 1)}
+                        aria-label="Kamaytirish"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="w-6 text-center text-xs font-semibold tabular-nums">{line.quantity}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 touch-manipulation"
+                        onClick={() => setQty(line.key, line.quantity + 1)}
+                        aria-label="Oshirish"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() => removeLine(line.key)}
+                      aria-label="Oʻchirish"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }, [cart, cartUnitsCount, cartTotal, setQty, removeLine]);
 
   if (!token) {
     return <DashboardAuthGate />;
@@ -1620,7 +1719,7 @@ export function PosWorkspace({
         onDecoded={(text) => void processBarcodeText(text, posMode)}
         mobileCatalogControls={posMode === 'kassa' ? scannerMobileCatalogControls : undefined}
         mobileCatalogSlot={posMode === 'kassa' ? scannerMobileCatalogList : null}
-        mobileCartSummary={posMode === 'kassa' ? scannerMobileCartSummary : undefined}
+        mobileCartPanel={posMode === 'kassa' ? scannerMobileCartPanel : undefined}
       />
 
       <Dialog open={!!receiptOrder} onOpenChange={(o) => !o && setReceiptOrder(null)}>

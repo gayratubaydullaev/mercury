@@ -104,13 +104,38 @@ pnpm run dev
 | `ECONNREFUSED 127.0.0.1:4000`, "Failed to proxy" | API (port 4000) ishlamayapti | Ildizdan `pnpm run dev` ishlating yoki boshqa terminalda `cd apps/api && pnpm run dev` ni ishga tushiring. |
 | API ishga tushmayapti | PostgreSQL/Redis ulanishi yoki `.env` | `apps/api/.env` da `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` toʻgʻri ekanligini tekshiring. `pnpm db:migrate` bajarilgan boʻlishi kerak. |
 | `telegram_login_tokens` does not exist, 500 при «Telegram orqali kirish» | Migratsiyalar serverni bazaga qoʻllanmagan | Serverni (production) da: `cd apps/api && pnpm run prisma:migrate:deploy`. `DATABASE_URL` production bazaga yoʻnaltirilgan boʻlishi kerak. |
-| `The column users.staff_shop_id does not exist` (API chiqmayapti) | Kod yangilangan, lekin PostgreSQL da kassir ustuni qoʻshilmagan | Loyihani yangilab, `cd apps/api && pnpm run prisma:migrate:deploy` (yoki ildizdan `pnpm db:migrate:deploy`). Migratsiya `20260411130000_users_staff_shop_id_hotfix` idempotent — mavjud bazaga xavfsiz. |
-| `Order.stock_deducted_at` / `stock_deducted_at does not exist` | Buyurtmalar jadvalida POS ombor maydoni yoʻq | `pnpm db:migrate:deploy` — qoʻllanadi `20260411131000_orders_stock_deducted_at_hotfix` (`"Order"` jadvali). |
-| `platform_settings.chat_with_seller_enabled` does not exist | Eski baza, tovar sahifasi `GET /products/:id` paytida 500 | `pnpm db:migrate:deploy` — `20260411132000_platform_settings_chat_with_seller_hotfix`. |
+| `The column users.staff_shop_id does not exist` (API chiqmayapti) | Skhema yangi, baza eski | `pnpm db:migrate:deploy` (bitta squashed migratsiya `20260411140000_squashed_schema`). Agar tarix «sinxron emas» boʻlsa — quyidagi «Migratsiyalarni birlashtirish». |
+| `Order.stock_deducted_at` / `stock_deducted_at does not exist` | POS maydoni bazada yoʻq | Yuqoridagi kabi `pnpm db:migrate:deploy` yoki baseline (mavjud serverlar). |
+| `platform_settings.chat_with_seller_enabled` does not exist | Sozlamalar jadvali eski | Yuqoridagi kabi. |
 | `Failed to find Server Action`, `Cannot read properties of null (reading 'digest')` (Next.js web) | Eski build yoki keshlangan JS yangi serverni bilan mos emas | Serverni: `cd apps/web && rm -rf .next && pnpm build && pnpm start` (yoki processni qayta ishga tushiring). Har bir deploy dan keyin Node processni toʻliq qayta ishga tushiring. |
 | API: `connect ETIMEDOUT` (IPv6 yoki 443) | Tashqi xizmatga (DB, Redis, Telegram va hokazo) ulanish vaqti tugadi | Tarmoq/firewall tekshiring; `DATABASE_URL` va boshqa URL larni IPv4 ga oʻzgartiring yoki serverni IPv4 orqali chiqishga majburlang. |
-| `relation "orders" does not exist` (`20260411133000_perf_indexes`) | Eski migratsiya notoʻgʻri `orders` jadvaliga indeks qoʻshgan; loyihada buyurtmalar jadvali `"Order"` (squashed_init bilan mos) | Reponi yangilang (tuzatilgan `migration.sql`), keyin serverda: `cd apps/api && npx prisma migrate resolve --rolled-back 20260411133000_perf_indexes`, soʻng `pnpm db:migrate:deploy`. |
-| Prisma `P3009` — failed migrations | Oldingi `migrate deploy` migratsiyani yarim qoʻllagan | Yuqoridagi `migrate resolve --rolled-back <migratsiya_nomi>`, bazani tuzating (kerak boʻlsa), keyin qayta `migrate deploy`. [Prisma qo‘llanmasi](https://www.prisma.io/docs/guides/migrate/troubleshooting-development) |
+| Prisma `P3009` / tarix mos kelmasligi | Migratsiya yiqilgan yoki repodagi tarix bazadan farq qiladi | `migrate resolve --rolled-back` yoki [Prisma troubleshooting](https://www.prisma.io/docs/guides/migrate/troubleshooting-development); mavjud production uchun quyidagi baseline. |
+
+### Migratsiyalarni birlashtirish (`20260411140000_squashed_schema`)
+
+Barcha avvalgi migratsiya papkalari bitta **`20260411140000_squashed_schema`** fayliga birlashtirildi (`prisma migrate diff --from-empty`).
+
+**Yangi (boʻsh) baza:** oddiy `pnpm db:migrate:deploy` — bitta migratsiya butun skhemani yaratadi.
+
+**Mavjud production / staging** (jadvalar allaqachon eski zanjir bilan yaratilgan, faqat `_prisma_migrations` repodagi yangi holat bilan mos emas):
+
+1. **Zaxira** oling (`pg_dump`).
+2. Skhema `schema.prisma` bilan mosligini tekshiring (ixtiyoriy): `npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma` — boʻsh boʻlishi kerak yoki qoldiq diffni qoʻlda hal qiling.
+3. PostgreSQLda migratsiya tarixini tozalang va yangi bitta yozuvni « qoʻllangan » deb belgilang (SQL **bajarilmaydi**):
+
+```bash
+# 1) Eski tarix yozuvlarini o‘chirish (faqat shu bazada!)
+psql "$DATABASE_URL" -c 'DELETE FROM "_prisma_migrations";'
+
+# 2) Yangi squashed migratsiyani SQLsiz «applied» qilish
+cd apps/api
+npx prisma migrate resolve --applied 20260411140000_squashed_schema
+
+# 3) Tekshiruv
+npx prisma migrate deploy   # "No pending migrations" yoki shunga oʻxshash
+```
+
+Agar 2-qadamda Prisma checksum xatosi bersa, repodagi `migration.sql` ni oʻzgartirmagan boʻlsangiz, `migrate resolve` ni Prisma hujjatiga qarang.
 
 ### 5. Docker (lokal)
 
