@@ -172,6 +172,8 @@ export function PosWorkspace({
     variantId?: string;
     title: string;
   } | null>(null);
+  /** Telefon: katalog yoki toʻliq chek / toʻlov paneli */
+  const [posMobileSection, setPosMobileSection] = useState<'items' | 'checkout'>('items');
   const lastScanRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
   const usbScanInputRef = useRef<HTMLInputElement>(null);
   const processBarcodeRef = useRef<(text: string, mode: PosMode) => Promise<boolean>>(async () => false);
@@ -793,13 +795,64 @@ export function PosWorkspace({
       {posMode === 'kassa' ? (
         <div
           className={cn(
-            'grid gap-4 pb-24 md:pb-6 lg:gap-6',
-            'xl:grid-cols-[minmax(0,1fr)_minmax(300px,400px)]',
-            cart.length > 0 && 'max-md:pb-28'
+            'rounded-2xl border border-border/70 bg-gradient-to-b from-muted/30 via-background to-background p-1 shadow-sm xl:border-border/50 xl:p-2 xl:shadow-md',
+            'dark:from-muted/20'
           )}
         >
-          <DashboardPanel className="min-w-0 overflow-hidden border-border/60 p-3 shadow-sm sm:p-5 md:p-6">
-            <div className="mb-4 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/[0.07] via-primary/[0.03] to-transparent p-3 sm:p-4">
+          <div className="mb-2 flex gap-1.5 rounded-xl border border-border/60 bg-muted/50 p-1.5 shadow-inner xl:hidden">
+            <button
+              type="button"
+              className={cn(
+                'min-h-11 flex-1 rounded-lg px-2 text-sm font-bold transition-colors touch-manipulation',
+                posMobileSection === 'items'
+                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setPosMobileSection('items')}
+            >
+              Tovarlar
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'relative min-h-11 flex-1 rounded-lg px-2 text-sm font-bold transition-colors touch-manipulation',
+                posMobileSection === 'checkout'
+                  ? 'bg-background text-foreground shadow-md ring-1 ring-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setPosMobileSection('checkout')}
+            >
+              Chek
+              {cart.length > 0 ? (
+                <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                  {cart.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          <div
+            className={cn(
+              'grid gap-3 pb-24 sm:gap-4 md:pb-6 lg:gap-5',
+              'xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] xl:items-start',
+              cart.length > 0 && 'max-xl:pb-28'
+            )}
+          >
+          <DashboardPanel
+            className={cn(
+              'min-w-0 overflow-hidden border-border/60 bg-card/95 p-3 shadow-sm sm:p-5 md:p-6 xl:ring-1 xl:ring-border/30',
+              posMobileSection === 'checkout' && 'hidden xl:block'
+            )}
+          >
+            <div className="mb-3 hidden items-center justify-between border-b border-border/50 pb-2 xl:flex">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Katalog va skaner
+              </span>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {loadingCatalog ? '…' : `${catalog?.length ?? 0} poz.`}
+              </span>
+            </div>
+            <div className="mb-4 rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent p-3 sm:border xl:rounded-lg xl:p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <Keyboard className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <span className="font-semibold text-foreground">USB shtrix-skanner</span>
@@ -879,10 +932,10 @@ export function PosWorkspace({
                   return (
                     <li
                       key={p.id}
-                      className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-sm transition-[box-shadow,transform,border-color] hover:border-primary/25 hover:shadow-md active:scale-[0.99] sm:flex-row sm:items-center sm:p-4"
+                      className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-sm transition-[box-shadow,transform,border-color] hover:border-primary/25 hover:shadow-md active:scale-[0.99] sm:flex-row sm:items-center sm:p-4 xl:gap-2 xl:rounded-lg xl:p-2.5 2xl:p-3"
                     >
-                      <div className="flex min-w-0 flex-1 gap-3">
-                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-[72px] sm:w-[72px]">
+                      <div className="flex min-w-0 flex-1 gap-3 xl:gap-2">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-[72px] sm:w-[72px] xl:h-14 xl:w-14 2xl:h-[72px] 2xl:w-[72px]">
                           {p.images[0]?.url ? (
                             <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="72px" />
                           ) : (
@@ -892,7 +945,7 @@ export function PosWorkspace({
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium leading-snug">{p.title}</p>
+                          <p className="font-medium leading-snug xl:text-sm 2xl:text-base">{p.title}</p>
                           {skuHint ? (
                             <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">SKU · {skuHint}</p>
                           ) : null}
@@ -923,7 +976,7 @@ export function PosWorkspace({
                         <Button
                           type="button"
                           size="lg"
-                          className="h-11 w-full min-w-[140px] touch-manipulation sm:w-auto"
+                          className="h-11 w-full min-w-[140px] touch-manipulation sm:w-auto xl:h-10 xl:px-3 xl:text-sm 2xl:h-11 2xl:text-base"
                           disabled={!canAdd || stockFor(p, hasV ? vid : undefined) < 1}
                           onClick={() => addLine(p)}
                         >
@@ -938,20 +991,26 @@ export function PosWorkspace({
             )}
           </DashboardPanel>
 
-          <aside className="flex flex-col gap-4 xl:sticky xl:top-20 xl:self-start">
+          <aside
+            className={cn(
+              'flex flex-col gap-3 xl:sticky xl:top-20 xl:self-start xl:gap-4',
+              posMobileSection === 'items' && 'hidden xl:flex'
+            )}
+          >
             <Card
               className={cn(
-                'border-border/80 shadow-lg ring-1 ring-border/40',
-                cashierOnly && 'border-primary/15 bg-gradient-to-b from-card to-primary/[0.02] ring-primary/10'
+                'overflow-hidden border-border/80 shadow-xl ring-1 ring-black/5 dark:ring-white/10',
+                'xl:shadow-2xl',
+                cashierOnly && 'border-primary/20 ring-primary/15'
               )}
             >
-              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0 pb-3">
+              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0 border-b border-border/50 bg-gradient-to-b from-muted/80 to-muted/30 pb-3 pt-4 dark:from-zinc-900/90 dark:to-zinc-950/80">
                 <CardTitle className="flex flex-col gap-0.5 text-lg sm:flex-row sm:items-baseline sm:gap-2">
                   <span className="flex items-center gap-2">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/80 shadow-inner ring-1 ring-border/50 dark:bg-zinc-800/80">
                       <ScanLine className="h-5 w-5 text-primary" aria-hidden />
                     </span>
-                    Savat
+                    <span className="font-bold tracking-tight">Chek</span>
                   </span>
                   {cart.length > 0 ? (
                     <span className="text-sm font-normal tabular-nums text-muted-foreground">
@@ -977,20 +1036,23 @@ export function PosWorkspace({
                   </Button>
                 ) : null}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 bg-card/50 pt-4 dark:bg-zinc-950/40">
                 {cart.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center">
-                    <p className="text-sm font-medium text-foreground">Savat boʻsh</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Roʻyxatdan qoʻshing yoki skanerlang</p>
+                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                    <p className="text-sm font-semibold text-foreground">Savat boʻsh</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Tovarlar yorligʻiga oʻting yoki skanerlang</p>
                   </div>
                 ) : (
-                  <ul className="max-h-[min(45vh,280px)] space-y-2 overflow-y-auto pr-1 md:max-h-[min(55vh,380px)]">
-                    {cart.map((line) => {
+                  <ul className="max-h-[min(50vh,320px)] space-y-1 overflow-y-auto rounded-lg border border-border/40 bg-background/50 p-1 pr-0.5 dark:bg-zinc-950/30 md:max-h-[min(58vh,420px)] xl:max-h-[min(52vh,440px)]">
+                    {cart.map((line, idx) => {
                       const lineSum = line.unitPrice * line.quantity;
                       return (
                       <li
                         key={line.key}
-                        className="flex gap-2 rounded-xl border border-border/60 bg-muted/25 p-3 text-sm shadow-sm"
+                        className={cn(
+                          'flex gap-2 rounded-lg border border-transparent p-2.5 text-sm transition-colors sm:p-3',
+                          idx % 2 === 0 ? 'bg-muted/20 dark:bg-zinc-900/40' : 'bg-background/60 dark:bg-zinc-950/20'
+                        )}
                       >
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold leading-tight">{line.title}</p>
@@ -1065,15 +1127,15 @@ export function PosWorkspace({
                   </ul>
                 )}
 
-                <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-3 py-3 sm:px-4 sm:py-3.5">
+                <div className="rounded-xl border-2 border-zinc-800/80 bg-gradient-to-b from-zinc-900 to-zinc-950 px-3 py-3.5 shadow-inner sm:px-4 dark:border-zinc-700 dark:from-zinc-950 dark:to-black">
                   <p className="flex items-end justify-between gap-3 tabular-nums">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">Jami</span>
-                    <span className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">Jami</span>
+                    <span className="font-mono text-2xl font-bold tracking-tight text-emerald-400 tabular-nums sm:text-3xl">
                       {formatPrice(cartTotal)}
                     </span>
                   </p>
                   {cart.length > 0 ? (
-                    <p className="mt-1 text-right text-xs text-muted-foreground">{cartUnitsCount} dona</p>
+                    <p className="mt-1.5 text-right text-[11px] font-medium text-zinc-500">{cartUnitsCount} dona</p>
                   ) : null}
                 </div>
 
@@ -1183,7 +1245,7 @@ export function PosWorkspace({
 
                 <Button
                   type="button"
-                  className="hidden h-12 w-full text-base font-semibold md:inline-flex"
+                  className="hidden h-14 w-full border-0 bg-emerald-600 text-base font-bold text-white shadow-lg shadow-emerald-900/25 transition-colors hover:bg-emerald-700 md:inline-flex dark:bg-emerald-600 dark:hover:bg-emerald-500"
                   size="lg"
                   disabled={cart.length === 0 || submitting || cashShort}
                   onClick={() => void submitPos()}
@@ -1214,26 +1276,29 @@ export function PosWorkspace({
               </CardContent>
             </Card>
           </aside>
+          </div>
         </div>
       ) : null}
 
       {posMode === 'kassa' && cart.length > 0 ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-zinc-800/90 bg-gradient-to-t from-zinc-950 via-zinc-900 to-zinc-900/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] text-zinc-100 shadow-[0_-16px_48px_rgba(0,0,0,0.35)] backdrop-blur-md dark:border-zinc-700 md:hidden"
         >
           <div className="mx-auto flex max-w-lg flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Jami</p>
-                <p className="text-xl font-bold tabular-nums tracking-tight">{formatPrice(cartTotal)}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Jami</p>
+                <p className="font-mono text-xl font-bold tabular-nums tracking-tight text-emerald-400">
+                  {formatPrice(cartTotal)}
+                </p>
+                <p className="text-[11px] text-zinc-500">
                   {cart.length} qator · {cartUnitsCount} dona
                 </p>
               </div>
               <Button
                 type="button"
                 size="lg"
-                className="min-h-[52px] min-w-[140px] flex-1 max-w-[240px] text-base font-bold shadow-md"
+                className="min-h-[52px] min-w-[140px] flex-1 max-w-[240px] border-0 bg-emerald-600 text-base font-bold text-white shadow-lg shadow-black/30 hover:bg-emerald-700"
                 disabled={cart.length === 0 || submitting || cashShort}
                 onClick={() => void submitPos()}
               >
@@ -1244,10 +1309,37 @@ export function PosWorkspace({
               <p className="text-center text-xs font-medium text-destructive">Naqd yetarli emas</p>
             ) : null}
             {paymentMethod === 'CASH' && markPaid && !cashShort && changeDue > 0 ? (
-              <p className="text-center text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+              <p className="text-center text-sm font-bold tabular-nums text-emerald-300">
                 Qaytim {formatPrice(changeDue)}
               </p>
             ) : null}
+            {posMobileSection === 'items' ? (
+              <button
+                type="button"
+                className="min-h-11 w-full rounded-lg border border-zinc-600/80 bg-zinc-800/80 px-3 py-2 text-center text-sm font-semibold text-zinc-200 touch-manipulation transition-colors hover:bg-zinc-700/90 active:bg-zinc-700"
+                onClick={() => {
+                  setPosMobileSection('checkout');
+                  if (typeof window !== 'undefined') {
+                    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+                  }
+                }}
+              >
+                Toʻliq chek — telefon, izoh, toʻlov turi
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="w-full py-1.5 text-center text-xs font-medium text-zinc-500 underline-offset-2 touch-manipulation hover:text-zinc-300 hover:underline"
+                onClick={() => {
+                  setPosMobileSection('items');
+                  if (typeof window !== 'undefined') {
+                    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+                  }
+                }}
+              >
+                ← Tovarlar — yana qoʻshish yoki skaner
+              </button>
+            )}
           </div>
         </div>
       ) : null}
