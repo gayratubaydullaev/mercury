@@ -12,6 +12,27 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Telegram `web_app` uchun URL odatda HTTPS bo‘lishi kerak (localhost bundan mustasno). */
+function isTelegramWebAppUrlAllowed(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:') return true;
+    if (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function summarizeTelegramBotError(e: unknown): string {
+  if (typeof AggregateError !== 'undefined' && e instanceof AggregateError && e.errors?.length) {
+    return e.errors.map((x) => (x instanceof Error ? x.message : String(x))).join('; ');
+  }
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
 function formatVariantOptions(options: Record<string, string> | unknown): string {
   if (!options || typeof options !== 'object' || Array.isArray(options)) return '';
   const entries = Object.entries(options as Record<string, string>).filter(([, v]) => v != null && String(v).trim() !== '');
@@ -144,11 +165,25 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const baseUrl = this.telegram.getBaseUrl();
     if (baseUrl) {
       const webAppUrl = `${baseUrl.replace(/\/$/, '')}/telegram-app`;
-      const setMenu = (this.bot as { setChatMenuButton?: (p: unknown) => Promise<boolean> }).setChatMenuButton;
-      if (typeof setMenu === 'function') {
-        setMenu.call(this.bot, {
-          menu_button: { type: 'web_app', text: "Do'kon (veb)", web_app: { url: webAppUrl } },
-        }).then(() => this.logger.log('Telegram Web App menu button set')).catch((e: unknown) => this.logger.warn('setChatMenuButton failed', e));
+      if (!isTelegramWebAppUrlAllowed(webAppUrl)) {
+        this.logger.warn(
+          `Telegram setChatMenuButton o'tkazildi: web_app uchun HTTPS kerak (APP_URL → ${webAppUrl}). Chat ostidagi tugma yo'q; /start menyusi va inline tugmalar ishlaydi.`,
+        );
+      } else {
+        const setMenu = (this.bot as { setChatMenuButton?: (p: unknown) => Promise<boolean> }).setChatMenuButton;
+        if (typeof setMenu === 'function') {
+          void setMenu
+            .call(this.bot, {
+              menu_button: { type: 'web_app', text: "Do'kon (veb)", web_app: { url: webAppUrl } },
+            })
+            .then(() => this.logger.log('Telegram Web App menu button set'))
+            .catch((e: unknown) => {
+              const detail = summarizeTelegramBotError(e);
+              this.logger.warn(
+                `Telegram setChatMenuButton bajarilmadi (ixtiyoriy): ${detail}. Bot ishlaydi; do'konni /start yoki menyudan oching. Sabablar: serverdan api.telegram.org ga ulanish, DNS, firewall, vaqtinchalik Telegram xatosi.`,
+              );
+            });
+        }
       }
     }
 
