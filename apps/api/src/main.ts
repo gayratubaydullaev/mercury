@@ -10,6 +10,7 @@ import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { validateEnv } from './common/env.validation';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { requestIdMiddleware } from './common/request-id.middleware';
 
 async function bootstrap() {
   validateEnv();
@@ -20,6 +21,7 @@ async function bootstrap() {
   });
 
   const app = await NestFactory.create(AppModule);
+  app.use(requestIdMiddleware);
 
   const uploadsDir = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));

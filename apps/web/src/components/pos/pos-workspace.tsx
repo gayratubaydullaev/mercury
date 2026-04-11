@@ -1090,18 +1090,18 @@ export function PosWorkspace({
 
           <div
             className={cn(
-              'grid gap-3 pb-24 sm:gap-4 md:pb-6 lg:gap-5',
-              'xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] xl:items-start',
+              'grid min-h-0 gap-3 pb-24 sm:gap-4 md:pb-6 lg:gap-5',
+              'xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] xl:items-stretch',
               cart.length > 0 && 'max-xl:pb-28'
             )}
           >
           <DashboardPanel
             className={cn(
-              'min-w-0 overflow-hidden border-border/60 bg-card/95 p-3 shadow-sm sm:p-5 md:p-6 xl:ring-1 xl:ring-border/30',
+              'flex min-h-0 min-w-0 flex-col overflow-hidden border-border/60 bg-card/95 p-3 shadow-sm sm:p-5 md:p-6 xl:min-h-0 xl:max-h-[calc(100dvh-6.5rem)] xl:self-stretch xl:ring-1 xl:ring-border/30',
               posMobileSection === 'checkout' && 'hidden xl:block'
             )}
           >
-            <div className="mb-3 hidden items-center justify-between border-b border-border/50 pb-2 xl:flex">
+            <div className="mb-3 hidden shrink-0 items-center justify-between border-b border-border/50 pb-2 xl:flex">
               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                 Katalog va skaner
               </span>
@@ -1109,7 +1109,7 @@ export function PosWorkspace({
                 {loadingCatalog ? '…' : `${catalog?.length ?? 0} poz.`}
               </span>
             </div>
-            <div className="mb-4 rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent p-3 sm:border xl:rounded-lg xl:p-4">
+            <div className="mb-4 shrink-0 rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent p-3 sm:border xl:rounded-lg xl:p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <Keyboard className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <span className="font-semibold text-foreground">USB shtrix-skanner</span>
@@ -1134,7 +1134,7 @@ export function PosWorkspace({
                 }}
               />
             </div>
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
@@ -1161,6 +1161,13 @@ export function PosWorkspace({
                 Roʻyxat: 80 tagacha · «Yangilash» yangilaydi
               </p>
             </div>
+            <div
+              className={cn(
+                'min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
+                'touch-pan-y pr-0.5 [overflow-anchor:none]',
+                'max-h-[min(72dvh,720px)] xl:h-0 xl:max-h-none'
+              )}
+            >
             {loadingCatalog ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -1246,6 +1253,7 @@ export function PosWorkspace({
                 })}
               </ul>
             )}
+            </div>
           </DashboardPanel>
 
           <aside

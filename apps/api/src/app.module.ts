@@ -30,6 +30,7 @@ import { BannersModule } from './banners/banners.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CheckoutSessionModule } from './checkout-session/checkout-session.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { CheckoutSessionModule } from './checkout-session/checkout-session.modul
     BannersModule,
     SettingsModule,
     NotificationsModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

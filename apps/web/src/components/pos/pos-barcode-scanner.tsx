@@ -274,11 +274,12 @@ export function PosBarcodeScanner({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          'flex w-[calc(100vw-1rem)] max-w-md flex-col gap-3 p-4 sm:max-w-lg sm:gap-4 sm:p-6',
+          /* Dialog default `grid` buzadi: flex ustun, min-h-0 — ichki overflow-y ishlashi uchun */
+          '!flex w-[calc(100vw-1rem)] max-w-md min-h-0 flex-col gap-3 p-4 sm:max-w-lg sm:gap-4 sm:p-6',
           hasMobileCatalog
-            ? /* max-sm: aniq balandlik — flex-1 roʻyxat uchun qoladi, ichida scroll ishlaydi */
-              'max-sm:h-[min(92dvh,calc(100dvh-0.5rem))] max-sm:max-h-[min(92dvh,calc(100dvh-0.5rem))] max-sm:min-h-0 max-sm:overflow-hidden sm:max-h-[92dvh] sm:overflow-y-auto'
-            : 'max-h-[90dvh] overflow-y-auto sm:max-h-[92dvh]'
+            ? /* max-sm: balandlik cheklangan, roʻyxat alohida scroll (touch / sichqoncha) */
+              'max-sm:h-[min(90dvh,calc(100dvh-1rem))] max-sm:max-h-[min(90dvh,calc(100dvh-1rem))] max-sm:min-h-0 max-sm:overflow-hidden sm:max-h-[92dvh] sm:min-h-0 sm:overflow-y-auto'
+            : 'max-h-[90dvh] min-h-0 overflow-y-auto sm:max-h-[92dvh]'
         )}
       >
         <div className="sticky top-0 z-10 shrink-0 space-y-2 border-b border-border/50 bg-background pb-2 sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:pb-0">
@@ -311,7 +312,7 @@ export function PosBarcodeScanner({
         />
 
         {hasMobileCatalog ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
             <p className="mb-1.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Tovarlar
               <span className="ml-1 font-normal normal-case text-muted-foreground/80">
@@ -319,14 +320,15 @@ export function PosBarcodeScanner({
               </span>
             </p>
             {mobileCatalogControls ? (
-              <div className="mb-2 max-h-[min(34dvh,220px)] min-h-0 shrink-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+              <div className="mb-2 max-h-[min(30dvh,200px)] min-h-0 shrink-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
                 {mobileCatalogControls}
               </div>
             ) : null}
             <div
               className={cn(
-                'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
-                'touch-pan-y pr-0.5 [overflow-anchor:none]'
+                /* h-0 + flex-1: qolgan balandlikni aniq beradi (ichki scroll mobil Safari / Chrome) */
+                'h-0 min-h-[8rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
+                'touch-pan-y pr-1 [overflow-anchor:none]'
               )}
             >
               {mobileCatalogSlot}

@@ -261,6 +261,7 @@ model Product {
   chatSessions  ChatSession[]
 
   @@unique([slug, shopId])
+  @@index([shopId, isActive])
   @@map("products")
 }
 
@@ -317,6 +318,9 @@ model Order {
   items         OrderItem[]
   payments      Payment[]
   auditEvents   OrderAuditEvent[]
+
+  @@index([sellerId, createdAt(sort: Desc)])
+  @@index([buyerId, createdAt(sort: Desc)])
 }
 
 model OrderAuditEvent {
@@ -348,6 +352,7 @@ model CheckoutSession {
   orderId         String?  @map("order_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
+  @@index([orderId])
   @@map("checkout_sessions")
 }
 

@@ -151,6 +151,13 @@ API da Telegram bot (buyurtmalar, statistika, sotuvchi/admin bildirishnomalari) 
   - **CORS:** `CORS_ORIGIN` da faqat https domenlaringizni ko‘rsating (masalan `https://myshop.uz`).
 - **HSTS:** Production da API va Web ikkalasi ham HSTS header yuboradi (brauzer faqat HTTPS orqali ulanishni majburiy qiladi).
 
+### Health va dev-endpointlar
+
+- **Liveness:** `GET /health` — jarayon soʻrovlarni qabul qilmoqda.
+- **Readiness:** `GET /health/ready` — PostgreSQL va (agar `REDIS_URL` berilgan boʻlsa) Redis `PING` tekshiriladi; monitoring / orchestrator uchun.
+- **Har bir soʻrov:** javob sarlavhasida `x-request-id` (kiruvchi sarlavha boʻlsa saqlanadi, aks holda UUID).
+- **Dev-only:** `POST /auth/dev-reset-seed-users` faqat production-ga oʻxshash muhitda oʻchiriladi: `NODE_ENV=production`, yoki `APP_ENV=production`, yoki `VERCEL_ENV=production`, yoki staging uchun `FORCE_DISABLE_DEV_ENDPOINTS=true`. Batafsil: `apps/api/.env.example`.
+
 ## CI/CD (Mercury / MyShopUZ)
 
 GitHub Actions orqali avtomatik ishlaydi:
@@ -160,7 +167,7 @@ GitHub Actions orqali avtomatik ishlaydi:
   - Prisma client generatsiya (`pnpm db:generate`)
   - `pnpm run lint` (API + Web)
   - `pnpm run build` (muhit o‘zgaruvchilari CI uchun berilgan)
-  - `pnpm run test`
+  - `pnpm run test` (Turbo: avvalo workspace bogʻliqliklari `^build`, masalan `@myshopuz/shared`; toʻliq `next build` talab qilinmaydi — CI tezroq ishlaydi)
 
 - **CD** (`.github/workflows/cd.yml`): `main` ga push qilinganda:
   - API uchun Docker image yig‘iladi va **GitHub Container Registry** (ghcr.io) ga push qilinadi.

@@ -14,6 +14,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { isProductionLike } from '../common/deployment-env';
 
 const REFRESH_COOKIE = 'refreshToken';
 const COOKIE_OPTIONS = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' };
@@ -167,8 +168,8 @@ export class AuthController {
   @Public()
   @ApiOperation({ summary: '[DEV] Reset seed users passwords' })
   async devResetSeedUsers() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException('Not available in production');
+    if (isProductionLike()) {
+      throw new ForbiddenException('Not available in production or when dev endpoints are disabled');
     }
     return this.auth.devResetSeedUsers();
   }

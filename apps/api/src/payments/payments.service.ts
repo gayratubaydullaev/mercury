@@ -110,6 +110,19 @@ export class PaymentsService {
       return { click_trans_id, merchant_trans_id, merchant_prepare_id: order.id, error: 0, error_note: 'Success' };
     }
     if (action === '1') {
+      if (order.paymentStatus === 'PAID') {
+        this.logger.log(
+          `Click callback idempotent complete orderId=${order.id} click_trans_id=${click_trans_id} (already PAID)`,
+        );
+        return {
+          click_trans_id,
+          merchant_trans_id,
+          merchant_prepare_id: order.id,
+          merchant_confirm_id: order.id,
+          error: 0,
+          error_note: 'Success',
+        };
+      }
       const fromStatus = order.status;
       const fromPaymentStatus = order.paymentStatus;
       await this.prisma.$transaction([

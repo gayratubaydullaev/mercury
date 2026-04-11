@@ -1,7 +1,14 @@
 export const ROLES = {
   BUYER: 'BUYER',
   SELLER: 'SELLER',
+  CASHIER: 'CASHIER',
   ADMIN: 'ADMIN',
+  ADMIN_MODERATOR: 'ADMIN_MODERATOR',
+} as const;
+
+export const PAYMENT_PROVIDERS = {
+  CLICK: 'CLICK',
+  PAYME: 'PAYME',
 } as const;
 
 export const RATE_LIMITS = {
