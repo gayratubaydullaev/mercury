@@ -109,6 +109,8 @@ pnpm run dev
 | `platform_settings.chat_with_seller_enabled` does not exist | Eski baza, tovar sahifasi `GET /products/:id` paytida 500 | `pnpm db:migrate:deploy` — `20260411132000_platform_settings_chat_with_seller_hotfix`. |
 | `Failed to find Server Action`, `Cannot read properties of null (reading 'digest')` (Next.js web) | Eski build yoki keshlangan JS yangi serverni bilan mos emas | Serverni: `cd apps/web && rm -rf .next && pnpm build && pnpm start` (yoki processni qayta ishga tushiring). Har bir deploy dan keyin Node processni toʻliq qayta ishga tushiring. |
 | API: `connect ETIMEDOUT` (IPv6 yoki 443) | Tashqi xizmatga (DB, Redis, Telegram va hokazo) ulanish vaqti tugadi | Tarmoq/firewall tekshiring; `DATABASE_URL` va boshqa URL larni IPv4 ga oʻzgartiring yoki serverni IPv4 orqali chiqishga majburlang. |
+| `relation "orders" does not exist` (`20260411133000_perf_indexes`) | Eski migratsiya notoʻgʻri `orders` jadvaliga indeks qoʻshgan; loyihada buyurtmalar jadvali `"Order"` (squashed_init bilan mos) | Reponi yangilang (tuzatilgan `migration.sql`), keyin serverda: `cd apps/api && npx prisma migrate resolve --rolled-back 20260411133000_perf_indexes`, soʻng `pnpm db:migrate:deploy`. |
+| Prisma `P3009` — failed migrations | Oldingi `migrate deploy` migratsiyani yarim qoʻllagan | Yuqoridagi `migrate resolve --rolled-back <migratsiya_nomi>`, bazani tuzating (kerak boʻlsa), keyin qayta `migrate deploy`. [Prisma qo‘llanmasi](https://www.prisma.io/docs/guides/migrate/troubleshooting-development) |
 
 ### 5. Docker (lokal)
 
