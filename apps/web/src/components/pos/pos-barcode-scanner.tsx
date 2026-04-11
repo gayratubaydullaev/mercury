@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import {
   Dialog,
@@ -32,6 +32,12 @@ type PosBarcodeScannerProps = {
   continuous?: boolean;
   /** Oxirgi skan natijasi — dialog ichida ko‘rinadi (asosan telefon) */
   feedback?: PosScannerFeedback | null;
+  /** Telefon: kamera ostida aylantiriladigan katalog (faqat max-sm) */
+  mobileCatalogSlot?: ReactNode;
+  /** Telefon: qidiruv / yangilash — roʻyxat ustida, aylantirilmaydi */
+  mobileCatalogControls?: ReactNode;
+  /** Telefon: savat qisqacha (jami) — tugmalar ustida */
+  mobileCartSummary?: ReactNode;
 };
 
 type CameraConfig = MediaTrackConstraints | boolean;
@@ -83,6 +89,9 @@ export function PosBarcodeScanner({
   onDecoded,
   continuous = false,
   feedback = null,
+  mobileCatalogSlot = null,
+  mobileCatalogControls = null,
+  mobileCartSummary = null,
 }: PosBarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onDecodedRef = useRef(onDecoded);
@@ -258,11 +267,17 @@ export function PosBarcodeScanner({
       </div>
     ) : null;
 
+  const hasMobileCatalog =
+    Boolean(mobileCatalogSlot) || Boolean(mobileCatalogControls) || Boolean(mobileCartSummary);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          'flex max-h-[90dvh] w-[calc(100vw-1rem)] max-w-md flex-col gap-3 overflow-y-auto p-4 sm:max-h-[92dvh] sm:max-w-lg sm:gap-4 sm:p-6'
+          'flex w-[calc(100vw-1rem)] max-w-md flex-col gap-3 p-4 sm:max-w-lg sm:gap-4 sm:p-6',
+          hasMobileCatalog
+            ? 'max-h-[92dvh] overflow-hidden sm:max-h-[92dvh] sm:overflow-y-auto'
+            : 'max-h-[90dvh] overflow-y-auto sm:max-h-[92dvh]'
         )}
       >
         <div className="sticky top-0 z-10 shrink-0 space-y-2 border-b border-border/50 bg-background pb-2 sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:pb-0">
@@ -287,12 +302,32 @@ export function PosBarcodeScanner({
           id={SCANNER_ELEMENT_ID}
           className={cn(
             'relative w-full shrink-0 overflow-hidden rounded-lg bg-black/95',
-            'h-[min(190px,32vh)] sm:h-[260px]',
+            hasMobileCatalog
+              ? 'h-[min(128px,18dvh)] sm:h-[260px]'
+              : 'h-[min(190px,32vh)] sm:h-[260px]',
             '[&_video]:h-full [&_video]:w-full [&_video]:object-cover'
           )}
         />
 
-        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border/40 pt-2 sm:mt-0 sm:border-0 sm:pt-0">
+        {hasMobileCatalog ? (
+          <div className="flex min-h-0 max-h-[min(48dvh,380px)] flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
+            <p className="mb-1.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Tovarlar
+              <span className="ml-1 font-normal normal-case text-muted-foreground/80">
+                (yuqori — server · pastki — jadvalda filtr)
+              </span>
+            </p>
+            {mobileCatalogControls ? (
+              <div className="mb-2 shrink-0 space-y-2">{mobileCatalogControls}</div>
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pr-0.5">
+              {mobileCatalogSlot}
+            </div>
+            {mobileCartSummary ? <div className="mt-2 shrink-0">{mobileCartSummary}</div> : null}
+          </div>
+        ) : null}
+
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border/40 bg-background pt-2 sm:mt-0 sm:border-0 sm:bg-transparent sm:pt-0">
           {!running ? (
             <Button type="button" className="h-11 w-full sm:h-10" disabled={starting} onClick={() => void startFromUserClick()}>
               {starting ? 'Ulanmoqda…' : 'Kamerani yoqish'}

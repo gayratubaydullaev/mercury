@@ -128,6 +128,16 @@ function skuHintForCatalog(product: CatalogProduct, variantId?: string): string 
   return any ?? null;
 }
 
+function productMatchesScannerListFilter(p: CatalogProduct, qNorm: string): boolean {
+  if (!qNorm) return true;
+  if (p.title.toLowerCase().includes(qNorm)) return true;
+  for (const v of p.variants) {
+    const s = v.sku?.trim().toLowerCase();
+    if (s && s.includes(qNorm)) return true;
+  }
+  return false;
+}
+
 const POS_GUEST_PHONE_KEY = 'pos:lastGuestPhone';
 
 export type PosWorkspaceProps = {
@@ -174,6 +184,12 @@ export function PosWorkspace({
   } | null>(null);
   /** Telefon: katalog yoki toʻliq chek / toʻlov paneli */
   const [posMobileSection, setPosMobileSection] = useState<'items' | 'checkout'>('items');
+  /** Kamera dialogi: mahalliy filtr (nom / SKU), yuklangan roʻyxatda */
+  const [scannerListFilter, setScannerListFilter] = useState('');
+  /** Kamera dialogi: server qidiruv (API, debounce) */
+  const [scannerApiSearch, setScannerApiSearch] = useState('');
+  const [scannerApiDebounced, setScannerApiDebounced] = useState('');
+  const scannerServerSeededRef = useRef(false);
   const lastScanRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
   const usbScanInputRef = useRef<HTMLInputElement>(null);
   const processBarcodeRef = useRef<(text: string, mode: PosMode) => Promise<boolean>>(async () => false);
@@ -186,11 +202,22 @@ export function PosWorkspace({
     return () => clearTimeout(t);
   }, [search]);
 
+  useEffect(() => {
+    if (!scannerOpen) return;
+    const t = setTimeout(() => setScannerApiDebounced(scannerApiSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [scannerOpen, scannerApiSearch]);
+
+  const catalogQueryForApi = useMemo(
+    () => (scannerOpen ? scannerApiDebounced : debounced),
+    [scannerOpen, scannerApiDebounced, debounced]
+  );
+
   const loadCatalog = useCallback(async () => {
     if (!token) return;
     setLoadingCatalog(true);
     try {
-      const q = debounced ? `&search=${encodeURIComponent(debounced)}` : '';
+      const q = catalogQueryForApi ? `&search=${encodeURIComponent(catalogQueryForApi)}` : '';
       const r = await apiFetch(`${API_URL}/products/my?page=1&limit=80${q}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -203,7 +230,7 @@ export function PosWorkspace({
     } finally {
       setLoadingCatalog(false);
     }
-  }, [token, debounced]);
+  }, [token, catalogQueryForApi]);
 
   useEffect(() => {
     if (posMode === 'kassa') loadCatalog();
@@ -212,6 +239,21 @@ export function PosWorkspace({
   useEffect(() => {
     if (cashierOnly) setPosMode('kassa');
   }, [cashierOnly]);
+
+  useEffect(() => {
+    if (!scannerOpen) {
+      setScannerListFilter('');
+      setScannerApiSearch('');
+      setScannerApiDebounced('');
+      scannerServerSeededRef.current = false;
+      return;
+    }
+    if (!scannerServerSeededRef.current) {
+      setScannerApiSearch(search);
+      setScannerApiDebounced(search.trim());
+      scannerServerSeededRef.current = true;
+    }
+  }, [scannerOpen, search]);
 
   useEffect(() => {
     try {
@@ -384,6 +426,219 @@ export function PosWorkspace({
     }
     return success;
   }, [variantPick]);
+
+  const scannerFilteredCatalog = useMemo(() => {
+    if (!catalog?.length) return catalog ?? [];
+    const q = scannerListFilter.trim().toLowerCase();
+    if (!q) return catalog;
+    return catalog.filter((p) => productMatchesScannerListFilter(p, q));
+  }, [catalog, scannerListFilter]);
+
+  const scannerServerSearchPending =
+    scannerOpen && scannerApiSearch.trim() !== scannerApiDebounced;
+
+  const scannerMobileCatalogControls = useMemo(
+    () => (
+      <div className="flex flex-col gap-2.5">
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Server qidiruv
+          </p>
+          <div className="relative">
+            <PackageSearch
+              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={scannerApiSearch}
+              onChange={(e) => setScannerApiSearch(e.target.value)}
+              placeholder="API · 80 tagacha..."
+              className="h-9 pl-8 pr-9 text-sm"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Skaner: serverdan tovar qidiruv"
+            />
+            {scannerApiSearch.trim() ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0.5 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setScannerApiSearch('')}
+                aria-label="Server qidiruvni tozalash"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+          </div>
+          {scannerServerSearchPending ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin shrink-0" aria-hidden />
+              Soʻrov yuborilmoqda…
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Jadvalda filtr
+          </p>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={scannerListFilter}
+              onChange={(e) => setScannerListFilter(e.target.value)}
+              placeholder="Nom yoki SKU (joriy roʻyxatda)..."
+              className="h-9 pl-8 pr-9 text-sm"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Skaner: mahalliy filtr"
+            />
+            {scannerListFilter.trim() ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0.5 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setScannerListFilter('')}
+                aria-label="Filtrni tozalash"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 w-full gap-2 text-xs touch-manipulation"
+          disabled={loadingCatalog}
+          onClick={() => void loadCatalog()}
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', loadingCatalog && 'animate-spin')} />
+          Roʻyxatni yangilash
+        </Button>
+      </div>
+    ),
+    [
+      scannerApiSearch,
+      scannerListFilter,
+      loadingCatalog,
+      loadCatalog,
+      scannerServerSearchPending,
+    ]
+  );
+
+  const scannerMobileCartSummary = useMemo(() => {
+    if (cart.length === 0) return null;
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/[0.12] px-3 py-2 dark:bg-emerald-500/15">
+        <span className="text-xs leading-tight text-muted-foreground">
+          Savat:{' '}
+          <span className="font-semibold text-foreground">
+            {cart.length} qator · {cartUnitsCount} dona
+          </span>
+        </span>
+        <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+          {formatPrice(cartTotal)}
+        </span>
+      </div>
+    );
+  }, [cart.length, cartUnitsCount, cartTotal]);
+
+  /** Kamera dialogi (telefon): skaner paytida aylantiriladigan roʻyxat */
+  const scannerMobileCatalogList = useMemo(() => {
+    if (loadingCatalog) {
+      return (
+        <div className="space-y-2 px-0.5 py-1">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[52px] rounded-lg" />
+          ))}
+        </div>
+      );
+    }
+    if (!catalog?.length) {
+      return (
+        <p className="px-2 py-5 text-center text-xs leading-snug text-muted-foreground">
+          Tovar yoʻq. Yuqoridagi <span className="font-medium text-foreground">Server qidiruv</span> maydonini
+          oʻzgartiring yoki «Roʻyxatni yangilash» ni bosing. Asosiy sahifa qidiruvi skaner yopilganda ishlaydi.
+        </p>
+      );
+    }
+    if (!scannerFilteredCatalog.length) {
+      return (
+        <p className="px-2 py-5 text-center text-xs leading-snug text-muted-foreground">
+          <span className="font-medium text-foreground">„{scannerListFilter.trim()}“</span> uchun natija yoʻq. Boshqa
+          soʻz yoki SKU urinib koʻring.
+        </p>
+      );
+    }
+    return (
+      <ul className="space-y-1.5 pb-1">
+        {scannerFilteredCatalog.map((p) => {
+          const hasV = p.variants.length > 0;
+          const vid = variantPick[p.id];
+          const canAdd = !hasV || Boolean(vid);
+          const skuHint = skuHintForCatalog(p, hasV ? vid : undefined);
+          return (
+            <li
+              key={p.id}
+              className="flex items-stretch gap-2 rounded-lg border border-border/60 bg-card/95 p-2 shadow-sm active:bg-muted/40"
+            >
+              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-muted">
+                {p.images[0]?.url ? (
+                  <Image src={p.images[0].url} alt="" fill className="object-cover" sizes="44px" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">—</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1 py-0.5">
+                <p className="line-clamp-2 text-xs font-semibold leading-tight">{p.title}</p>
+                {skuHint ? (
+                  <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">SKU {skuHint}</p>
+                ) : null}
+                <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                  {formatPrice(unitPriceFor(p, hasV ? vid : undefined))} · {stockFor(p, hasV ? vid : undefined)}
+                </p>
+              </div>
+              <div className="flex w-[min(7.75rem,32vw)] shrink-0 flex-col items-stretch justify-center gap-1">
+                {hasV ? (
+                  <Select
+                    value={vid}
+                    onValueChange={(v) => setVariantPick((s) => ({ ...s, [p.id]: v }))}
+                  >
+                    <SelectTrigger className="h-8 px-2 text-xs">
+                      <SelectValue placeholder="Variant" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {p.variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id} disabled={v.stock < 1}>
+                          {variantLabel(v.options) || v.sku || v.id.slice(0, 8)} ({v.stock})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 touch-manipulation px-2 text-xs"
+                  disabled={!canAdd || stockFor(p, hasV ? vid : undefined) < 1}
+                  onClick={() => addLine(p)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  Savatga
+                </Button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }, [loadingCatalog, catalog, scannerFilteredCatalog, scannerListFilter, variantPick, addLine]);
 
   const repeatLastQuick = useCallback(() => {
     if (!lastQuickAdd) {
@@ -1353,6 +1608,9 @@ export function PosWorkspace({
         continuous
         feedback={scannerOpen ? lastScanBanner : null}
         onDecoded={(text) => void processBarcodeText(text, posMode)}
+        mobileCatalogControls={posMode === 'kassa' ? scannerMobileCatalogControls : undefined}
+        mobileCatalogSlot={posMode === 'kassa' ? scannerMobileCatalogList : null}
+        mobileCartSummary={posMode === 'kassa' ? scannerMobileCartSummary : undefined}
       />
 
       <Dialog open={!!receiptOrder} onOpenChange={(o) => !o && setReceiptOrder(null)}>
