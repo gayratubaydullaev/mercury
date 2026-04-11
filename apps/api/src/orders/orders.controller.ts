@@ -6,6 +6,7 @@ import { OrdersService } from './orders.service';
 import { OrdersControllerCreateResponse } from './orders.controller.types';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreatePosOrderDto } from './dto/create-pos-order.dto';
+import { ProcessOrderReturnDto } from './dto/process-order-return.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -158,5 +159,20 @@ export class OrdersController {
     const ownerId = user.effectiveSellerId;
     if (!ownerId) throw new ForbiddenException();
     return this.orders.markAsPaid(id, ownerId, user.id);
+  }
+
+  @Post(':id/return')
+  @Roles(UserRole.SELLER)
+  @ApiOperation({
+    summary: 'Qaytaruv (faqat sotuvchi): ombor zaxirasini tiklash, chek boʻyicha toʻliq yoki qisman',
+    description:
+      'Kassirlar uchun yoʻq. fullOrder: true yoki items: [{ orderItemId, quantity }]. Toʻliq qaytaruvda PAID → REFUNDED.',
+  })
+  processReturn(
+    @Param('id') id: string,
+    @CurrentUser('id') sellerUserId: string,
+    @Body() dto: ProcessOrderReturnDto,
+  ) {
+    return this.orders.processSellerReturn(sellerUserId, id, dto);
   }
 }

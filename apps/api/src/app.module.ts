@@ -119,6 +119,7 @@ export class AppModule implements NestModule {
         { path: 'cart/items/:productId', method: RequestMethod.DELETE },
         { path: 'orders', method: RequestMethod.POST },
         { path: 'checkout-session', method: RequestMethod.POST },
+        { path: 'upload/image', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

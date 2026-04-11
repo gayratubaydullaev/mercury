@@ -18,6 +18,8 @@ const CSRF_EXCLUDED_PATHS: { path: string; method: string }[] = [
   { path: '/cart', method: 'GET' },
   { path: '/cart/items', method: 'POST' },
   { path: '/orders', method: 'POST' },
+  /** Multipart + JWT Bearer; proksi/mobil cookie muammolaridan qochish */
+  { path: '/upload/image', method: 'POST' },
 ];
 
 function isCartItemRoute(path: string, method: string): boolean {

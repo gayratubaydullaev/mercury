@@ -862,7 +862,9 @@ export function PosWorkspace({
 
   const modeDescription =
     posMode === 'kassa'
-      ? 'Kassa: savat, toʻlov, chek. Kamera — ketma-ket skanerlash, ovozli tasdiq.'
+      ? cashierOnly
+        ? 'Kassa: savat, toʻlov, chek. Kamera — ketma-ket skanerlash, ovozli tasdiq.'
+        : 'Kassa: savat, toʻlov, chek. «Buyurtmalar» — chekni ochish va qaytaruv (faqat sotuvchi). Kamera — ketma-ket skanerlash.'
       : 'Ombor / TSD: mavjud kod — tahrirlash oynasi; yangi kod — yangi tovar formasi (SKU avto). Kamera yopilmasdan ketma-ket skanerlash mumkin.';
 
   return (
@@ -943,7 +945,7 @@ export function PosWorkspace({
             <Button variant="secondary" size="sm" className="min-h-10 gap-1.5 touch-manipulation" asChild>
               <Link href={ordersBasePath}>
                 <ShoppingBag className="h-4 w-4 shrink-0" aria-hidden />
-                Buyurtmalar
+                {cashierOnly ? 'Buyurtmalar' : 'Buyurtmalar / qaytaruv'}
               </Link>
             </Button>
             <Button
@@ -1524,7 +1526,7 @@ export function PosWorkspace({
                       href={`${ordersBasePath}/${lastOrderId}`}
                       className={cn('font-medium text-primary underline-offset-4 hover:underline')}
                     >
-                      Buyurtmani ochish
+                      {cashierOnly ? 'Buyurtmani ochish' : 'Chek va qaytaruv uchun ochish'}
                     </Link>
                   </p>
                 ) : null}

@@ -276,7 +276,8 @@ export function PosBarcodeScanner({
         className={cn(
           'flex w-[calc(100vw-1rem)] max-w-md flex-col gap-3 p-4 sm:max-w-lg sm:gap-4 sm:p-6',
           hasMobileCatalog
-            ? 'max-h-[92dvh] overflow-hidden sm:max-h-[92dvh] sm:overflow-y-auto'
+            ? /* max-sm: aniq balandlik — flex-1 roʻyxat uchun qoladi, ichida scroll ishlaydi */
+              'max-sm:h-[min(92dvh,calc(100dvh-0.5rem))] max-sm:max-h-[min(92dvh,calc(100dvh-0.5rem))] max-sm:min-h-0 max-sm:overflow-hidden sm:max-h-[92dvh] sm:overflow-y-auto'
             : 'max-h-[90dvh] overflow-y-auto sm:max-h-[92dvh]'
         )}
       >
@@ -310,7 +311,7 @@ export function PosBarcodeScanner({
         />
 
         {hasMobileCatalog ? (
-          <div className="flex min-h-0 max-h-[min(48dvh,380px)] flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border/50 pt-2 sm:hidden">
             <p className="mb-1.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Tovarlar
               <span className="ml-1 font-normal normal-case text-muted-foreground/80">
@@ -318,16 +319,29 @@ export function PosBarcodeScanner({
               </span>
             </p>
             {mobileCatalogControls ? (
-              <div className="mb-2 shrink-0 space-y-2">{mobileCatalogControls}</div>
+              <div className="mb-2 max-h-[min(34dvh,220px)] min-h-0 shrink-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+                {mobileCatalogControls}
+              </div>
             ) : null}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pr-0.5">
+            <div
+              className={cn(
+                'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
+                'touch-pan-y pr-0.5 [overflow-anchor:none]'
+              )}
+            >
               {mobileCatalogSlot}
             </div>
             {mobileCartSummary ? <div className="mt-2 shrink-0">{mobileCartSummary}</div> : null}
           </div>
         ) : null}
 
-        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border/40 bg-background pt-2 sm:mt-0 sm:border-0 sm:bg-transparent sm:pt-0">
+        <div
+          className={cn(
+            'flex shrink-0 flex-col gap-2 border-t border-border/40 bg-background pt-2',
+            !hasMobileCatalog && 'mt-auto',
+            'sm:mt-0 sm:border-0 sm:bg-transparent sm:pt-0'
+          )}
+        >
           {!running ? (
             <Button type="button" className="h-11 w-full sm:h-10" disabled={starting} onClick={() => void startFromUserClick()}>
               {starting ? 'Ulanmoqda…' : 'Kamerani yoqish'}

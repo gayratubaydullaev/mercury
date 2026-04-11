@@ -45,6 +45,8 @@ export type OrderDetailData = {
   createdAt: string;
   updatedAt: string;
   notes?: string | null;
+  /** Ombor chiqimi qayd etilgach (POS/checkout) — qaytaruv shu paytdan keyin */
+  stockDeductedAt?: string | null;
   guestPhone?: string | null;
   guestEmail?: string | null;
   shippingAddress?: Record<string, unknown> | null;
@@ -57,6 +59,8 @@ export type OrderDetailData = {
   items?: Array<{
     id?: string;
     quantity: number;
+    /** Qaytarilgan dona (sotuvchi qaytaruvi) */
+    returnedQuantity?: number;
     price: string | number;
     product?: {
       id: string;
@@ -192,6 +196,7 @@ export function OrderDetailContent({ order }: { order: OrderDetailData }) {
                 <th className="px-3 py-2">Variant</th>
                 <th className="px-3 py-2">Birlik</th>
                 <th className="px-3 py-2 text-right">Miqdor</th>
+                <th className="px-3 py-2 text-right">Qaytarilgan</th>
                 <th className="px-3 py-2 text-right">Ombor</th>
                 <th className="px-3 py-2 text-right">Narx</th>
                 <th className="px-3 py-2 text-right">Summa</th>
@@ -203,7 +208,10 @@ export function OrderDetailContent({ order }: { order: OrderDetailData }) {
                 const sku = it.variant?.sku ?? it.product?.sku ?? '—';
                 const unit = it.product?.unit ?? 'dona';
                 const stock = it.variant != null ? it.variant.stock : it.product?.stock;
+                const ret = it.returnedQuantity ?? 0;
+                const activeQty = Math.max(0, it.quantity - ret);
                 const lineTotal = Number(it.price) * it.quantity;
+                const activeLine = Number(it.price) * activeQty;
                 return (
                   <tr key={it.id ?? idx} className="border-b border-border/40 last:border-0">
                     <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{sku}</td>
@@ -211,9 +219,19 @@ export function OrderDetailContent({ order }: { order: OrderDetailData }) {
                     <td className="px-3 py-2 text-muted-foreground">{variantOpts || '—'}</td>
                     <td className="px-3 py-2 text-muted-foreground">{unit}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{it.quantity}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-amber-800 dark:text-amber-200">
+                      {ret > 0 ? ret : '—'}
+                    </td>
                     <td className="px-3 py-2 text-right text-muted-foreground">{stock != null ? stock : '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatPrice(Number(it.price))} soʻm</td>
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">{formatPrice(lineTotal)} soʻm</td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      {formatPrice(lineTotal)} soʻm
+                      {ret > 0 ? (
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          Qoldiq: {formatPrice(activeLine)} soʻm
+                        </span>
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}
@@ -228,7 +246,21 @@ export function OrderDetailContent({ order }: { order: OrderDetailData }) {
           <p>Yangilangan: {new Date(order.updatedAt).toLocaleString('uz-UZ')}</p>
           <p className="mt-1 font-mono text-[11px]">ID: {order.id}</p>
         </div>
-        <p className="text-lg font-semibold tabular-nums">Jami: {formatPrice(Number(order.totalAmount))} soʻm</p>
+        <div className="text-right">
+          <p className="text-lg font-semibold tabular-nums">Chek jami: {formatPrice(Number(order.totalAmount))} soʻm</p>
+          {Array.isArray(order.items) && order.items.some((i) => (i.returnedQuantity ?? 0) > 0) ? (
+            <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+              Qaytaruvdan keyin (tahminiy):{' '}
+              {formatPrice(
+                order.items.reduce((s, i) => {
+                  const q = Math.max(0, i.quantity - (i.returnedQuantity ?? 0));
+                  return s + Number(i.price) * q;
+                }, 0)
+              )}{' '}
+              soʻm
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   );

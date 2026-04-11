@@ -53,10 +53,15 @@ async function proxy(
     if (value) headers.set(name, value);
   }
 
-  let body: string | ArrayBuffer | undefined;
   const requestContentType = request.headers.get('content-type') || '';
+  const isMultipart = requestContentType.includes('multipart/form-data');
+
+  let body: BodyInit | undefined;
   try {
-    if (requestContentType.includes('multipart/form-data')) {
+    if (isMultipart && request.body) {
+      // To‘liq buffer o‘rniga oqim — chegara (boundary) buzilmaydi; katta fayllarda ishoncharliroq
+      body = request.body;
+    } else if (isMultipart) {
       const buf = await request.arrayBuffer();
       if (buf.byteLength > 0) body = buf;
     } else {
@@ -64,16 +69,21 @@ async function proxy(
       if (text) body = text;
     }
   } catch {
-    // no body
+    body = undefined;
+  }
+
+  const fetchInit: RequestInit & { duplex?: 'half' } = {
+    method,
+    headers,
+    body: body ?? undefined,
+  };
+  if (body != null && typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) {
+    fetchInit.duplex = 'half';
   }
 
   let res: Response;
   try {
-    res = await fetch(url, {
-      method,
-      headers,
-      body: body ?? undefined,
-    });
+    res = await fetch(url, fetchInit);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Backend unreachable';
     console.error('[api/proxy] Backend unreachable:', url, err);

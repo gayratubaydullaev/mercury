@@ -17,7 +17,34 @@ import {
   type OrderDetailData,
 } from '@/components/dashboard/order-detail-content';
 import { OrderAuditPanel } from '@/components/dashboard/order-audit-panel';
-import { ArrowLeft } from 'lucide-react';
+import { SellerOrderReturnPanel } from '@/components/dashboard/seller-order-return-panel';
+import { PosReceipt, type PosReceiptOrder } from '@/components/pos/pos-receipt';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ArrowLeft, Receipt } from 'lucide-react';
+
+function orderDetailToPosReceipt(o: OrderDetailData): PosReceiptOrder {
+  return {
+    id: o.id,
+    orderNumber: o.orderNumber,
+    createdAt: o.createdAt,
+    totalAmount: o.totalAmount,
+    paymentMethod: o.paymentMethod ?? 'CASH',
+    guestPhone: o.guestPhone,
+    items: (o.items ?? []).map((it) => ({
+      quantity: it.quantity,
+      price: it.price,
+      product: { title: it.product?.title ?? '—' },
+      variant: it.variant ? { options: it.variant.options } : null,
+    })),
+    seller: o.seller,
+  };
+}
 
 export default function SellerOrderDetailPage() {
   const params = useParams();
@@ -25,6 +52,7 @@ export default function SellerOrderDetailPage() {
   const [order, setOrder] = useState<OrderDetailData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const load = useCallback(() => {
@@ -120,12 +148,18 @@ export default function SellerOrderDetailPage() {
         title={order.orderNumber}
         description="Buyurtmani boshqarish va holatni yangilash."
       >
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/seller/orders">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Roʻyxat
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="sm" className="gap-1.5" onClick={() => setReceiptOpen(true)}>
+            <Receipt className="h-4 w-4" aria-hidden />
+            Chek koʻrish
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/seller/orders">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Roʻyxat
+            </Link>
+          </Button>
+        </div>
       </DashboardPageHeader>
 
       <DashboardPanel className="space-y-6 p-4 sm:p-6">
@@ -203,7 +237,31 @@ export default function SellerOrderDetailPage() {
             mumkin.
           </p>
         </div>
+
+        <div className="border-t border-border/60 pt-6">
+          <SellerOrderReturnPanel
+            orderId={id}
+            token={token}
+            order={order}
+            onSuccess={(next) => {
+              setOrder(next);
+              setAuditRefreshKey((k) => k + 1);
+            }}
+          />
+        </div>
       </DashboardPanel>
+
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chek</DialogTitle>
+            <DialogDescription>
+              {order.orderNumber} — chop etish yoki matnni nusxalash (sotuvchi kabineti).
+            </DialogDescription>
+          </DialogHeader>
+          <PosReceipt order={orderDetailToPosReceipt(order)} />
+        </DialogContent>
+      </Dialog>
 
       <OrderAuditPanel token={token} orderId={id} refreshKey={auditRefreshKey} />
     </div>

@@ -142,7 +142,21 @@ export function PosWarehouseSection({
       headers: { Authorization: `Bearer ${token}` },
       body: fd,
     });
-    const data = (await r.json()) as { url?: string; message?: string };
+    const raw = await r.text();
+    const ct = r.headers.get('content-type') ?? '';
+    if (!ct.includes('application/json')) {
+      throw new Error(
+        r.status === 413 || raw.includes('413')
+          ? 'Rasm juda katta. Kichikroq fayl yoki kamroq pikselli surat yuklang.'
+          : 'Server JSON oʻrniga HTML qaytardi (odatda proksi yoki API manzili notoʻgʻri). NEXT_PUBLIC_API_URL va tarmoqni tekshiring.'
+      );
+    }
+    let data: { url?: string; message?: string };
+    try {
+      data = raw ? (JSON.parse(raw) as { url?: string; message?: string }) : {};
+    } catch {
+      throw new Error('Server javobi JSON emas. API ishlayotganini va /upload/image ochiq ekanini tekshiring.');
+    }
     if (!r.ok) throw new Error(typeof data.message === 'string' ? data.message : 'Yuklash xatosi');
     if (!data.url) throw new Error('URL yoʻq');
     return data.url;

@@ -5,6 +5,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto, DeliveryType } from './dto/create-order.dto';
 import { CreatePosOrderDto } from './dto/create-pos-order.dto';
+import { ProcessOrderReturnDto } from './dto/process-order-return.dto';
 import { OrderStatus, PaymentStatus, Prisma, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import type { RequestAuthUser } from '../auth/request-user.types';
@@ -685,7 +686,16 @@ export class OrdersService {
 
     if (status === 'CANCELLED' && fromStatus !== 'CANCELLED' && order.stockDeductedAt) {
       const updated = await this.prisma.$transaction(async (tx) => {
-        await this.restoreStockForOrderItems(tx, order.items);
+        const toRestore = order.items
+          .map((i) => ({
+            productId: i.productId,
+            variantId: i.variantId,
+            quantity: i.quantity - (i.returnedQuantity ?? 0),
+          }))
+          .filter((x) => x.quantity > 0);
+        if (toRestore.length > 0) {
+          await this.restoreStockForOrderItems(tx, toRestore);
+        }
         return tx.order.update({
           where: { id },
           data: { status, stockDeductedAt: null },
@@ -743,6 +753,111 @@ export class OrdersService {
     });
     this.appendOrderAudit(id, actorUserId, 'SELLER_MARK_PAID', { paymentMethod: order.paymentMethod });
     return updated;
+  }
+
+  private appendReturnNote(existing: string | null | undefined, note: string | undefined): string | undefined {
+    const n = note?.trim();
+    if (!n) return existing ?? undefined;
+    const ts = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const line = `[Qaytaruv] ${ts}: ${n}`;
+    if (!existing?.trim()) return line;
+    return `${existing.trim()}\n${line}`;
+  }
+
+  /**
+   * Faqat doʻkon egasi (SELLER JWT). Ombor zaxirasini tiklash, order_item.returnedQuantity oshirish.
+   */
+  async processSellerReturn(sellerUserId: string, orderId: string, dto: ProcessOrderReturnDto) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, sellerId: sellerUserId },
+      include: { items: true },
+    });
+    if (!order) throw new NotFoundException('Buyurtma topilmadi');
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Bekor qilingan buyurtmaga qaytaruv qoʻllanmaydi.');
+    }
+    if (!order.stockDeductedAt) {
+      throw new BadRequestException(
+        'Bu buyurtmada ombordan yechildi belgisi yoʻq — qaytaruv qoʻllanmaydi (eski maʼlumot yoki bekor holat).',
+      );
+    }
+
+    const linesToReturn: { orderItemId: string; qty: number }[] = [];
+
+    if (dto.fullOrder === true) {
+      for (const it of order.items) {
+        const remaining = it.quantity - it.returnedQuantity;
+        if (remaining > 0) linesToReturn.push({ orderItemId: it.id, qty: remaining });
+      }
+    } else if (dto.items && dto.items.length > 0) {
+      const mergedQty = new Map<string, number>();
+      for (const row of dto.items) {
+        mergedQty.set(row.orderItemId, (mergedQty.get(row.orderItemId) ?? 0) + row.quantity);
+      }
+      const byId = new Map(order.items.map((i) => [i.id, i]));
+      for (const [orderItemId, wantQty] of mergedQty) {
+        const it = byId.get(orderItemId);
+        if (!it) throw new BadRequestException(`Qator topilmadi: ${orderItemId}`);
+        if (wantQty < 1) throw new BadRequestException('Miqdor kamida 1 boʻlishi kerak');
+        const remaining = it.quantity - it.returnedQuantity;
+        if (wantQty > remaining) {
+          throw new BadRequestException(
+            `Qator uchun maksimum ${remaining} ta qaytarish mumkin (sotilgan ${it.quantity}, allaqachon qaytarilgan ${it.returnedQuantity}).`,
+          );
+        }
+        linesToReturn.push({ orderItemId, qty: wantQty });
+      }
+    } else {
+      throw new BadRequestException('fullOrder: true yoki items massivini yuboring.');
+    }
+
+    if (linesToReturn.length === 0) {
+      throw new BadRequestException('Qaytarish uchun mahsulot qolmagan.');
+    }
+
+    const notePatch = dto.note?.trim()
+      ? this.appendReturnNote(order.notes ?? undefined, dto.note)
+      : undefined;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const { orderItemId, qty } of linesToReturn) {
+        const it = order.items.find((x) => x.id === orderItemId)!;
+        await this.restoreStockForOrderItems(tx, [
+          { productId: it.productId, variantId: it.variantId, quantity: qty },
+        ]);
+        await tx.orderItem.update({
+          where: { id: orderItemId },
+          data: { returnedQuantity: { increment: qty } },
+        });
+      }
+      const updatedItems = await tx.orderItem.findMany({ where: { orderId: order.id } });
+      const fullyReturned = updatedItems.length > 0 && updatedItems.every((i) => i.returnedQuantity >= i.quantity);
+      const data: Prisma.OrderUpdateInput = {};
+      if (notePatch != null) data.notes = notePatch;
+      if (fullyReturned && order.paymentStatus === PaymentStatus.PAID) {
+        data.paymentStatus = PaymentStatus.REFUNDED;
+      }
+      if (Object.keys(data).length > 0) {
+        await tx.order.update({ where: { id: order.id }, data });
+      }
+    });
+
+    this.appendOrderAudit(order.id, sellerUserId, 'SELLER_RETURN', {
+      lines: linesToReturn,
+      note: dto.note ?? null,
+      fullOrder: dto.fullOrder === true,
+    });
+
+    const fresh = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: { include: { product: true, variant: true } },
+        buyer: true,
+        seller: { include: { shop: { select: { id: true, name: true, slug: true } } } },
+      },
+    });
+    if (!fresh) throw new NotFoundException('Buyurtma topilmadi');
+    return fresh;
   }
 
   private readonly orderStatusNotifyInclude = {
